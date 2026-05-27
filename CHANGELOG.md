@@ -9,7 +9,10 @@
 ## [Unreleased]
 
 ### Added
-- (개발 시작 후 추가)
+- 로컬 Supabase (Docker) 셋업 가이드 ONBOARDING §2.3
+- 외부 도구 셋업 Cowork 프롬프트 6개 (`docs/AI-PROMPTS/setup-*.md` + setup-README)
+- OVERVIEW 디테일 보강 (팀·간사 스팩 파악용, 18개 섹션)
+- WORKLOG·SESSION-HANDOFF 다음 세션 자동 이어가기 인계 정보
 
 ### Changed
 

@@ -67,25 +67,77 @@ cd bus-cignal
 pnpm install
 ```
 
-### 2.3 환경 변수
+### 2.3 로컬 Supabase Dev DB (Docker 기반)
+
+운영 DB와 격리된 본인 머신의 dev DB를 띄웁니다. 실수해도 운영에 영향 X.
+
+**사전 조건**: Docker Desktop 설치 (https://www.docker.com/products/docker-desktop)
+
+```bash
+# Supabase CLI 설치
+brew install supabase/tap/supabase
+# 또는: npm install -g supabase
+
+# 프로젝트 디렉토리에서
+cd ~/projects/bus-cignal
+supabase start   # 첫 실행 시 ~5분 (Docker 이미지 다운로드)
+```
+
+성공하면 출력에서 다음 정보 받음:
+```
+API URL: http://localhost:54321
+DB URL: postgresql://postgres:postgres@localhost:54322/postgres
+Studio URL: http://localhost:54323
+JWT secret: ...
+anon key: eyJ...
+service_role key: eyJ...
+```
+
+**자주 쓰는 명령**:
+```bash
+supabase status   # 동작 중인지 확인
+supabase stop     # 종료 (디스크 절약)
+supabase db reset # DB 초기화 (마이그+seed 재실행)
+supabase migration new <name>  # 새 마이그 파일 생성
+```
+
+**Studio 접속**: http://localhost:54323 → 테이블·SQL·RLS 확인
+
+### 2.4 환경 변수
 
 `.env.local` 파일을 루트에 만드세요 (gitignored, 절대 commit X):
 
 ```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=<팀장에게 받기>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<팀장에게 받기>
+# Supabase (로컬 dev)
+NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<supabase start 출력의 anon key>
+SUPABASE_SERVICE_ROLE_KEY=<출력의 service_role key>
 
-# Firebase (채팅용)
-NEXT_PUBLIC_FIREBASE_CONFIG=<팀장에게 받기>
+# Firebase (채팅·푸시) - 팀장이 1Password 또는 안전한 채널로 공유
+NEXT_PUBLIC_FIREBASE_API_KEY=<...>
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=<...>
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=<...>
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=<...>
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=<...>
+NEXT_PUBLIC_FIREBASE_APP_ID=<...>
+NEXT_PUBLIC_FIREBASE_VAPID_KEY=<...>
+FIREBASE_ADMIN_PRIVATE_KEY=<...>
+FIREBASE_ADMIN_CLIENT_EMAIL=<...>
 
 # 카카오맵
 NEXT_PUBLIC_KAKAO_MAP_API_KEY=<팀장에게 받기>
+KAKAO_REST_API_KEY=<팀장에게 받기>
+
+# 마스터 비번 (개발 환경에서는 본인이 정함)
+MASTER_PASSWORD_HASH=<bcrypt hash, 본인 dev용>
+
+# 앱 URL
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-> 시크릿은 1Password 공유 vault에 있습니다. 팀장에게 액세스 요청.
+> Firebase·카카오·마스터 비번 등은 팀장이 운영용 키 별도 1Password에 보관. 팀원은 dev 키만 사용.
 
-### 2.4 개발 서버 실행
+### 2.5 개발 서버 실행
 
 ```bash
 pnpm dev
@@ -93,7 +145,7 @@ pnpm dev
 
 http://localhost:3000 접속해서 첫 화면이 뜨면 성공.
 
-### 2.5 검증
+### 2.6 검증
 
 ```bash
 pnpm typecheck   # TypeScript 타입 검사

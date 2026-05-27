@@ -1,101 +1,118 @@
 # Bus Cignal — Session Handoff
 
 > **AI 자동 생성 파일.** 사람이 직접 편집 X.
-> 도구 전환 시점(CC ↔ Cowork ↔ Chat)에 AI가 자동 작성.
-> 사용자가 다음 도구에서 복사·실행하기 위한 인계 정보.
-
----
-
-## 📋 사용 방법
-
-1. CC에서 작업하다가 다른 도구가 필요한 시점 (예: Supabase 마이그 실행)
-2. 사용자가 "Cowork으로 넘기자" 또는 비슷한 의도 표현
-3. **AI가 이 파일 자동 작성** + 사용자에게 복사용 프롬프트 제공
-4. 사용자가 다른 도구에서 paste & 진행
-5. 다른 도구 작업 끝나면 CC로 돌아와서 "Cowork에서 완료, 이어가자"
-6. AI가 이 파일 자동 읽고 작업 재개
+> 도구 전환·세션 전환 시 AI가 자동 작성.
 
 ---
 
 ## 🔄 현재 인계 (Active Handoff)
 
-> **상태**: idle (현재 인계 없음)
-
-(AI가 도구 전환 시점에 아래 형식으로 자동 작성)
-
----
-
-### 예시 형식 (AI가 자동 채움)
-
 ```
-## 🔄 현재 인계 — 2026-05-27 22:30
-
-**From**: Claude Code
-**To**: Cowork
-**목적**: Supabase 마이그레이션 실행
-
-### 어디까지 했나
-- `supabase/migrations/20260527220000_initial.sql` 작성 완료 (12개 테이블 + RLS)
-- 로컬 테스트 통과 (`pnpm test`)
-- PR #1 생성 대기
-
-### 지금 필요한 것
-운영 Supabase에 마이그 실행 필요
-
-### Cowork에서 할 일 (복사용 프롬프트)
-
-\`\`\`
-Bus Cignal Supabase 마이그레이션 실행:
-
-1. https://supabase.com/dashboard/project/<프로젝트ID> 접속
-2. 좌측 메뉴 → SQL Editor → New query
-3. 다음 SQL paste:
-
-[--- 시작 ---]
-<SQL 내용 자동 첨부>
-[--- 끝 ---]
-
-4. Run 버튼 클릭
-5. Tables 탭에서 12개 테이블 생성 확인
-6. RLS Policies 탭에서 정책 적용 확인
-7. 결과 (성공/에러 메시지) CC에 알려주기:
-   - 성공이면 "마이그 완료" 이미지·텍스트
-   - 에러면 에러 메시지 그대로 복사
-\`\`\`
-
-### Cowork 완료 후 CC에 다시 와서 할 일
-- "Cowork에서 마이그 실행 완료" 알리기
-- 에러 있었으면 그대로 paste → AI가 수정 → 새 마이그 생성
+From: CC 세션 (2026-05-27 23:00, 세션 포화로 종료)
+To: 다음 CC 세션
+목적: 외부 도구 셋업 Cowork 프롬프트 5개 순차 제공
 ```
+
+### 다음 세션 시작 시 CC가 자동으로 할 일
+
+1. **자동 절차 (CLAUDE.md 명시된 강제 절차)**:
+   - `git fetch origin main` + log 비교
+   - `cat CHANGELOG.md | head -50`
+   - `cat WORKLOG.md` ← 현재 단계 파악
+   - 이 파일(`SESSION-HANDOFF.md`) 읽기 ← 인계 정보 파악
+   - SPEC / CLAUDE diff 분석
+
+2. **사용자에게 첫 인사·확인**:
+   ```
+   "지난 세션에서 v1.0 Confirmed Final 기획 완료, 외부 도구 셋업 직전에 종료됨.
+    이번 세션에서 외부 도구 셋업 5단계 시작할까요?
+    
+    1. Supabase (Seoul)
+    2. Firebase + Firestore + FCM
+    3. 카카오맵
+    4. Vercel + GitHub 연동
+    5. 마스터 비번 + bcrypt
+    
+    1번부터 Cowork 프롬프트 드릴까요?"
+   ```
+
+3. **사용자 OK 시**:
+   - `docs/AI-PROMPTS/setup-1-supabase.md` 읽음
+   - 프롬프트 코드 블록을 그대로 사용자에게 제공
+   - 사용자가 Cowork에 paste → 진행
+   - 키·정보 받으면 → 1Password 저장 확인 + WORKLOG 갱신
+   - setup-2로 진행
+
+4. **5단계 완료 후**:
+   - WORKLOG `🔄 현재 작업` = "Foundation Phase 1 진입"
+   - 이 파일 인계 완료 표시
+   - Foundation 코드 작성 시작
+
+### 어디까지 했나 (지난 세션)
+
+- ✅ 기획 v1.0 Confirmed Final 모든 결정 완료 (28개 안건)
+- ✅ vault README + repo docs/SPEC.md 동기화
+- ✅ OVERVIEW 디테일 보강 (팀·간사 스팩 파악용, 18개 섹션)
+- ✅ 팀원 문서 트리오 (CLAUDE·AGENTS·ONBOARDING·CONTRIBUTING·COWORK) 모두 v1.0 Final 반영
+- ✅ WORKLOG·SESSION-HANDOFF·CHANGELOG·PR template 시스템 구축
+- ✅ `docs/AI-PROMPTS/` setup-1~5-*.md + cc-to-cowork-*.md + cc-to-chat-*.md 등 11개 템플릿
+- ✅ 로컬 Supabase (Docker) 가이드 ONBOARDING에 추가
+- ✅ "East_Star" → "팀장" 일괄 교체
+- ✅ GitHub repo (private, push 완료)
+- ✅ 지구 52개 seed 데이터 (`data/regions.csv`)
+- ✅ 통합 검토 후 모순·결정 안 된 것 모두 해결
+
+### 무엇이 남았나
+
+- ⏳ 외부 도구 셋업 5단계 (사용자가 Cowork으로)
+- ⏳ Foundation Phase 1 (Next.js 스캐폴드 등, 외부 의존성 없음)
+- ⏳ Foundation Phase 2 (Supabase·Firebase·카카오·PWA 통합, 외부 키 받은 후)
+- ⏳ Foundation Phase 3 (Playwright E2E·Sentry·배포)
+- ⏳ 팀원 초대 (Phase 3 완료 후)
+- ⏳ Feature 분담 개발
+
+### 중요 컨텍스트
+
+- **vault**: `~/LIFE/projects/bus-cignal/` (팀장 개인, 안 공유)
+- **repo**: `~/projects/bus-cignal/` ↔ GitHub `Lumiere001/bus-cignal` (private)
+- **팀원 분담**:
+  - 팀장 = Foundation + 매칭 코어 + 정산 + 인프라 + E2E
+  - 팀원 1 = 운영자·마스터 UI (Trip·매칭 큐·정산·관리자)
+  - 팀원 2 = 학생·채팅 (예약번호·대시보드·카카오맵·Firestore)
+- **로컬 Supabase**: 팀원 각자 Docker로 dev DB (ONBOARDING §2.3)
+- **시크릿 분배**: 1Password 공유 vault (팀원에겐 dev 키만)
+- **마스터 인증**: 비밀번호 only (Google OAuth 제거)
+- **간사 가입**: Google OAuth + 본인 지구 + 출발/도착지 N개 등록 + 마스터 승인
+- **알림 채널**: 인앱 + PWA 푸시 (FCM). 이메일·SMS·알림톡 X
 
 ---
 
 ## 📚 인계 이력 (Recent Handoffs)
 
-(AI가 완료된 인계를 시간 역순으로 보관)
+(완료된 인계 시간 역순)
 
-- 없음
+- 없음 (이번이 첫 도구 전환 인계)
 
 ---
 
 ## 🛠 자동화 규칙
 
-### Trigger (AI가 자동으로 이 파일 작성하는 의도들)
+(`CLAUDE.md`·`AGENTS.md`에 강제 절차 명시되어 있음)
+
+### Trigger (이 파일 자동 작성 의도)
 - "Cowork으로 넘기자"
-- "디자인 mock 만들어줘 (Chat에서)"
+- "디자인 mock 만들자 (Chat에서)"
 - "Supabase 가서 직접 확인"
-- "Vercel 배포 확인 좀"
-- "GitHub UI에서 PR 보자"
-- 작업 중 외부 도구 필요 의도
+- "끝내자", "다음에 이어서"
+- 세션 포화 임박 알림
 
 ### 자동 작성 절차
-1. 현재 작업 컨텍스트 요약 (어디까지·다음·왜)
-2. 해당 도구별 템플릿 (`docs/AI-PROMPTS/<도구>-<목적>.md`) 로드
-3. 변수 채우기 (project_id·SQL 내용·URL 등)
-4. 사용자에게 복사용 코드 블록 제공
-5. 이 파일 `🔄 현재 인계` 섹션 갱신
+1. 현재 작업 컨텍스트 요약
+2. `docs/AI-PROMPTS/` 적절한 템플릿 로드
+3. 변수 채워서 복사용 코드 블록 제공
+4. 이 파일 `🔄 현재 인계` 섹션 갱신
 
 ### 완료 처리
-- 사용자가 인계 완료 알리면
-- `🔄 현재 인계` → `📚 인계 이력`로 이동 (시간 역순)
-- WORKLOG.md 갱신 (다음 작업 단계)
+사용자 인계 완료 알림 시:
+- `🔄 현재 인계` → `📚 인계 이력`로 이동
+- WORKLOG 갱신 (다음 작업)
