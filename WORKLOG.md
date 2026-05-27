@@ -9,20 +9,40 @@
 ## 🔄 현재 작업 (Active)
 
 - **상태**: 외부 도구 셋업 **대기 중** (다음 세션에서 진행)
-- **마지막 세션 종료**: 2026-05-27 23:00 (세션 포화)
-- **다음 세션 첫 액션**:
+- **마지막 세션 종료**: 2026-05-27 23:30 (세션 포화)
+
+### 다음 세션 시작 방법 (사용자 가이드)
+
+```bash
+# 1. 현재 세션과 동일 위치에서 CC 시작
+cd /Users/east_star/LIFE
+claude
+
+# 2. 첫 메시지 (한 마디만)
+"작업 이어가자"
+# 또는 "Bus Cignal 이어가자" / "외부 셋업 시작하자" / "다음 단계"
+```
+
+→ CC가 자동으로 모든 컨텍스트 복원 + 다음 단계 안내. 별도 설명 불필요.
+
+### 다음 세션 첫 액션 (CC 자동 수행):
   1. CC가 자동으로 이 WORKLOG·SESSION-HANDOFF·CHANGELOG 읽음
-  2. **vault 존재 확인** (팀장 머신 판단):
+  2. **`.team-role` 자동 읽기**:
+     ```bash
+     cat /Users/east_star/projects/bus-cignal/.team-role 2>/dev/null
+     # 값: team-lead (예상)
+     ```
+  3. 팀장 확인 (vault 존재):
      ```bash
      ls /Users/east_star/LIFE/projects/bus-cignal/team-lead-prompts/ 2>/dev/null
      ```
-  3. vault 존재 = 팀장 머신 → 외부 셋업 진행 가능
-  4. **팀장 vault**의 `team-lead-prompts/setup-README.md` 읽고 5단계 인지
-  5. **사용자에게 "외부 도구 셋업 시작할까요? Cowork 프롬프트 5개 순차 제공"** 안내
-  6. 사용자 OK → vault `team-lead-prompts/setup-1-supabase.md`부터 제공
-  7. 사용자가 Cowork에서 진행 → 키 받음 → 1Password 저장
-  8. CC에 결과 보고 → WORKLOG 갱신 → 다음 setup
-  9. 5단계 완료 후 → Foundation Phase 1·2·3 진입
+  4. vault 존재 = 팀장 머신 → 외부 셋업 진행 가능
+  5. **팀장 vault**의 `team-lead-prompts/setup-README.md` 읽고 5단계 인지
+  6. **사용자에게 "외부 도구 셋업 시작할까요? Cowork 프롬프트 5개 순차 제공"** 안내
+  7. 사용자 OK → vault `team-lead-prompts/setup-1-supabase.md`부터 제공
+  8. 사용자가 Cowork에서 진행 → 키 받음 → 1Password 저장
+  9. CC에 결과 보고 → WORKLOG 갱신 → 다음 setup
+  10. 5단계 완료 후 → Foundation Phase 1·2·3 진입
 
 - **현재 위치**: `~/projects/bus-cignal/`
 - **GitHub**: https://github.com/Lumiere001/bus-cignal (private, push 됨)

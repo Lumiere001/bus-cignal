@@ -61,6 +61,24 @@ gh repo clone Lumiere001/bus-cignal
 cd bus-cignal
 ```
 
+### 2.1a 본인 역할 표시 (★ 중요)
+
+```bash
+cp .team-role.example .team-role
+# .team-role 파일 열고 본인 역할 한 줄 입력
+# 또는 한 번에:
+echo "team-member-1-operator" > .team-role
+# 또는 echo "team-member-2-passenger" > .team-role
+```
+
+가능한 값:
+- `team-lead` — 팀장 (vault 접근 가능)
+- `team-member-1-operator` — 팀원 1 (운영자·마스터 UI)
+- `team-member-2-passenger` — 팀원 2 (학생·채팅)
+
+→ AI가 작업 시작 시 자동으로 읽고 본인 담당 영역 인지.
+→ `.team-role` 파일은 gitignored. 절대 commit X.
+
 ### 2.2 의존성 설치
 
 ```bash

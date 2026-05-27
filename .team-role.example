@@ -1,0 +1,22 @@
+# Bus Cignal — 본인 역할 (이 파일을 .team-role로 복사 후 수정)
+#
+# 가능한 값 (한 줄, 첫 번째 의미 있는 줄만 읽힘):
+#   team-lead                — 팀장 (vault 접근 가능, 모든 작업)
+#   team-member-1-operator   — 팀원 1 (운영자·마스터 UI)
+#   team-member-2-passenger  — 팀원 2 (학생·채팅)
+#
+# 셋업:
+#   cp .team-role.example .team-role
+#   # 파일 열고 본인 역할 한 줄 입력 (위 값 중 하나)
+#
+# 또는 한 번에:
+#   echo "team-member-1-operator" > .team-role
+#
+# AI 동작:
+#   CC가 작업 시작 시 자동으로 .team-role 읽음
+#   본인 담당 영역 인지 → 분담 안내·작업 라우팅
+#   본인 담당 외 영역 수정 시도 → 안내·확인
+#
+# ★ 주의:
+#   .team-role 파일은 .gitignored. 절대 commit X.
+#   본인 머신에만 존재. 팀원마다 자기 머신에서 한 번씩 작성.

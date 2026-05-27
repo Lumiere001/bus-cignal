@@ -13,13 +13,24 @@ To: 다음 CC 세션
 목적: 외부 도구 셋업 Cowork 프롬프트 5개 순차 제공
 ```
 
+### 사용자 가이드 (다음 세션 시작)
+
+```bash
+cd /Users/east_star/LIFE   # 현재 세션과 동일 위치
+claude                     # CC 시작
+```
+
+첫 메시지: `"작업 이어가자"` (또는 비슷한 의도)
+
 ### 다음 세션 시작 시 CC가 자동으로 할 일
 
 1. **자동 절차 (CLAUDE.md 명시된 강제 절차)**:
    - `git fetch origin main` + log 비교
-   - `cat CHANGELOG.md | head -50`
-   - `cat WORKLOG.md` ← 현재 단계 파악
-   - 이 파일(`SESSION-HANDOFF.md`) 읽기 ← 인계 정보 파악
+   - `cat /Users/east_star/projects/bus-cignal/CHANGELOG.md | head -50`
+   - `cat /Users/east_star/projects/bus-cignal/WORKLOG.md` ← 현재 단계
+   - `cat /Users/east_star/projects/bus-cignal/docs/SESSION-HANDOFF.md` ← 인계 정보
+   - `cat /Users/east_star/projects/bus-cignal/.team-role` ← 본인 역할 (예: team-lead)
+   - `ls /Users/east_star/LIFE/projects/bus-cignal/team-lead-prompts/` ← 팀장 vault 확인
    - SPEC / CLAUDE diff 분석
 
 2. **사용자에게 첫 인사·확인**:

@@ -140,16 +140,21 @@ passenger_cancel: 학생 자의 취소 → 양쪽 간사 알림 + 자리 풀림
 - 에러 메시지 그대로 복사해서 AI에게
 
 ### ★ AI 작업 시작 강제 절차 (사람 부담 0)
-사용자가 "작업 시작" 의도 표하면 별도 지시 없이 자동:
+사용자가 "작업 이어가자" 의도 표하면 별도 지시 없이 자동:
 1. `git fetch origin main`
-2. `git log HEAD..origin/main --oneline` 변경 commit 확인
-3. `cat CHANGELOG.md | head -50` Unreleased 확인
-4. **`cat WORKLOG.md`** 어디서 끊겼는지·다음 단계
-5. **`cat docs/SESSION-HANDOFF.md`** 다른 도구 인계 받은 게 있는지
-6. SPEC.md / CLAUDE.md / AGENTS.md diff 분석
-7. 본인 작업 영역 영향 평가
-8. 사용자에 한 줄 요약 보고
-9. 필요 시 rebase 자동 (충돌은 사용자 호출)
+2. `git log HEAD..origin/main --oneline` 변경 commit
+3. `cat CHANGELOG.md | head -50` Unreleased
+4. `cat WORKLOG.md` 어디서 끊겼는지·다음 단계
+5. `cat docs/SESSION-HANDOFF.md` 다른 도구 인계
+6. **`cat .team-role 2>/dev/null`** ← 본인 역할 인지
+   - team-lead → 팀장. `ls vault/team-lead-prompts/` 추가 확인
+   - team-member-1-operator → 팀원 1 (운영자·마스터 UI)
+   - team-member-2-passenger → 팀원 2 (학생·채팅)
+   - 없음 → 첫 사용자에 역할 묻기 → 답변 자동 저장
+7. SPEC.md / CLAUDE.md / AGENTS.md diff 분석
+8. 본인 작업 영역 영향 평가
+9. 사용자에 한 줄 요약 보고 (본인 역할 포함)
+10. 필요 시 rebase 자동
 
 ### ★ AI 작업 종료 강제 절차
 사용자가 "끝내자", "Cowork으로 넘기자" 같은 의도 표하면 자동:

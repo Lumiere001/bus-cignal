@@ -89,26 +89,63 @@
 
 ## 4. AI 행동 규칙 (CC·Cowork·Chat 공통)
 
-### 작업 시작 시 자동 판단
-1. 현재 머신에 vault 있는지 확인:
-   ```bash
-   ls /Users/east_star/LIFE/projects/bus-cignal/team-lead-prompts/ 2>/dev/null
-   ```
-2. 존재 → **팀장 머신**. 모든 권한 작업 가능.
-3. 부재 → **팀원 머신**. 팀원 권한 작업만.
+### 작업 시작 시 자동 판단 (2단계)
+
+**Step 1: `.team-role` 파일 읽기**
+```bash
+cat /Users/east_star/projects/bus-cignal/.team-role 2>/dev/null
+```
+
+| 값 | 역할 | Step 2 필요? |
+|---|---|---|
+| `team-lead` | 팀장 | ⭕ vault 확인 |
+| `team-member-1-operator` | 팀원 1 (운영자·마스터 UI) | ❌ 본인 분담 작업 |
+| `team-member-2-passenger` | 팀원 2 (학생·채팅) | ❌ 본인 분담 작업 |
+| (파일 부재) | 미지정 | 사용자에 역할 묻기 |
+
+**Step 2: 팀장 확인 (`.team-role` = team-lead일 때만)**
+```bash
+ls /Users/east_star/LIFE/projects/bus-cignal/team-lead-prompts/ 2>/dev/null
+```
+- 존재 → 진짜 팀장 머신. 모든 작업 + vault 접근.
+- 부재 → `.team-role`은 팀장이지만 vault 없음. **이상 상황** — 사용자에 확인 ("vault 없는데 팀장 표시? 환경 확인 필요").
 
 ### 팀원 머신에서 팀장 작업 요청 시
-사용자가 "외부 셋업"·"운영 DB 마이그 적용"·"env 변경" 같은 의도 표하면:
 ```
 "이 작업은 팀장 전용입니다 (외부 인프라·시크릿 관리).
  팀장에게 요청해 주세요.
- 본인 작업은 다음 분담 안에서:
- - 팀원 1: 운영자·마스터 UI
- - 팀원 2: 학생·채팅"
+ 본인 분담:
+ - 팀원 1: 운영자·마스터 UI (Trip·매칭 큐·정산·관리자)
+ - 팀원 2: 학생·채팅 (예약번호·대시보드·카카오맵·Firestore)"
+```
+
+### 팀원이 본인 분담 외 영역 수정 시도
+```
+"이 영역은 [팀원 N {담당}] 책임입니다.
+ 같이 작업하려면 팀장 합의 + 명시 진행 의사 필요.
+ 진행할까요?"
 ```
 
 ### 팀장 머신에서 작업 시
-`team-lead-prompts/` + 공통 `AI-PROMPTS/` 모두 접근.
+- `.team-role` = team-lead + vault 존재 확인
+- `team-lead-prompts/` + 공통 `AI-PROMPTS/` 모두 접근
+- 모든 분담 영역 + 외부 셋업·운영 작업 가능
+
+### .team-role 파일 부재 시 (첫 사용)
+AI 안내:
+```
+"어떤 역할이신가요?
+- 팀장 (운영 책임자) — vault 접근 + 모든 작업
+- 팀원 1 (운영자·마스터 UI) — Trip CRUD·매칭 큐·정산·마스터 화면
+- 팀원 2 (학생·채팅) — 예약번호·학생 대시보드·카카오맵·Firestore 채팅
+
+답해주시면 .team-role 파일에 자동 저장하고 이어가겠습니다."
+```
+
+사용자 답변 후:
+```bash
+echo "team-member-1-operator" > .team-role  # 예시
+```
 
 ---
 

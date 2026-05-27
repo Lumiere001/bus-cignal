@@ -73,3 +73,6 @@ tmp/
 *.pem
 service_role*
 1password*
+
+# team role (개인 머신마다 본인 역할 — commit X)
+.team-role

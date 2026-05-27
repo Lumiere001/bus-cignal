@@ -14,6 +14,10 @@
 - WORKLOG·SESSION-HANDOFF 다음 세션 자동 이어가기 인계 정보
 - **`ROLES.md`** — 역할별 권한 모델 (팀장 vs 팀원 vs AI 권한 매트릭스)
 - 팀장 vault `team-lead-prompts/` (repo 외부) — 팀장 전용 프롬프트 보관
+- **`.team-role.example`** + `.gitignore`의 `.team-role` 추가
+  - 팀원 셋업 시 본인 역할 작성 (한 줄)
+  - AI 작업 시작 시 자동 읽고 본인 담당 영역 인지·라우팅
+  - 본인 분담 외 수정 시도 시 안내
 
 ### Changed
 - CLAUDE.md / AGENTS.md에 역할별 권한 자동 판단 절차 추가

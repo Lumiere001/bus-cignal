@@ -222,19 +222,44 @@ fn on_available_seat_increase(trip, delta):
 
 ### ★ AI 작업 시작 강제 절차 (N9 — 사람 부담 0)
 
-사용자가 "오늘 작업 시작" 같은 의도를 표하면 **AI가 사용자 별도 지시 없이 다음 자동 수행**:
+사용자가 "작업 이어가자", "오늘 작업 시작", "Bus Cignal" 같은 의도를 표하면 **AI가 사용자 별도 지시 없이 다음 자동 수행**:
 
 1. `git fetch origin main` — 원격 상태 확인
 2. `git log HEAD..origin/main --oneline` — 마지막 작업 이후 변경 commit 추출
-3. `cat CHANGELOG.md | head -50` — Unreleased 섹션 확인
-4. **`cat WORKLOG.md`** — 어디서 끊겼는지 + 다음 단계 파악
-5. **`cat docs/SESSION-HANDOFF.md`** — 다른 도구에서 인계 받은 게 있는지
-6. SPEC.md / CLAUDE.md / AGENTS.md diff 변경 자동 분석
-7. 본인 작업 영역(branch에서 수정 중인 파일들)에 대한 영향 평가
-8. 사용자에게 한 줄 요약 보고
-9. 필요 시 `git rebase main` 실행 (자동, 충돌 시 사용자 호출)
+3. `cat /Users/east_star/projects/bus-cignal/CHANGELOG.md | head -50` — Unreleased 섹션
+4. `cat /Users/east_star/projects/bus-cignal/WORKLOG.md` — 어디서 끊겼는지
+5. `cat /Users/east_star/projects/bus-cignal/docs/SESSION-HANDOFF.md` — 인계 정보
+6. **`cat /Users/east_star/projects/bus-cignal/.team-role 2>/dev/null`** ← **★ 신규: 본인 역할 인지**
+   - `team-lead` → 팀장. 추가 확인:
+     ```bash
+     ls /Users/east_star/LIFE/projects/bus-cignal/team-lead-prompts/ 2>/dev/null
+     ```
+     존재 = 팀장 머신. 모든 작업 가능.
+   - `team-member-1-operator` → 팀원 1. 분담: 운영자·마스터 UI
+   - `team-member-2-passenger` → 팀원 2. 분담: 학생·채팅
+   - 없음 (파일 부재) → 첫 사용자에게 안내:
+     ```
+     "어떤 역할이신가요?
+      - 팀장 (운영 책임자)
+      - 팀원 1 (운영자·마스터 UI)
+      - 팀원 2 (학생·채팅)
+      답해주시면 .team-role 파일에 자동 저장합니다."
+     ```
+7. SPEC.md / CLAUDE.md / AGENTS.md diff 변경 자동 분석
+8. 본인 작업 영역 영향 평가
+9. **사용자에게 한 줄 요약 보고 (본인 역할도 포함)**
+   예: "지난 세션 종료 시점: 외부 셋업 대기. 본인 역할: 팀장. 시작할까요?"
+10. 필요 시 `git rebase main` 실행 (자동, 충돌 시 사용자 호출)
 
 이 절차는 **사용자가 "skip" 명시하지 않는 한 모든 세션 시작 시 자동**.
+
+### 본인 담당 외 영역 수정 시 (팀원 머신에서)
+
+팀원이 본인 분담 외 코드 수정하려 하면 AI 안내:
+```
+"이 파일은 [팀원 2 학생·채팅] 담당입니다.
+ 같이 작업하려면 팀장 합의 + 명시적 진행 의사 필요. 진행할까요?"
+```
 
 ### ★ AI 작업 종료 강제 절차
 
