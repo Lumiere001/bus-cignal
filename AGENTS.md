@@ -6,7 +6,7 @@
 
 ---
 
-> **TL;DR**: 작업 시작 전 이 문서 + `docs/SPEC.md` 읽기. 매칭 엔진·RLS·정산·시크릿은 East_Star 승인 없이 수정 금지. PR만 머지, main 직접 push X.
+> **TL;DR**: 작업 시작 전 이 문서 + `docs/SPEC.md` 읽기. 매칭 엔진·RLS·정산·시크릿은 팀장 승인 없이 수정 금지. PR만 머지, main 직접 push X.
 
 ---
 
@@ -23,7 +23,7 @@
 
 ## 2. 절대 규칙
 
-### 2.1 도메인 코어 (East_Star 사전 승인 없이 수정 금지)
+### 2.1 도메인 코어 (팀장 사전 승인 없이 수정 금지)
 - 매칭 엔진 (`lib/matching/*`)
 - RLS 정책 (Supabase 마이그레이션)
 - 정산 로직 (`lib/settlement/*`)
@@ -32,16 +32,16 @@
 ### 2.2 보안
 - 시크릿은 `.env.local` (gitignored). 코드·문서에 평문 절대 X
 - service_role, master 비번 등은 1Password 보관
-- 시크릿 의심 시 즉시 멈추고 East_Star 알림
+- 시크릿 의심 시 즉시 멈추고 팀장 알림
 
 ### 2.3 Git
 - `main` 직접 push 금지 — PR만
-- East_Star 승인 + CI 통과 필수
+- 팀장 승인 + CI 통과 필수
 - `--force` push 절대 X, hook 우회 금지
 
 ### 2.4 개인정보
 - 학생 정보 최소 수집 + 90일 후 자동 익명화
-- 외부 API에 개인정보 전송 시 East_Star 사전 승인
+- 외부 API에 개인정보 전송 시 팀장 사전 승인
 
 ---
 
@@ -52,8 +52,10 @@
 - Supabase (PostgreSQL + Auth + RLS) — Seoul
 - Firebase Firestore — asia-northeast3 (채팅 전용)
 - 카카오맵 JavaScript SDK
-- Vercel 배포
-- pnpm + ESLint + Prettier + Vitest
+- Vercel 배포 (기본 도메인)
+- pnpm + ESLint + Prettier + Vitest + **Playwright E2E (V1 필수)**
+- **PWA: next-pwa + FCM 푸시 알림** (iOS QA 강화)
+- Sentry (무료 plan)
 
 ---
 
@@ -89,29 +91,42 @@ bus-cignal/
 
 ---
 
-## 6. DB 모델 핵심
+## 6. DB 모델 핵심 (v1.0 Confirmed)
 
-테이블 12개: `regions`, `operators`, `trips`, `seat_offers`, `seat_requests`, `request_passengers`, `partial_offers`, `matches`, `match_passengers`, `notifications`, `rejection_log`, `system_config`.
+테이블 11개 (partial_offers 제거): `regions`·`operators`(approval_status)·`trips`·`seat_offers`·`seat_requests`·`request_passengers`(**priority**)·`matches`(passenger_id·cancellation_source)·`match_passengers`·`notifications`(channel)·`rejection_log`·`system_config`.
 
 자세한 스키마는 `docs/SPEC.md` §6.
 
 ### RLS
-- master: 전체 R/W
+- master: 전체 R/W + 간사 승인
 - operator: 본인 지구 W, 전체 R
-- passenger: 본인 매칭만 R + 본인 Trip 채팅
+- passenger: 본인 매칭 R + **자의 취소 W** + 본인 Trip 채팅
 
 ---
 
-## 7. 매칭 알고리즘 핵심
+## 7. 매칭 알고리즘 핵심 (v1.0 Confirmed)
+
+**FIFO + 우선순위 기반 자동 부분 매칭**:
 
 ```
-approve(req): FIFO 큐 1번째만 활성, 잔여 ≥ 신청 = 즉시 매칭, 부족 = 부분 매칭
-partial: partial_offers 슬라이스별 독립 2h, 잔여 변동 시 자동 갱신
-expire: matched_at + 24h 자동, 자리 풀림 + 큐 다음 (수동 promotion)
-cancel: 송금완료 후 미입금 시 공급 지구 권한
+approve(req):
+  FIFO 큐 1번째만 활성
+  avail >= req.count → 전체 매칭 (학생 1명당 Match 1개)
+  avail > 0 → 우선순위 ASC로 avail개 매칭, 나머지 큐 잔류 (requested_at 원본)
+  avail = 0 → 자동 거절 + 마스터 알림
+
+on_available_seat_increase(trip):
+  큐 잔류 요청에서 우선순위 다음 학생 즉시 자동 매칭 (간사 개입 X)
+
+expire: matched_at + 24h 자동, 자리 풀림 + 큐 다음 자동 부분 매칭
+cancel (Phase 2): 송금완료 후 미입금 시 공급 지구 권한 (status='payment_reported'에서만)
+★ paid 후 공급 측 자의 취소 = 불가능
+passenger_cancel: 학생 자의 취소 → 양쪽 간사 알림 + 자리 풀림
 ```
 
 자세한 흐름은 `docs/SPEC.md` §7.
+
+**※ v1.0 변경**: `partial_offers` 테이블·B 응답 2h 데드라인 모두 제거. 우선순위 기반 자동.
 
 ---
 
@@ -123,6 +138,16 @@ cancel: 송금완료 후 미입금 시 공급 지구 권한
 - 매칭·RLS·정산 = 테스트 케이스 필수
 - 대화 길어지면 새 세션 (컨텍스트 품질)
 - 에러 메시지 그대로 복사해서 AI에게
+
+### ★ AI 작업 시작 강제 절차 (사람 부담 0)
+사용자가 "작업 시작" 의도 표하면 별도 지시 없이 자동:
+1. `git fetch origin main`
+2. `git log HEAD..origin/main --oneline` 변경 commit 확인
+3. CHANGELOG Unreleased 섹션 확인
+4. SPEC.md / CLAUDE.md / AGENTS.md diff 분석
+5. 본인 작업 영역 영향 평가
+6. 사용자에 한 줄 요약 보고
+7. 필요 시 rebase 자동 (충돌은 사용자 호출)
 
 ### Commit (Conventional Commits)
 ```
@@ -137,7 +162,7 @@ Scope: matching · settlement · chat · auth · db · ui · operator · passeng
 ### PR
 - 제목 = Conventional Commits 형식
 - 본문 = 변경 요약 + 테스트 결과 + SPEC 섹션 링크
-- 셀프 리뷰 후 East_Star 리뷰 요청
+- 셀프 리뷰 후 팀장 리뷰 요청
 
 ---
 

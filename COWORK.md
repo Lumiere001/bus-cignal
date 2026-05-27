@@ -145,7 +145,7 @@ Cowork은 AI가 본인 컴퓨터의 **화면·앱을 보면서 작업을 도와�
 - 각각 분리해서 진행
 
 ### 실패 시
-- 스크린샷 찍어서 East_Star에 공유
+- 스크린샷 찍어서 팀장에 공유
 - Cowork에서 다시 시도하기보다, CC에서 다른 방법 찾기
 
 ---
@@ -154,22 +154,22 @@ Cowork은 AI가 본인 컴퓨터의 **화면·앱을 보면서 작업을 도와�
 
 ### Supabase
 - URL: https://supabase.com/dashboard/project/<TBD>
-- 인증: East_Star가 collaborator 추가
+- 인증: 팀장가 collaborator 추가
 - 주요 화면: Tables · SQL Editor · Auth · Logs · API · Database Migration
 
 ### Firebase
 - URL: https://console.firebase.google.com/project/<TBD>
-- 인증: East_Star가 IAM에서 추가
+- 인증: 팀장가 IAM에서 추가
 - 주요 화면: Firestore Database · Authentication · Security Rules · Usage
 
 ### Vercel
 - URL: https://vercel.com/<team>/<project>
-- 인증: East_Star가 멤버 초대
+- 인증: 팀장가 멤버 초대
 - 주요 화면: Deployments · Settings (Env vars) · Logs · Analytics
 
 ### 카카오 개발자센터
 - URL: https://developers.kakao.com
-- 인증: East_Star 계정 (관리자만, 공유 X)
+- 인증: 팀장 계정 (관리자만, 공유 X)
 - 주요 화면: 내 애플리케이션 → Bus Cignal → 도메인 등록
 
 ### GitHub
@@ -205,7 +205,7 @@ Cowork은 AI가 본인 컴퓨터의 **화면·앱을 보면서 작업을 도와�
 ## 8. 더 알아보기
 
 - Cowork 공식 문서: https://docs.anthropic.com/cowork
-- 본 프로젝트 관련 질문: East_Star
+- 본 프로젝트 관련 질문: 팀장
 
 ---
 

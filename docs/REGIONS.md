@@ -138,4 +138,4 @@ ALTER TABLE regions ADD COLUMN category TEXT            -- regular | special_min
 
 | 일자 | 변경 | 비고 |
 |---|---|---|
-| 2026-05-26 | 초기 작성. East_Star가 CCC 지구 목록 제공, 52개 등록 | v1.0 확정 시점 |
+| 2026-05-26 | 초기 작성. 팀장가 CCC 지구 목록 제공, 52개 등록 | v1.0 확정 시점 |

@@ -21,7 +21,7 @@ cd bus-cignal
 # 설치 (Node 20+ · pnpm)
 pnpm install
 
-# 환경 변수 (.env.local — East_Star에게 받기)
+# 환경 변수 (.env.local — 팀장에게 받기)
 cp .env.example .env.local  # 그리고 값 채우기
 
 # 개발 서버
@@ -95,7 +95,7 @@ bus-cignal/
 ## 개발 흐름
 
 1. `main` 직접 push X — **PR만 머지**
-2. East_Star 승인 1명 필수
+2. 팀장 승인 1명 필수
 3. CI (typecheck + lint + test) 통과 필수
 4. 매칭 엔진·RLS·정산 변경은 추가 검토
 
@@ -113,4 +113,4 @@ bus-cignal/
 
 **CCC IT 사역부**
 
-문의·이슈는 GitHub Issues 또는 East_Star (팀장).
+문의·이슈는 GitHub Issues 또는 팀장 (팀장).

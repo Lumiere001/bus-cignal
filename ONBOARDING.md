@@ -1,7 +1,7 @@
 # Bus Cignal — 팀원 온보딩 가이드
 
 > 환영합니다! 에이전틱 코딩 처음이신 분도 OK. 천천히 따라오세요.
-> 막히면 East_Star에게 카톡 / GitHub Issue로 질문.
+> 막히면 팀장에게 카톡 / GitHub Issue로 질문.
 
 ---
 
@@ -29,7 +29,7 @@ CCC 전국 여름 수련회 때 **타지구 차량 자리 나눔**을 매끄럽�
 
 ### 1.2 GitHub 접근
 
-East_Star에게 GitHub 사용자명을 알려주면 저장소 collaborator로 추가됩니다.
+팀장에게 GitHub 사용자명을 알려주면 저장소 collaborator로 추가됩니다.
 
 ```bash
 # 인증
@@ -73,17 +73,17 @@ pnpm install
 
 ```bash
 # Supabase
-NEXT_PUBLIC_SUPABASE_URL=<East_Star에게 받기>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<East_Star에게 받기>
+NEXT_PUBLIC_SUPABASE_URL=<팀장에게 받기>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<팀장에게 받기>
 
 # Firebase (채팅용)
-NEXT_PUBLIC_FIREBASE_CONFIG=<East_Star에게 받기>
+NEXT_PUBLIC_FIREBASE_CONFIG=<팀장에게 받기>
 
 # 카카오맵
-NEXT_PUBLIC_KAKAO_MAP_API_KEY=<East_Star에게 받기>
+NEXT_PUBLIC_KAKAO_MAP_API_KEY=<팀장에게 받기>
 ```
 
-> 시크릿은 1Password 공유 vault에 있습니다. East_Star에게 액세스 요청.
+> 시크릿은 1Password 공유 vault에 있습니다. 팀장에게 액세스 요청.
 
 ### 2.4 개발 서버 실행
 
@@ -194,9 +194,9 @@ gh pr create --title "..." --body "..."
 
 ### 4.5 리뷰
 
-- East_Star가 리뷰 → 변경 요청 또는 승인
+- 팀장가 리뷰 → 변경 요청 또는 승인
 - 추가 commit으로 변경 반영
-- 승인 받으면 East_Star가 머지
+- 승인 받으면 팀장가 머지
 
 ---
 
@@ -244,11 +244,11 @@ git push --force-with-lease
 
 | 상황 | 어디로 |
 |---|---|
-| 기획 의문 (왜 이렇게 했지?) | `docs/SPEC.md` 해당 섹션 → 그래도 모르면 East_Star |
+| 기획 의문 (왜 이렇게 했지?) | `docs/SPEC.md` 해당 섹션 → 그래도 모르면 팀장 |
 | 코드·도구 문제 | AI 도구에 먼저 질문 → 해결 안 되면 GitHub Issue |
-| 환경·접근 문제 | East_Star 카톡 |
+| 환경·접근 문제 | 팀장 카톡 |
 | Cowork 활용 | `COWORK.md` |
-| 긴급 (배포 사고 등) | East_Star 카톡 즉시 |
+| 긴급 (배포 사고 등) | 팀장 카톡 즉시 |
 
 ---
 

@@ -22,22 +22,22 @@
 
 ## 2. 절대 규칙 (Don't Break)
 
-### 2.1 도메인 코어 (East_Star 사전 승인 없이 수정 금지)
+### 2.1 도메인 코어 (팀장 사전 승인 없이 수정 금지)
 - **매칭 엔진** (`lib/matching/*`) — FIFO 큐 + 부분 매칭 + Phase 1/2 데드라인
 - **RLS 정책** (Supabase 마이그레이션) — master/operator/passenger 권한
 - **정산 로직** (`lib/settlement/*`) — 지구별 ledger·매트릭스
 - **Firebase Security Rules** — 채팅 권한 검증
 
-이 영역 PR은 반드시 `core` 라벨 + East_Star 명시 승인.
+이 영역 PR은 반드시 `core` 라벨 + 팀장 명시 승인.
 
 ### 2.2 보안
 - 시크릿은 **`.env.local`** (gitignored). 코드·문서에 평문 절대 X
-- 만약 시크릿이 commit에 포함되었다면 **즉시 작업 멈추고** East_Star에 알림 + 해당 시크릿 즉시 재발급
+- 만약 시크릿이 commit에 포함되었다면 **즉시 작업 멈추고** 팀장에 알림 + 해당 시크릿 즉시 재발급
 - `service_role` key, master 비밀번호, OAuth client secret 등은 **1Password 공유 vault** 보관
 
 ### 2.3 Git
 - **`main` 직접 push 금지** — PR만 머지 (브랜치 보호 활성)
-- **East_Star 승인 1명 필수**
+- **팀장 승인 1명 필수**
 - **CI 통과 필수**: typecheck + lint + test
 - 시크릿·DB 마이그·매칭 엔진·RLS 변경 PR은 추가 검토
 - **`git push --force`** 절대 X (사용자 명시 승인 시만)
@@ -45,7 +45,7 @@
 
 ### 2.4 개인정보
 - 학생 정보 (이름·전화·소속) = 최소 수집·90일 후 자동 익명화
-- 외부 API에 개인정보 전송 시 East_Star 사전 승인
+- 외부 API에 개인정보 전송 시 팀장 사전 승인
 - 로그·콘솔에 개인정보 평문 출력 X
 
 ---
@@ -62,7 +62,9 @@
 | Deploy | Vercel (Seoul 우선) |
 | Pkg mgr | pnpm |
 | Lint·Format | ESLint + Prettier |
-| Test | Vitest + Playwright (E2E, 선택) |
+| Test | Vitest (단위·통합) + **Playwright E2E (V1 필수, iOS PWA 푸시 포함)** |
+| PWA | next-pwa + manifest + service worker + **FCM 푸시 알림** |
+| Monitoring | Sentry (무료 plan) |
 
 ---
 
@@ -140,51 +142,70 @@ bus-cignal/
 
 ---
 
-## 6. DB 모델 핵심 (v1.0 SPEC §6 참조)
+## 6. DB 모델 핵심 (v1.0 Confirmed SPEC §6)
 
 ### 주요 테이블
-- `regions` — 지구 (CCC 지구번호, 권역, 분류)
-- `operators` — 간사 (Google OAuth)
-- `trips` — 운행 (방향·출발지·시간·요금·정원·메모)
+- `regions` — 지구 (CCC 지구번호, 권역, 분류, 계좌)
+- `operators` — 간사 (Google OAuth + approval_status: pending→approved→rejected)
+- `trips` — 운행 (방향·출발지·시간·요금·정원·메모, origin_* nullable)
 - `seat_offers` — 공급 슬라이스
 - `seat_requests` — 신청 슬라이스 (FIFO 큐, parent_request_id로 분할)
-- `request_passengers` — 신청에 묶인 학생
-- `partial_offers` — 부분 매칭 슬라이스 (offer별 독립 2h 데드라인)
-- `matches` — 매칭 (Phase 1 awaiting_payment → payment_reported → paid / expired / cancelled)
-- `match_passengers` — 매칭 확정 후 탑승자 (access_token_hash로 예약번호 검증)
-- `notifications` — 인앱 알림
-- `rejection_log` — 거절 패턴 모니터링
-- `system_config` — 신청 마감일·점검 모드 등
+- `request_passengers` — 신청에 묶인 학생 + **priority (1~N, unique per request)** ★
+- `matches` — 매칭 (학생 1명당 1개, status: awaiting_payment → payment_reported → paid / expired / cancelled, cancellation_source: operator | passenger | system)
+- `match_passengers` — 예약번호 검증용 (access_token_hash)
+- `notifications` — 인앱·푸시 (channel)
+- `rejection_log` — 거절 단순 로그 (V1, 임계값 X)
+- `system_config` — 신청 마감일·점검 모드
+
+**※ v1.0 변경**: `partial_offers` 제거 (우선순위 기반 자동 처리). `request_passengers.priority` 추가.
 
 ### RLS 핵심
-- master: 전체 R/W
-- operator: 본인 지구 W, 전체 R · 매칭은 양쪽 지구만
-- passenger: 본인 매칭만 R, 본인 Trip 채팅 입장
+- master: 전체 R/W + 간사 가입 승인
+- operator: 본인 지구 W, 전체 R · 매칭은 양쪽 지구
+- passenger: 본인 매칭 R + **자의적 취소 W** + 본인 Trip 채팅
 
 ---
 
 ## 7. 매칭 알고리즘 핵심 (v1.0 SPEC §7)
+
+**FIFO + 우선순위 기반 자동 부분 매칭** (2h 데드라인·partial_offers 모두 제거):
 
 ```
 fn approve(request):
   -- 큐 1번째인지 서버 검증 (UI 우회 방지)
   assert request == queue(request.trip)[0]
   avail = available(request.trip)
-  if request.seat_count <= avail:
-    Match(trip, request, seat_count, payment_due_at=NOW+24h)
+  passengers = request.passengers ORDER BY priority ASC
+
+  if avail >= request.seat_count:
+    -- 전체 매칭 (학생 1명당 Match 1개)
+    for p in passengers: Match.create(trip, request, p, payment_due_at=NOW+24h)
     request.status = 'matched'
+  elif avail > 0:
+    -- 우선순위 N명만 매칭 + 잔여 큐 잔류
+    for p in passengers[:avail]: Match.create(trip, request, p, ...)
+    new_request = SeatRequest.create(parent_request_id=request.id,
+                                     requested_at=request.requested_at,  -- 원본 유지
+                                     ...)
+    move unmatched passengers to new_request
+    request.status = 'matched'  -- 원본은 부분 매칭 완료 처리
   else:
-    propose_partial(request, avail)  -- B에게 학생 선택 요청
+    -- 잔여 0: 자동 거절 + 마스터 알림
+    request.status = 'rejected'
+    notify_master(request, 'risk_event')
+
+fn on_available_seat_increase(trip, delta):
+  -- 다른 매칭 만료·취소·학생 자의 취소 시
+  for request in queue(trip):
+    passengers = request.unmatched_passengers ORDER BY priority ASC
+    matched = min(len(passengers), available(trip))
+    for p in passengers[:matched]: Match.create(...)
 ```
 
-**부분 매칭** (S3a·S3b):
-- `partial_offers` 테이블에 슬라이스별 독립 2h 데드라인
-- 잔여 자리 증가 시 자동 추가 offer (Supabase Realtime)
-- 잔여 ≥ 신청 인원 시도 자동 매칭 X (정책 1B)
-- 잔여 0 시 자동 거절 + 마스터 알림 (정책 3)
-
-**Phase 1 만료**: matched_at + 24h → 자동 expire, 자리 풀림, 큐 다음으로 (수동 promotion)
-**Phase 2 취소**: 송금완료 클릭 후 미입금 시 공급 지구 취소 권한
+**Phase 1 만료**: matched_at + 24h → 자동 expire, 자리 풀림, 큐 다음 자동 부분 매칭 trigger
+**Phase 2 취소**: 송금완료 클릭 후 미입금 시 공급 지구 [매칭 취소] 가능 (status='payment_reported'에서만)
+**★ paid 후 공급 측 자의 취소 = 불가능** (학생 자의 취소만 가능)
+**학생 자의적 취소**: 양쪽 지구 간사에게 자동 알림 + 자리 풀림
 
 ---
 
@@ -198,6 +219,20 @@ fn approve(request):
 - 대화 길어지면 새 세션 시작 (컨텍스트 품질)
 - 자연어 지시만으로 코드 작성·수정·디버깅 가능 (Claude Code 컨벤션)
 - 에러 메시지는 그대로 복사해서 AI에게
+
+### ★ AI 작업 시작 강제 절차 (N9 — 사람 부담 0)
+
+사용자가 "오늘 작업 시작" 같은 의도를 표하면 **AI가 사용자 별도 지시 없이 다음 자동 수행**:
+
+1. `git fetch origin main` — 원격 상태 확인
+2. `git log HEAD..origin/main --oneline` — 마지막 작업 이후 변경 commit 추출
+3. `cat CHANGELOG.md | head -50` — Unreleased 섹션 확인
+4. SPEC.md / CLAUDE.md / AGENTS.md diff 변경 자동 분석
+5. 본인 작업 영역(branch에서 수정 중인 파일들)에 대한 영향 평가
+6. 사용자에게 한 줄 요약 보고 ("SPEC §3 부분 매칭 흐름 변경, 영향 없음" or "...영향 있음, rebase 필요")
+7. 필요 시 `git rebase main` 실행 (자동, 충돌 시 사용자 호출)
+
+이 절차는 **사용자가 "skip" 명시하지 않는 한 모든 세션 시작 시 자동**.
 
 ### Commit 메시지 (Conventional Commits)
 
@@ -237,7 +272,7 @@ Closes #12
 - 제목: Conventional Commits 형식
 - 본문: 변경 요약 + 테스트 결과 + 관련 SPEC 섹션 링크
 - 셀프 리뷰 먼저
-- East_Star 리뷰 요청 → 머지
+- 팀장 리뷰 요청 → 머지
 
 자세한 규칙: `CONTRIBUTING.md`.
 
@@ -256,7 +291,7 @@ Closes #12
 
 ## 10. 단계별 진행 (v1.0 SPEC 기준)
 
-1. **Foundation (East_Star)**: repo·CI·DB 스키마·Auth·디자인 시스템·기본 라우팅
+1. **Foundation (팀장)**: repo·CI·DB 스키마·Auth·디자인 시스템·기본 라우팅
 2. **Feature 분담**: Trip CRUD / 매칭 큐 / 부분 매칭 / 송금·만료 / 학생 화면 / 채팅 / 정산 / 마스터
 3. **통합 QA**: E2E 시나리오·모바일 실기기·베타 지구
 4. **출시 + 운영**
@@ -280,6 +315,6 @@ Closes #12
 ---
 
 ## 12. 이 문서 변경 시
-- East_Star 승인 필수
+- 팀장 승인 필수
 - `AGENTS.md`도 동기화 (같은 내용)
 - 변경 사유를 `docs/decisions/`에 기록 권장

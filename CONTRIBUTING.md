@@ -150,7 +150,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
 ## 체크리스트
 - [ ] 시크릿이 커밋에 포함되지 않았는지
 - [ ] DB 마이그레이션은 별도 PR (또는 명시)
-- [ ] RLS·매칭 엔진·정산 변경 시 East_Star 사전 합의
+- [ ] RLS·매칭 엔진·정산 변경 시 팀장 사전 합의
 - [ ] 관련 문서 업데이트 (필요 시)
 ```
 
@@ -163,9 +163,9 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
 - 초안 상태면 Draft로 생성 (CI 돌고 본인이 self-review 후 Ready)
 
 ### 리뷰
-- East_Star approve 1명 필수
+- 팀장 approve 1명 필수
 - 변경 요청 받으면 추가 commit (force push X — squash는 merge 시점에)
-- 머지 권한은 East_Star만
+- 머지 권한은 팀장만
 
 ### 머지 방식
 - 기본: **Squash and merge** (히스토리 깔끔)
@@ -243,7 +243,7 @@ describe('approve()', () => {
 
 - 파일명: `YYYYMMDDHHMMSS_<설명>.sql`
 - 한 번 적용된 마이그는 절대 수정 X (새 마이그로 보완)
-- 운영 DB에 적용은 East_Star만 (Cowork으로)
+- 운영 DB에 적용은 팀장만 (Cowork으로)
 - RLS 변경은 별도 마이그 + 충분한 테스트
 
 ---
@@ -257,9 +257,9 @@ describe('approve()', () => {
 
 ### 만약 실수로 commit했다면
 ```bash
-# 1. 즉시 East_Star에 알림
+# 1. 즉시 팀장에 알림
 # 2. 해당 시크릿 즉시 재발급 (Supabase·Firebase 콘솔에서)
-# 3. git history 정리는 East_Star가
+# 3. git history 정리는 팀장가
 ```
 
 ---
@@ -276,7 +276,7 @@ describe('approve()', () => {
 
 ## 9. 문서 변경
 
-- `docs/SPEC.md`는 정본 — 변경 시 East_Star 승인 + `docs/decisions/` 기록
+- `docs/SPEC.md`는 정본 — 변경 시 팀장 승인 + `docs/decisions/` 기록
 - `CLAUDE.md` · `AGENTS.md` 변경 시 둘 다 동기화
 - README·ONBOARDING은 자유롭게 PR
 
@@ -304,4 +304,4 @@ describe('approve()', () => {
 
 ---
 
-> 막히면 East_Star에게 카톡 또는 GitHub Issue.
+> 막히면 팀장에게 카톡 또는 GitHub Issue.
