@@ -18,6 +18,11 @@
   - 팀원 셋업 시 본인 역할 작성 (한 줄)
   - AI 작업 시작 시 자동 읽고 본인 담당 영역 인지·라우팅
   - 본인 분담 외 수정 시도 시 안내
+- WORKLOG·SESSION-HANDOFF에 **팀원 초대 직전 산출물** 명시:
+  - `docs/TEAM-INVITE-MESSAGE.md` (카톡 안내 멘트)
+  - `docs/COLLABORATION-GUIDE.md` (협업 세팅 설명)
+  - `docs/TEAM-WARNINGS.md` (주의사항)
+  - → Foundation Phase 3 완료 후 AI가 자동 작성·사용자에 제공
 
 ### Changed
 - CLAUDE.md / AGENTS.md에 역할별 권한 자동 판단 절차 추가

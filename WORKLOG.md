@@ -93,11 +93,45 @@ claude
 
 ### 팀원 초대 시점
 **Foundation Phase 3 완료 후** = 가장 안전 (인증·DB·라우팅·CI 다 동작 시점).
-초대 전 작업:
+
+### ★ 팀원 초대 직전 — AI가 만들어야 할 산출물
+
+Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
+
+1. **`docs/TEAM-INVITE-MESSAGE.md`** — 팀원에게 카톡으로 보낼 안내 멘트
+   - 환영 인사
+   - GitHub repo 링크 + collaborator 수락 안내
+   - 셋업 가이드 (clone·`.team-role`·로컬 Supabase·`.env.local`)
+   - 본인 분담 영역 명시 (팀원 1·2 각각 다른 멘트)
+   - 첫 작업 추천 (워밍업 PR)
+   - 막힐 때 어디 물어볼지
+
+2. **`docs/COLLABORATION-GUIDE.md`** — 팀원끼리 어떻게 작업하는지
+   - 시스템 설계 요약 (어떻게 세팅했는지)
+   - WORKLOG·SESSION-HANDOFF 자동화 활용법
+   - `.team-role` 시스템
+   - `team-lead-prompts/`는 본인에게 없음 (팀장 vault)
+   - 팀원 간 충돌 방지 (분담대로)
+   - PR 흐름 (작은 PR·매일 main rebase)
+   - 머지 권한은 팀장만
+
+3. **`docs/TEAM-WARNINGS.md`** — 주의사항 모음
+   - 절대 X: main 직접 push, `.env.local` commit, 운영 DB 마이그 적용
+   - 본인 분담 외 영역 수정 시 팀장 합의
+   - 매칭 엔진·정산·RLS·Firestore Rules = `core` 라벨 사전 합의
+   - 시크릿 의심 시 즉시 멈춤
+   - PR 300줄 이하 권장
+   - 자주 main rebase
+
+4. **각 팀원별 맞춤 멘트 2개** (팀원 1·팀원 2 분담 명시)
+
+→ Foundation Phase 3 완료 시점에 CC가 위 3개 문서 + 멘트 작성. 사용자가 카톡으로 팀원에게 전달.
+
+### 초대 전 사용자(팀장)가 할 일
 - 팀원 GitHub collaborator 추가
 - 1Password 공유 vault 접근권한 (dev 키만)
-- ONBOARDING.md 공유 (저장소에 있음)
-- 분담 안내: 팀원 1 = 운영자·마스터 UI / 팀원 2 = 학생·채팅
+- 카톡으로 안내 멘트 전달 (위 1번)
+- 팀원이 셋업 완료 알릴 때 확인
 
 ---
 

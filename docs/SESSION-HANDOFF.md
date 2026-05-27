@@ -81,7 +81,11 @@ claude                     # CC 시작
 - ⏳ Foundation Phase 1 (Next.js 스캐폴드 등, 외부 의존성 없음)
 - ⏳ Foundation Phase 2 (Supabase·Firebase·카카오·PWA 통합, 외부 키 받은 후)
 - ⏳ Foundation Phase 3 (Playwright E2E·Sentry·배포)
-- ⏳ 팀원 초대 (Phase 3 완료 후)
+- ⏳ **팀원 초대 직전 산출물** (★ 잊지 말 것):
+  - `docs/TEAM-INVITE-MESSAGE.md` — 카톡 안내 멘트 (팀원 1·2 별)
+  - `docs/COLLABORATION-GUIDE.md` — 협업 세팅 설명·자동화 활용법
+  - `docs/TEAM-WARNINGS.md` — 절대 X 목록·주의사항
+- ⏳ 팀원 초대 (Phase 3 완료 + 위 산출물 작성 후)
 - ⏳ Feature 분담 개발
 
 ### 중요 컨텍스트
