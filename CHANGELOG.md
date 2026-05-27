@@ -19,6 +19,53 @@
 
 ---
 
+## [v1.0-spec-final] - 2026-05-27
+
+### 기획 최종 확정 (Confirmed Final)
+
+추가 결정 완료 (위 v1.0-spec 이후):
+
+- **마스터 인증 = 비밀번호 only** (Google OAuth 제거)
+  - 영향: `app/admin/login`, RLS 정책, `MASTER_PASSWORD_HASH` env
+- **간사 가입 시 출발/도착지 등록** (region_locations 신설)
+  - 영향: `region_locations` 테이블, `/signup` 페이지, Trip 생성 폼
+  - 결과: 출발지 미지정 패널티 전면 제거 (S8·`/admin/risk-trips`·D-12h 잠금 모달)
+- **디자인 = Claude chat에서 mock 선정** 후 코드 반영
+- **PWA 학생 진입 = 옵션 C** (바로 웹 + 시점별 권유)
+- **티켓 번호 `BUS-XXXX`** (혼동 글자 제외 30자 셋)
+- **잔여 row priority 재정렬** (#7)
+- **K2 재신청 추천 = 자리 풀릴 때마다** (#8)
+- **학생 자의 취소 시 "환불은 각 지구로 문의" 안내문구** (#14)
+- **Trip 수정 단계화** (매칭 전 자유 / 매칭 후 알림 / D-1 이후 강한 안내)
+- **익명화 = 매일 새벽 3시 KST** (#15)
+- **알림 발송 실패 3회 재시도** (#16) + 마스터 알림
+- **iOS PWA QA 체크리스트** 필수 (#17)
+- **마스터 비번 분실 복구** 절차 명시 (#18)
+
+### Added (도구 분담 + 세션 손실 방지 시스템)
+- `WORKLOG.md` — 작업 진행 (AI 자동 갱신)
+- `docs/SESSION-HANDOFF.md` — 도구 전환 인계 (AI 자동 작성)
+- `docs/AI-PROMPTS/` — 6개 템플릿 (CC↔Cowork↔Chat)
+- `CLAUDE.md` / `AGENTS.md` — AI 작업 시작·종료 강제 절차
+
+### Removed
+- `partial_offers` 테이블 (우선순위 기반 자동으로 대체)
+- `/admin/risk-trips` 페이지 (location 등록으로 해결)
+- D-12h 풀스크린 잠금 모달
+- 출발지 미지정 단계별 알림
+
+---
+
+## [v1.0-spec] - 2026-05-27
+
+### 기획 확정 (개발 진입 전 마지막 마일스톤)
+
+- **v1.0 Confirmed** 기획안 확정 (`docs/SPEC.md`)
+- 팀원 기획안(이유성·김도영) 검토 후 본 안 채택
+- 모든 미해결 안건 결정 완료 (17개)
+
+---
+
 ## [v1.0-spec] - 2026-05-27
 
 ### 기획 확정 (개발 진입 전 마지막 마일스톤)

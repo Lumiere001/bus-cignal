@@ -143,11 +143,25 @@ passenger_cancel: 학생 자의 취소 → 양쪽 간사 알림 + 자리 풀림
 사용자가 "작업 시작" 의도 표하면 별도 지시 없이 자동:
 1. `git fetch origin main`
 2. `git log HEAD..origin/main --oneline` 변경 commit 확인
-3. CHANGELOG Unreleased 섹션 확인
-4. SPEC.md / CLAUDE.md / AGENTS.md diff 분석
-5. 본인 작업 영역 영향 평가
-6. 사용자에 한 줄 요약 보고
-7. 필요 시 rebase 자동 (충돌은 사용자 호출)
+3. `cat CHANGELOG.md | head -50` Unreleased 확인
+4. **`cat WORKLOG.md`** 어디서 끊겼는지·다음 단계
+5. **`cat docs/SESSION-HANDOFF.md`** 다른 도구 인계 받은 게 있는지
+6. SPEC.md / CLAUDE.md / AGENTS.md diff 분석
+7. 본인 작업 영역 영향 평가
+8. 사용자에 한 줄 요약 보고
+9. 필요 시 rebase 자동 (충돌은 사용자 호출)
+
+### ★ AI 작업 종료 강제 절차
+사용자가 "끝내자", "Cowork으로 넘기자" 같은 의도 표하면 자동:
+1. `WORKLOG.md` 자동 갱신 (현재 작업·다음 단계·완료된 것)
+2. 도구 전환이면 `docs/SESSION-HANDOFF.md` 작성 + `docs/AI-PROMPTS/` 템플릿으로 사용자에 복사용 프롬프트 제공
+
+### 도구 분담
+- **CC**: 코드·터미널·git·DB SQL
+- **Cowork**: Supabase·Vercel·Firebase GUI·GitHub UI
+- **Claude Chat**: UI 디자인 mock·copy·기획 논의
+
+자동 라우팅: 사용자 요청 분석 후 적절한 도구로 인계 제안.
 
 ### Commit (Conventional Commits)
 ```

@@ -240,6 +240,44 @@ git push --force-with-lease
 
 ---
 
+## 5a. 세션 손실 방지 (이동 중 작업하는 환경)
+
+같은 컴퓨터에서 여러 도구 이동·세션이 자주 바뀌어도 컨텍스트 손실 X.
+
+### 핵심 파일 3개
+
+| 파일 | 용도 | 갱신 |
+|---|---|---|
+| `WORKLOG.md` | 현재 작업·다음·미해결 | AI 자동 |
+| `docs/SESSION-HANDOFF.md` | 도구 전환 시 인계 | AI 자동 |
+| `docs/AI-PROMPTS/*.md` | 도구 전환 프롬프트 템플릿 | 팀장·AI |
+
+### 작업 시작 시 (사람이 할 일 0)
+사용자가 "작업 시작" 표하면 AI가 자동:
+- WORKLOG 읽어서 어디서 끊겼는지 파악
+- SESSION-HANDOFF 읽어서 다른 도구에서 인계 받은 거 있는지
+- CHANGELOG Unreleased 확인
+- 변경 영향 평가 → 사용자 보고
+
+### 도구 전환 시 (사람이 할 일 0)
+사용자가 "Cowork으로 넘기자" 표하면 AI가 자동:
+- WORKLOG 갱신
+- SESSION-HANDOFF 작성
+- AI-PROMPTS 템플릿 채워서 **복사용 코드 블록** 제공
+- 사용자는 그 블록 복사해서 다음 도구에 paste
+
+### 도구별 분담
+
+| 도구 | 잘하는 것 |
+|---|---|
+| Claude Code (CC) | 코드·터미널·git·DB SQL·테스트 |
+| Cowork | Supabase·Vercel·Firebase·GitHub UI GUI |
+| Claude Chat | UI 디자인 mock·copy·기획 논의 |
+
+자세한 활용법: `COWORK.md`
+
+---
+
 ## 6. 도움 받는 법
 
 | 상황 | 어디로 |

@@ -227,12 +227,40 @@ fn on_available_seat_increase(trip, delta):
 1. `git fetch origin main` — 원격 상태 확인
 2. `git log HEAD..origin/main --oneline` — 마지막 작업 이후 변경 commit 추출
 3. `cat CHANGELOG.md | head -50` — Unreleased 섹션 확인
-4. SPEC.md / CLAUDE.md / AGENTS.md diff 변경 자동 분석
-5. 본인 작업 영역(branch에서 수정 중인 파일들)에 대한 영향 평가
-6. 사용자에게 한 줄 요약 보고 ("SPEC §3 부분 매칭 흐름 변경, 영향 없음" or "...영향 있음, rebase 필요")
-7. 필요 시 `git rebase main` 실행 (자동, 충돌 시 사용자 호출)
+4. **`cat WORKLOG.md`** — 어디서 끊겼는지 + 다음 단계 파악
+5. **`cat docs/SESSION-HANDOFF.md`** — 다른 도구에서 인계 받은 게 있는지
+6. SPEC.md / CLAUDE.md / AGENTS.md diff 변경 자동 분석
+7. 본인 작업 영역(branch에서 수정 중인 파일들)에 대한 영향 평가
+8. 사용자에게 한 줄 요약 보고
+9. 필요 시 `git rebase main` 실행 (자동, 충돌 시 사용자 호출)
 
 이 절차는 **사용자가 "skip" 명시하지 않는 한 모든 세션 시작 시 자동**.
+
+### ★ AI 작업 종료 강제 절차
+
+사용자가 "끝내자", "다음에 이어서", "Cowork으로 넘기자", "잠시 다른 일" 같은 의도를 표하면 자동 수행:
+
+1. **`WORKLOG.md` 자동 갱신**:
+   - `🔄 현재 작업` 섹션 = 현재 진행 상태 + 다음 단계
+   - 완료된 것 = `✅ 최근 완료`로 이동 (시간 역순)
+   - 미해결 issue = `⏳ 미해결 이슈`에 추가
+2. **도구 전환 의도** ("Cowork으로", "Chat에서 디자인" 등)이면 추가:
+   - `docs/SESSION-HANDOFF.md`의 `🔄 현재 인계` 섹션 자동 작성
+   - `docs/AI-PROMPTS/<from>-to-<to>-<purpose>.md` 템플릿 로드
+   - 변수 채워서 **사용자에게 복사용 코드 블록 제공**
+
+### 도구 분담 (Tool Routing)
+
+| 도구 | 잘하는 것 | 사용 시점 |
+|---|---|---|
+| **Claude Code (CC)** | 코드·터미널·git·DB SQL·테스트 | 메인 코딩 |
+| **Cowork** | Supabase·Vercel·Firebase·GitHub UI GUI 조작 | 외부 도구 |
+| **Claude Chat** | UI 디자인 mock·copy·기획 논의 | 디자인·기획 |
+
+AI는 사용자 요청을 분석해서 적절한 도구로 자동 라우팅 제안:
+- "Supabase 테이블 확인" → "Cowork으로 가는 게 빠릅니다, 프롬프트 생성할까요?"
+- "디자인 mock 만들자" → "Claude Chat에서 작업 권장, SESSION-HANDOFF 생성할까요?"
+- "이 매칭 로직 어떻게 짤까" → CC에서 직접 처리
 
 ### Commit 메시지 (Conventional Commits)
 
@@ -303,10 +331,14 @@ Closes #12
 | 파일 | 용도 |
 |---|---|
 | `README.md` | 저장소 첫화면 (짧은 소개·셋업) |
-| `docs/SPEC.md` | **v1.0 정본 기획안** (1100줄, 최우선 참조) |
+| `docs/SPEC.md` | **v1.0 Confirmed Final 정본** (최우선 참조) |
 | `docs/OVERVIEW.md` | 외부 공유용 친근 톤 |
 | `docs/REGIONS.md` | 전국 지구 마스터 (52개) |
 | `docs/decisions/` | 결정 로그 (작성 예정) |
+| **`WORKLOG.md`** | **작업 진행 (AI 자동 갱신)** |
+| **`docs/SESSION-HANDOFF.md`** | **도구 전환 인계 (AI 자동 작성)** |
+| **`docs/AI-PROMPTS/*.md`** | **도구 전환 프롬프트 템플릿** |
+| `CHANGELOG.md` | 변경 기록 (AI Unreleased 자동 확인) |
 | `ONBOARDING.md` | 팀원 시작 가이드 |
 | `CONTRIBUTING.md` | commit·PR·branch 규칙 |
 | `COWORK.md` | Cowork 활용 가이드 |
