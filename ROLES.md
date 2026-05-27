@@ -1,0 +1,153 @@
+# Bus Cignal — 역할 분담·권한 모델
+
+> **누가 무엇을 할 수 있는지** 명확히. 사람·AI 둘 다 참조.
+> AI는 작업 시작 시 이 문서를 자동으로 읽고 사용자 권한 안에서만 동작.
+
+---
+
+## 1. 역할 3종
+
+### 🎯 팀장 (Team Lead) — 1명
+- 현재: CCC IT 사역부 운영 책임자 (East_Star)
+- 작업 머신: vault `~/LIFE/projects/bus-cignal/`가 있는 컴퓨터
+
+### 👥 팀원 (Team Member) — 2명
+- 분담:
+  - 팀원 1 = 운영자·마스터 UI (Trip·매칭 큐·정산·관리자 화면)
+  - 팀원 2 = 학생·채팅 (예약번호·대시보드·카카오맵·Firestore)
+- 작업 머신: GitHub repo만 clone, vault 없음
+
+### 🤖 AI (CC / Cowork / Claude Chat)
+- 사용자 권한 안에서만 동작
+- 머신에 vault 있으면 = 팀장 머신, 없으면 = 팀원 머신으로 판단
+
+---
+
+## 2. 작업별 권한 매트릭스
+
+### 🔴 팀장만 (Team Lead Only)
+
+| 작업 | 이유 |
+|---|---|
+| 외부 도구 프로젝트 생성 (Supabase·Firebase·카카오·Vercel) | 시크릿 발급·관리 권한 |
+| 운영 DB 마이그레이션 적용 | 운영 데이터 영향 |
+| Vercel 환경 변수 변경 | 운영 시크릿·재배포 |
+| 마스터 비밀번호 생성·rotation | 마스터 권한 |
+| GitHub branch 보호 변경 | 보안 정책 |
+| GitHub collaborator 추가·해제 | 접근 통제 |
+| 시크릿 1Password vault 관리 | 보안 |
+| 간사 가입 승인·권한 해제 | 운영 권한 (시스템 내) |
+| 운영 phase 전환·점검 모드 | 시스템 정책 |
+| 매칭 거절 패턴 모니터링·개입 | 운영 |
+| 출시·배포 결정 | 마스터 권한 |
+| `main` 브랜치 머지 (PR approve) | 코드 게이트 |
+| **vault `team-lead-prompts/` 사용** | 위 작업용 |
+
+### 🟡 팀장 + 팀원 (공통)
+
+| 작업 | 비고 |
+|---|---|
+| 본인 feature 코드 작성 (분담대로) | 단위 테스트 함께 |
+| PR 생성·셀프 리뷰 | 머지는 팀장만 |
+| 로컬 dev DB 마이그 작성·테스트 | `supabase start` |
+| 디자인 mock 생성 (Claude Chat) | 본인 담당 화면 |
+| UI copy 작성·검토 | |
+| 버그 보고 (Cowork → CC) | 본인 작업 영역 |
+| 채팅 컴포넌트 구현 | 팀원 2 담당 |
+| 단위·통합 테스트 작성 | 본인 코드에 |
+| 문서 업데이트 (`ONBOARDING`·`CHANGELOG` 등) | |
+
+### 🟢 팀원만 (해당 없음)
+
+팀장은 모든 권한을 가지므로 "팀원만 할 수 있는 작업"은 없음.
+
+---
+
+## 3. 파일 접근 권한
+
+### vault (`~/LIFE/projects/bus-cignal/`) — 팀장만
+- `README.md` (v1.0 정본)
+- `OVERVIEW.md` (외부 공유용 원본)
+- `REGIONS.md`, `data/regions.csv`
+- **`team-lead-prompts/setup-*.md`** ← 외부 셋업
+- `TEAM-PLANS-REVIEW.md` (의사결정 history)
+
+### repo (`~/projects/bus-cignal/`) — 누구나 (GitHub collaborator)
+- 코드 전체
+- `docs/SPEC.md` (vault 사본)
+- `docs/OVERVIEW.md`, `docs/REGIONS.md`
+- `CLAUDE.md`, `AGENTS.md`, `ONBOARDING.md`, `CONTRIBUTING.md`, `COWORK.md`
+- `WORKLOG.md`, `docs/SESSION-HANDOFF.md`
+- `docs/AI-PROMPTS/` (공통 프롬프트만, setup 제외)
+- `CHANGELOG.md`
+
+### 시크릿 (1Password)
+- **팀장 vault**: 운영 시크릿 (service_role·Firebase Admin·MASTER_PASSWORD 등)
+- **공유 vault**: 팀원용 dev 키만 (anon key·dev Firebase·카카오 JS 키)
+
+---
+
+## 4. AI 행동 규칙 (CC·Cowork·Chat 공통)
+
+### 작업 시작 시 자동 판단
+1. 현재 머신에 vault 있는지 확인:
+   ```bash
+   ls /Users/east_star/LIFE/projects/bus-cignal/team-lead-prompts/ 2>/dev/null
+   ```
+2. 존재 → **팀장 머신**. 모든 권한 작업 가능.
+3. 부재 → **팀원 머신**. 팀원 권한 작업만.
+
+### 팀원 머신에서 팀장 작업 요청 시
+사용자가 "외부 셋업"·"운영 DB 마이그 적용"·"env 변경" 같은 의도 표하면:
+```
+"이 작업은 팀장 전용입니다 (외부 인프라·시크릿 관리).
+ 팀장에게 요청해 주세요.
+ 본인 작업은 다음 분담 안에서:
+ - 팀원 1: 운영자·마스터 UI
+ - 팀원 2: 학생·채팅"
+```
+
+### 팀장 머신에서 작업 시
+`team-lead-prompts/` + 공통 `AI-PROMPTS/` 모두 접근.
+
+---
+
+## 5. PR 머지 규칙
+
+- `main` 직접 push X (브랜치 보호)
+- PR 머지 = 팀장 approve 필수
+- CI (typecheck·lint·test·build) 통과 필수
+- 매칭 엔진·정산·RLS·Firestore Rules 변경 = `core` 라벨 + 팀장 명시 합의
+
+---
+
+## 6. 시크릿 분배 절차
+
+### 팀장 → 팀원 1·2
+1. 팀원 GitHub collaborator 추가
+2. 팀원 1Password "Bus Cignal Team Dev" vault 접근권한 (운영 키 X)
+3. 팀원이 본인 머신에서:
+   - `gh repo clone Lumiere001/bus-cignal`
+   - `supabase start` (로컬 Supabase Docker)
+   - 1Password에서 dev 키 받아 `.env.local` 작성
+   - `pnpm install && pnpm dev`
+
+### 팀원 → 팀장
+시크릿 관련 요청 시 1Password 또는 안전한 채널로만. 절대 채팅 X.
+
+---
+
+## 7. 향후 변경 시
+
+이 문서 변경 = 팀장 명시 승인.
+변경 사유 = `docs/decisions/` 또는 CHANGELOG에 기록.
+
+---
+
+## 관련 문서
+
+- `CLAUDE.md` — AI 컨텍스트
+- `AGENTS.md` — AI 컨텍스트 미러
+- `CONTRIBUTING.md` — commit·PR 규칙
+- `COWORK.md` — Cowork 활용
+- vault `team-lead-prompts/` — 팀장 전용 (팀장만)

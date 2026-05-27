@@ -163,6 +163,27 @@ passenger_cancel: 학생 자의 취소 → 양쪽 간사 알림 + 자리 풀림
 
 자동 라우팅: 사용자 요청 분석 후 적절한 도구로 인계 제안.
 
+### ★ 역할별 권한 (ROLES.md 참조)
+
+**작업 시작 시 자동 판단**:
+```bash
+ls /Users/east_star/LIFE/projects/bus-cignal/team-lead-prompts/ 2>/dev/null
+```
+- 존재 = 팀장 머신, 모든 작업 가능
+- 부재 = 팀원 머신, 본인 분담만 (외부 셋업·운영·시크릿 차단)
+
+**팀장 전용**: 외부 도구 셋업, 운영 DB 마이그, env 변경, 마스터 비번, branch 보호, 간사 승인, main 머지.
+
+**팀원 분담**:
+- 팀원 1: 운영자·마스터 UI
+- 팀원 2: 학생·채팅
+
+팀원이 팀장 작업 요청 시 → "팀장에게 요청해 주세요" 안내.
+
+**프롬프트 위치**:
+- 공통: `docs/AI-PROMPTS/` (repo, 누구나)
+- 팀장 전용: vault `team-lead-prompts/` (팀장만)
+
 ### Commit (Conventional Commits)
 ```
 <type>(<scope>): <subject>

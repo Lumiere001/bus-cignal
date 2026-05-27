@@ -262,6 +262,39 @@ AI는 사용자 요청을 분석해서 적절한 도구로 자동 라우팅 제�
 - "디자인 mock 만들자" → "Claude Chat에서 작업 권장, SESSION-HANDOFF 생성할까요?"
 - "이 매칭 로직 어떻게 짤까" → CC에서 직접 처리
 
+### ★ 역할별 권한 모델 (ROLES.md 참조 필수)
+
+**작업 시작 시 AI가 자동 판단**:
+```bash
+# vault 존재 확인 = 팀장 머신
+ls /Users/east_star/LIFE/projects/bus-cignal/team-lead-prompts/ 2>/dev/null
+```
+
+- **팀장 머신** (vault 존재): 모든 작업 가능. `team-lead-prompts/`도 접근.
+- **팀원 머신** (vault 없음): 본인 담당 feature만. 외부 셋업·운영 DB·env 변경·시크릿은 차단.
+
+**팀원 머신에서 팀장 작업 요청 시**:
+```
+"이 작업은 팀장 전용입니다 (외부 인프라·시크릿 관리).
+ 팀장에게 요청해 주세요. 본인 분담:
+ - 팀원 1: 운영자·마스터 UI
+ - 팀원 2: 학생·채팅"
+```
+
+**팀장 전용 작업 목록** (자세한 건 `ROLES.md`):
+- 외부 도구 프로젝트 생성 (Supabase·Firebase·카카오·Vercel)
+- 운영 DB 마이그 적용 (로컬 dev DB는 누구나 OK)
+- Vercel 환경 변수 변경
+- 마스터 비밀번호 rotation
+- GitHub branch 보호·collaborator 관리
+- 시크릿 1Password 운영 vault 관리
+- 간사 가입 승인·권한 해제 (시스템 내)
+- `main` PR 머지
+
+**프롬프트 위치**:
+- 공통: `docs/AI-PROMPTS/` (repo, 누구나)
+- 팀장 전용: `~/LIFE/projects/bus-cignal/team-lead-prompts/` (vault, 팀장만)
+
 ### Commit 메시지 (Conventional Commits)
 
 ```

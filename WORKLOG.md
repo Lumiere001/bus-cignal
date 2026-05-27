@@ -12,12 +12,17 @@
 - **마지막 세션 종료**: 2026-05-27 23:00 (세션 포화)
 - **다음 세션 첫 액션**:
   1. CC가 자동으로 이 WORKLOG·SESSION-HANDOFF·CHANGELOG 읽음
-  2. `docs/AI-PROMPTS/setup-README.md` 읽고 5단계 인지
-  3. **사용자에게 "외부 도구 셋업 시작할까요? Cowork 프롬프트 5개 순차 제공"** 안내
-  4. 사용자 OK → `setup-1-supabase.md`부터 제공
-  5. 사용자가 Cowork에서 진행 → 키 받음 → 1Password 저장
-  6. CC에 결과 보고 → WORKLOG 갱신 → 다음 setup
-  7. 5단계 완료 후 → Foundation Phase 1·2·3 진입
+  2. **vault 존재 확인** (팀장 머신 판단):
+     ```bash
+     ls /Users/east_star/LIFE/projects/bus-cignal/team-lead-prompts/ 2>/dev/null
+     ```
+  3. vault 존재 = 팀장 머신 → 외부 셋업 진행 가능
+  4. **팀장 vault**의 `team-lead-prompts/setup-README.md` 읽고 5단계 인지
+  5. **사용자에게 "외부 도구 셋업 시작할까요? Cowork 프롬프트 5개 순차 제공"** 안내
+  6. 사용자 OK → vault `team-lead-prompts/setup-1-supabase.md`부터 제공
+  7. 사용자가 Cowork에서 진행 → 키 받음 → 1Password 저장
+  8. CC에 결과 보고 → WORKLOG 갱신 → 다음 setup
+  9. 5단계 완료 후 → Foundation Phase 1·2·3 진입
 
 - **현재 위치**: `~/projects/bus-cignal/`
 - **GitHub**: https://github.com/Lumiere001/bus-cignal (private, push 됨)
@@ -34,7 +39,8 @@
 | 4 | Vercel 프로젝트 + GitHub 연동 + env vars | Cowork | ⏳ 대기 |
 | 5 | 마스터 비번 + bcrypt hash | CC + 1Password | ⏳ 대기 |
 
-프롬프트 파일: `docs/AI-PROMPTS/setup-1~5-*.md`
+프롬프트 파일: **팀장 vault** `~/LIFE/projects/bus-cignal/team-lead-prompts/setup-1~5-*.md`
+(repo에는 없음 — 팀장 전용)
 
 ---
 

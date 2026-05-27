@@ -10,15 +10,23 @@
 
 ### Added
 - 로컬 Supabase (Docker) 셋업 가이드 ONBOARDING §2.3
-- 외부 도구 셋업 Cowork 프롬프트 6개 (`docs/AI-PROMPTS/setup-*.md` + setup-README)
 - OVERVIEW 디테일 보강 (팀·간사 스팩 파악용, 18개 섹션)
 - WORKLOG·SESSION-HANDOFF 다음 세션 자동 이어가기 인계 정보
+- **`ROLES.md`** — 역할별 권한 모델 (팀장 vs 팀원 vs AI 권한 매트릭스)
+- 팀장 vault `team-lead-prompts/` (repo 외부) — 팀장 전용 프롬프트 보관
 
 ### Changed
+- CLAUDE.md / AGENTS.md에 역할별 권한 자동 판단 절차 추가
+- `docs/AI-PROMPTS/README.md` 갱신 — 공통 vs 팀장 전용 명시
+- `cc-to-cowork-supabase-migration.md` — 로컬 dev vs 운영 DB 권한 명시
 
 ### Fixed
 
 ### Removed
+- `docs/AI-PROMPTS/setup-1~5-*.md` + setup-README → 팀장 vault로 이동
+  (repo에서 git rm, 팀원 노출 차단)
+- `docs/AI-PROMPTS/cc-to-cowork-vercel-env.md` → 팀장 vault로 이동
+  (Vercel env 변경은 팀장 전용)
 
 ---
 

@@ -2,7 +2,12 @@
 
 ## When
 - CC에서 새 마이그레이션 SQL 작성 완료
-- 운영 Supabase에 적용 필요
+- 로컬 dev DB 또는 운영 DB에 적용 필요
+
+## Who
+- **로컬 dev DB 적용**: 팀원·팀장 누구나 (`supabase db reset` 등)
+- **★ 운영 DB 적용**: 팀장만 (Cowork으로 Supabase Dashboard 접속)
+- 팀원이 작성한 마이그는 PR 머지 → 팀장이 운영에 적용
 
 ## Variables
 - `{{project_id}}`: Supabase 프로젝트 ref (예: `qqtqwyhclscfjlefkiqr`)

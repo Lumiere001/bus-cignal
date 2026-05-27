@@ -36,12 +36,14 @@ To: 다음 CC 세션
     1번부터 Cowork 프롬프트 드릴까요?"
    ```
 
-3. **사용자 OK 시**:
-   - `docs/AI-PROMPTS/setup-1-supabase.md` 읽음
+3. **사용자 OK 시** (단 vault 존재 확인 필수 = 팀장 머신):
+   - **vault** `~/LIFE/projects/bus-cignal/team-lead-prompts/setup-1-supabase.md` 읽음
    - 프롬프트 코드 블록을 그대로 사용자에게 제공
    - 사용자가 Cowork에 paste → 진행
    - 키·정보 받으면 → 1Password 저장 확인 + WORKLOG 갱신
    - setup-2로 진행
+
+   ※ vault 없는 머신(팀원) = 팀장 작업 차단, "팀장에게 요청" 안내
 
 4. **5단계 완료 후**:
    - WORKLOG `🔄 현재 작업` = "Foundation Phase 1 진입"
