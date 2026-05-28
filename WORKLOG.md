@@ -8,7 +8,9 @@
 
 ## 🔄 현재 작업 (Active)
 
-- **상태**: 외부 셋업 4.7/5 (카카오맵만 블로커) + **Foundation Phase 1 ✅ main 머지 완료** (2026-05-28, PR #1). 다음 = 카카오 승인 대기 / Phase 2 (카카오맵 제외 부분 진행 가능)
+- **상태**: 외부 셋업 4.7/5 + Phase 1 ✅ + **Phase 2 진행 중** (`feat/foundation-phase-2`): P2-1 환경·P2-2 DB·P2-3 클라이언트·P2-4 마스터비번 ✅ / OAuth·Firebase·PWA 남음
+- **다음 단계**: Google OAuth(operator) = **Cowork 외부 설정 필요** (Google Cloud OAuth client + Supabase Auth provider) → P2-5 Firebase → P2-6 PWA
+- **로컬 Supabase 가동 중** (`supabase stop`으로 중지 가능, 재개는 `supabase start`)
 - **마지막 세션 종료**: 2026-05-28 (Cowork — 비즈니스 정보 심사 신청 후 검색으로 카카오 정책 재확인 → 전략 변경 검토)
 - **사용자 대기 중 (외부 합의)**: 신의 악단(앱 1442060) 영구 삭제 가능 여부 = 교수님 합의 필요. 신의 악단 = 학교 프로젝트로 만든 앱, 사용자 단독 결정 불가.
 
@@ -168,6 +170,15 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 ---
 
 ## ✅ 최근 완료 (Recent)
+
+### 2026-05-28 — Foundation Phase 2 진행 (P2-1 ~ P2-4 마스터비번)
+- **P2-1** 로컬 Supabase 환경: Docker·`supabase init`·`.env.local` (Supabase 로컬키 + vault Firebase/카카오/마스터키)
+- **P2-2** DB 마이그 1차: 12테이블 + RLS 골격(regions·region_locations 공개읽기) + 53지구 seed + 타입생성. 로컬 검증 통과
+- **P2-3** SSR 클라이언트 4종 (browser·server·middleware·admin) + 루트 세션 미들웨어
+- **P2-4** 마스터 비번 인증 ✅: `/admin/login` + jose JWT 세션 24h + 5회 1h 잠금 + `/admin` 미들웨어 보호. bcrypt 호환 검증
+- `feat/foundation-phase-2` 4 commit (453b6ee·a00356d·72b85bb)
+- ⏳ 남음: **Google OAuth(operator)** = Cowork 외부설정 → P2-5 Firebase → P2-6 PWA
+- ⚠️ RLS 세밀 정책(operator/passenger)은 OAuth 인증 스킴 확정 후 별도 마이그
 
 ### 2026-05-28 — Foundation Phase 1 완료 (PR #1 squash 머지, main 2c16ad0)
 - Next.js **16** + React 19 + TS strict + Tailwind **v4** + ESLint 9 + Prettier 3
