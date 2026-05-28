@@ -8,7 +8,7 @@
 
 ## 🔄 현재 작업 (Active)
 
-- **상태**: 외부 도구 셋업 **4.7/5** (setup-5 마스터 비번 ✅ 추가 — 카카오맵 권한만 유일 블로커) + **카카오 전략 재검토 중**
+- **상태**: 외부 셋업 4.7/5 (카카오맵만 블로커) + **Foundation Phase 1 ✅ main 머지 완료** (2026-05-28, PR #1). 다음 = 카카오 승인 대기 / Phase 2 (카카오맵 제외 부분 진행 가능)
 - **마지막 세션 종료**: 2026-05-28 (Cowork — 비즈니스 정보 심사 신청 후 검색으로 카카오 정책 재확인 → 전략 변경 검토)
 - **사용자 대기 중 (외부 합의)**: 신의 악단(앱 1442060) 영구 삭제 가능 여부 = 교수님 합의 필요. 신의 악단 = 학교 프로젝트로 만든 앱, 사용자 단독 결정 불가.
 
@@ -94,7 +94,7 @@ claude
 
 다음 순서로 진행:
 
-### Phase 1 — 외부 의존성 없는 부분 (1~3일)
+### Phase 1 — ✅ 완료 (2026-05-28, PR #1 squash 머지)
 - Next.js 15 스캐폴드 + TypeScript strict + Tailwind
 - shadcn/ui 초기 + Pretendard 폰트
 - 33개 페이지 placeholder 라우팅
@@ -168,6 +168,15 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 ---
 
 ## ✅ 최근 완료 (Recent)
+
+### 2026-05-28 — Foundation Phase 1 완료 (PR #1 squash 머지, main 2c16ad0)
+- Next.js **16** + React 19 + TS strict + Tailwind **v4** + ESLint 9 + Prettier 3
+- shadcn/ui (Base UI 기반) + Pretendard (dynamic-subset) + 브랜드 색상 4종 (Blue·Green·Yellow·Red, light/dark)
+- SPEC §4 폴더 구조 (lib·components·supabase·tests) + 33 라우트 placeholder + not-found
+- vitest 3 (+vite 6, .mts config) + GitHub Actions CI (typecheck·lint·test·build + gitleaks) + CODEOWNERS
+- CI 그린 통과 (verify + secret scan). 5 commit → squash 머지
+- ⚠️ **버전 메모**: SPEC "Next.js 15" → **16** 갱신 필요 (출시 일정도 7월보다 앞당겨짐 반영)
+- ⚠️ **Vercel**: 임시 랜딩(정적) 설정이라 Next 앱 preview 배포 fail — 카카오 승인 후 main production 전환 시 Next.js 재설정 필요
 
 ### 2026-05-28 — 외부 셋업 5/5: 마스터 비번 + bcrypt hash (CC, vault 보관)
 - 24자 랜덤 비번 (`openssl rand -base64 18`) + bcrypt **cost 12** hash
