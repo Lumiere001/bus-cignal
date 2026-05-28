@@ -8,9 +8,9 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: Cowork 세션 (2026-05-28, 외부 셋업 1/5·2/5·3/5 부분 진행)
-To: CC 세션
-목적: 임시 랜딩 페이지 코드 작성 + Vercel 배포 + 카카오 비즈니스 정보 심사 재신청
+From: CC 세션 (2026-05-28, Foundation Phase 1 완료 + Phase 2 P2-1~P2-4 마스터비번)
+To: 다음 CC 세션
+목적: Phase 2 이어서 — Google OAuth(operator, Cowork 외부설정) → Firebase → PWA
 ```
 
 ### 사용자 가이드 (CC 세션 시작)
@@ -23,7 +23,7 @@ claude                     # CC 시작
 **CC에게 줄 첫 메시지 (한 줄):**
 
 ```
-Cowork 세션에서 카카오 비즈 앱 전환까지 완료했어. 비즈니스 정보 심사에 운영 중 웹사이트 URL이 필요한데 Bus Cignal이 출시 전이라 막혔어. Vercel 셋업 + 임시 랜딩 페이지 배포해서 그 URL을 카카오에 넣는 흐름으로 가자. WORKLOG.md 읽어보고 시작해줘.
+Bus Cignal 작업 이어가자. Foundation Phase 2 진행 중이고 P2-4 마스터 비번 인증까지 했어. 다음은 Google OAuth(operator) — Cowork으로 Google Cloud OAuth client + Supabase Auth provider 설정이 필요해. WORKLOG 읽고 거기서부터 가자. (브랜치: feat/foundation-phase-2)
 ```
 
 (CC가 자동으로 WORKLOG·SESSION-HANDOFF·CHANGELOG·`.team-role` 읽음)
@@ -31,10 +31,13 @@ Cowork 세션에서 카카오 비즈 앱 전환까지 완료했어. 비즈니스
 ### 이번 인계 핵심 (CC가 받아서 할 일)
 
 **상황 요약**
-- Cowork 세션에서 외부 도구 셋업 진행 중: Supabase ✅, Firebase ✅, 카카오 부분 진행
-- 카카오는 **비즈 앱 전환 + 신청 자격 확인까지 완료**. 다음 단계 "비즈니스 정보 심사 신청"에서 막힘
-- 막힌 이유: 카카오가 **실제 운영 중인 웹사이트 URL** + **서비스 화면/기획안 파일** 필수 요구
-- Bus Cignal은 아직 코드 한 줄 없는 출시 전 단계 → URL 없음
+- Foundation Phase 1 ✅ (main 머지, PR #1). Phase 2 진행 중 (`feat/foundation-phase-2`):
+  - P2-1 로컬 Supabase 환경 ✅ / P2-2 DB 12테이블+RLS골격+53지구+타입 ✅
+  - P2-3 SSR 클라이언트 4종+미들웨어 ✅ / P2-4 마스터 비번 인증 ✅ (/admin/login)
+- **다음**: P2-4 잔여 Google OAuth(operator) = Cowork 외부설정 (Google Cloud OAuth client + Supabase Auth Google provider) → 콜백 라우트(CC) → P2-5 Firebase → P2-6 PWA → Phase 3
+- **블로커**: 카카오맵 권한 (교수님 합의 + 비즈 심사 결과 대기)
+- **자원 상태**: 로컬 Supabase stop됨 (재개 `supabase start`, 데이터 유지) · feat 브랜치 push됨
+- ⚠️ 아래 "해법" 섹션은 이전 임시랜딩 인계(이미 완료) — 무시 가능
 
 **해법 (CC가 진행할 작업 순서)**
 1. **Vercel 계정 확인** (사용자에게 Vercel 가입 여부 물어보기, 없으면 가입 안내 Cowork 프롬프트 발행)
