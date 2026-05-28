@@ -1,0 +1,19 @@
+# Bus Cignal — 코드 소유자 (CODEOWNERS)
+# PR 시 해당 경로 변경은 지정된 소유자 리뷰 필요.
+
+# 기본 — 팀장
+* @Lumiere001
+
+# ── 코어 (팀장 필수 검토, `core` 라벨) ──
+/lib/matching/ @Lumiere001
+/lib/settlement/ @Lumiere001
+/supabase/migrations/ @Lumiere001
+
+# ── AI 컨텍스트·정책·정본 기획 ──
+/CLAUDE.md @Lumiere001
+/AGENTS.md @Lumiere001
+/ROLES.md @Lumiere001
+/docs/SPEC.md @Lumiere001
+
+# ── CI·보안 설정 ──
+/.github/ @Lumiere001
