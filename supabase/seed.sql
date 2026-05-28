@@ -1,0 +1,9 @@
+-- Bus Cignal — DB seed data
+-- Foundation Phase 2 (DB 마이그레이션) 단계에서 작성 예정.
+--
+-- 내용 (예정):
+--   - regions: 전국 52개 지구 (data/regions.csv 기반 INSERT)
+--   - system_config: 신청 마감일·점검 모드 기본값
+--
+-- 스키마 정본: docs/SPEC.md §6
+-- 마이그레이션: supabase/migrations/ (순차 SQL, 1차 = 12개 테이블 + RLS)
