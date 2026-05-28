@@ -8,11 +8,33 @@
 
 ## 🔄 현재 작업 (Active)
 
-- **상태**: 외부 도구 셋업 **2.7/5 진행** (Supabase + Firebase ✅, 카카오 비즈 앱 전환 + 자격 확인 완료, 비즈니스 정보 심사 = Vercel URL 대기)
-- **마지막 세션 종료**: 2026-05-28 (Cowork — 카카오 비즈 앱 전환 완료, 비즈니스 정보 심사에서 막힘)
-- **막힌 지점**: 카카오 "비즈니스 정보 심사" 신청 시 **실제 운영 중인 웹사이트 URL 필수** 입력 → Bus Cignal은 아직 출시 전이라 URL 없음
-- **해법**: 4/5 Vercel 셋업 + 임시 랜딩 페이지(서비스 소개·운영 일정 명시) 배포 → 그 URL을 카카오에 입력 → 비즈니스 정보 심사 → 통과 후 카카오맵 권한 신청
-- **다음 단계 진입 조건**: Vercel 셋업 + 임시 랜딩 페이지 배포 → 카카오 비즈니스 정보 심사 재신청 → 통과 후 카카오맵 신청
+- **상태**: 외부 도구 셋업 **4.7/5** (setup-5 마스터 비번 ✅ 추가 — 카카오맵 권한만 유일 블로커) + **카카오 전략 재검토 중**
+- **마지막 세션 종료**: 2026-05-28 (Cowork — 비즈니스 정보 심사 신청 후 검색으로 카카오 정책 재확인 → 전략 변경 검토)
+- **사용자 대기 중 (외부 합의)**: 신의 악단(앱 1442060) 영구 삭제 가능 여부 = 교수님 합의 필요. 신의 악단 = 학교 프로젝트로 만든 앱, 사용자 단독 결정 불가.
+
+### ⚠️ 카카오맵 전략 재검토 (2026-05-28 검색 결과)
+
+카카오 데브톡 직원 답변 2건 ([149625](https://devtalk.kakao.com/t/on/149625), [149685](https://devtalk.kakao.com/t/topic/149685)) 분석:
+
+> "카카오맵 추가 권한은 해당 권한을 이미 소유한 다른 앱과 **비즈니스 주체가 다르고 무관한 서비스인 경우에만** 추가 부여" (woody.ho, 카카오)
+
+우리 케이스:
+- 비즈니스 주체: 같음 (둘 다 팀장 본인) ❌
+- 서비스 무관: ✅ (음악 vs 차량 매칭)
+- **두 조건 모두 충족 필요 → 추가 기능 신청해도 반려될 가능성 높음**
+
+### 새 전략 (사용자 합의 후)
+
+1. **신의 악단 영구 삭제** (교수님 합의 필요) → "이미 권한을 갖고 있는 다른 앱" 자체를 없앰
+2. Bus Cignal 카카오맵 [상태] ON 토글 시도
+3. 풀리면 = 케이스 A 즉시 활성화 (이미 제출한 비즈니스 정보 심사도 무효화/대기 무관)
+4. 안 풀리면 = 카카오 내부 cache·history가 남아있는 경우. 데브톡 문의 또는 추가 기능 신청 흐름 복귀
+
+### 이미 제출된 작업 (유효)
+- 비즈니스 정보 심사 (영업일 3~5일 대기) — 신의 악단 삭제 + 토글 ON 성공 시 무관해짐
+- Vercel 임시 랜딩 배포 — Foundation Phase 2까지 유지
+
+**다음 단계 진입 조건**: 사용자가 교수님 합의 결과 알려주면 새 전략 실행
 
 ### 다음 세션 시작 방법 (사용자 가이드)
 
@@ -59,9 +81,9 @@ claude
 |---|---|---|---|
 | 1 | Supabase 프로젝트 (Seoul) | Cowork | ✅ 완료 (2026-05-27) |
 | 2 | Firebase + Firestore + FCM | Cowork | ✅ 완료 (2026-05-28) |
-| 3 | 카카오 개발자센터 앱 | Cowork | 🟡 부분 완료 (2026-05-28) — 앱 생성·키·도메인 ✅ / 비즈 앱 전환·맵 권한 대기 |
-| 4 | Vercel 프로젝트 + GitHub 연동 + env vars | Cowork | ⏳ 대기 |
-| 5 | 마스터 비번 + bcrypt hash | CC + 1Password | ⏳ 대기 |
+| 3 | 카카오 개발자센터 앱 | Cowork | 🟡 심사 중 (2026-05-28) — 앱·키·도메인·비즈 앱 ✅ / 비즈니스 정보 심사 신청 완료 (영업일 3~5일 대기) / 카카오맵 권한 신청 대기 |
+| 4 | Vercel 프로젝트 + GitHub 연동 + env vars | Cowork | 🟡 부분 완료 (2026-05-28) — 임시 랜딩 배포 ✅ / Foundation Phase 2에서 env vars 입력 예정 |
+| 5 | 마스터 비번 + bcrypt hash | CC + vault _secrets | ✅ 완료 (2026-05-28) |
 
 프롬프트 파일: **팀장 vault** `~/LIFE/projects/bus-cignal/team-lead-prompts/setup-1~5-*.md`
 (repo에는 없음 — 팀장 전용)
@@ -146,6 +168,35 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 ---
 
 ## ✅ 최근 완료 (Recent)
+
+### 2026-05-28 — 외부 셋업 5/5: 마스터 비번 + bcrypt hash (CC, vault 보관)
+- 24자 랜덤 비번 (`openssl rand -base64 18`) + bcrypt **cost 12** hash
+- round-trip `checkpw` 검증 OK
+- `_secrets/setup-5-master-password.md` (chmod 600, gitignored) — 1Password 대신 vault 보관 (사용자 선택)
+- hash → Vercel env `MASTER_PASSWORD_HASH` (Foundation Phase 2 / setup-4 2차에 입력 예정)
+- 카카오 블로커 대기 중 선(先)처리 (카카오 무관 작업)
+
+### 2026-05-28 — 카카오 비즈니스 정보 심사 신청 (재신청)
+- 신청 폼 입력:
+  - 카테고리: 자동차/교통수단 (자동)
+  - 운영 중인 웹사이트 URL: **`https://bus-cignal.vercel.app`**
+  - 서비스 화면 첨부: `bus-cignal-overview.pdf` (OVERVIEW.md를 CC가 PDF 변환, 18개 섹션)
+  - 추가 정보: 서비스 설명 + 카카오맵 사용 목적 + 랜딩 페이지 URL + PDF 안내 명시
+- 신청 결과: **● 심사 중** (영업일 3~5일 대기, 카카오 메일로 결과 통지)
+- 카카오 메일 = 팀장 카카오 계정 등록 메일 = `kd100150@gmail.com` 추정
+- 승인 시 다음 작업: 카카오맵 추가 기능 신청 → 카카오 승인 대기 (별도 1~2일)
+
+### 2026-05-28 — 외부 셋업 4/5 부분: Vercel 임시 랜딩 페이지 배포 완료
+- Vercel Project: **bus-cignal** (lumiere001's projects · Hobby plan)
+- 대시보드: https://vercel.com/lumiere001s-projects/bus-cignal
+- **Production 배포 도메인: `https://bus-cignal.vercel.app`** ✓ (카카오 JS SDK 도메인 등록과 일치 — 추가 등록 불필요)
+- Production Branch: `temp/landing-for-kakao` (main이 아닌 임시 브랜치, Foundation 진입 전까지 유지)
+- Framework: Other (정적 HTML, vercel.json buildCommand:null)
+- Env Vars: 비어 있음 (Foundation Phase 2에서 입력)
+- 랜딩 콘텐츠: Bus Cignal 서비스명·CCC 운영 주체·2026년 7월 출시 예정·핵심 기능·비영리 운영·개인정보 처리 원칙 명시
+- viewport meta 태그 OK (모바일 대응)
+- 다음 즉시 작업: 카카오 비즈니스 정보 심사 재신청 (URL + OVERVIEW.md PDF 첨부)
+- 추후 작업: Foundation Phase 2 진입 시 정식 Vercel 셋업 (Next.js 빌드 + env vars + production branch = main)
 
 ### 2026-05-28 — 외부 셋업 3/5 진행 중: 카카오 앱·키·도메인·비즈 앱 전환 완료, 비즈니스 정보 심사 대기
 - App: **Bus Cignal** (App ID: **1470045**, 카테고리: 자동차/교통수단, 회사명: CCC IT 사역부)
