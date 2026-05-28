@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+build
+dist
+coverage
+pnpm-lock.yaml
+public
+data
+*.md
+.vercel
+next-env.d.ts
