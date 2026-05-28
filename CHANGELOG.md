@@ -23,6 +23,11 @@
   - `docs/COLLABORATION-GUIDE.md` (협업 세팅 설명)
   - `docs/TEAM-WARNINGS.md` (주의사항)
   - → Foundation Phase 3 완료 후 AI가 자동 작성·사용자에 제공
+- **`docs/OPERATIONS.md`** — 수련회 운영 체크리스트:
+  - ⚠️ Firestore reads 50K/일 한도 (D-1 폭주 시 30K~80K 추정 → Blaze 전환 절차)
+  - Supabase egress·Vercel build·카카오맵 quota 모니터
+  - 익명화 cron 동작 확인 (수련회 종료 + 91일)
+  - D-7 통합 점검 체크리스트
 
 ### Changed
 - CLAUDE.md / AGENTS.md에 역할별 권한 자동 판단 절차 추가

@@ -8,8 +8,11 @@
 
 ## 🔄 현재 작업 (Active)
 
-- **상태**: 외부 도구 셋업 **대기 중** (다음 세션에서 진행)
-- **마지막 세션 종료**: 2026-05-27 23:30 (세션 포화)
+- **상태**: 외부 도구 셋업 **2.7/5 진행** (Supabase + Firebase ✅, 카카오 비즈 앱 전환 + 자격 확인 완료, 비즈니스 정보 심사 = Vercel URL 대기)
+- **마지막 세션 종료**: 2026-05-28 (Cowork — 카카오 비즈 앱 전환 완료, 비즈니스 정보 심사에서 막힘)
+- **막힌 지점**: 카카오 "비즈니스 정보 심사" 신청 시 **실제 운영 중인 웹사이트 URL 필수** 입력 → Bus Cignal은 아직 출시 전이라 URL 없음
+- **해법**: 4/5 Vercel 셋업 + 임시 랜딩 페이지(서비스 소개·운영 일정 명시) 배포 → 그 URL을 카카오에 입력 → 비즈니스 정보 심사 → 통과 후 카카오맵 권한 신청
+- **다음 단계 진입 조건**: Vercel 셋업 + 임시 랜딩 페이지 배포 → 카카오 비즈니스 정보 심사 재신청 → 통과 후 카카오맵 신청
 
 ### 다음 세션 시작 방법 (사용자 가이드)
 
@@ -38,10 +41,11 @@ claude
      ```
   4. vault 존재 = 팀장 머신 → 외부 셋업 진행 가능
   5. **팀장 vault**의 `team-lead-prompts/setup-README.md` 읽고 5단계 인지
-  6. **사용자에게 "외부 도구 셋업 시작할까요? Cowork 프롬프트 5개 순차 제공"** 안내
-  7. 사용자 OK → vault `team-lead-prompts/setup-1-supabase.md`부터 제공
-  8. 사용자가 Cowork에서 진행 → 키 받음 → 1Password 저장
-  9. CC에 결과 보고 → WORKLOG 갱신 → 다음 setup
+  6. **사용자에게 "외부 셋업 3/5 카카오부터 이어서 진행할까요?"** 안내
+     (1/5 Supabase + 2/5 Firebase 완료)
+  7. 사용자 OK → vault `team-lead-prompts/setup-3-kakao.md` 제공
+  8. 사용자가 Cowork에서 진행 → 키 받음 → 1Password "카카오 · bus-cignal" item 저장
+  9. CC에 결과 보고 → WORKLOG 갱신 → 다음 setup (4/5 Vercel)
   10. 5단계 완료 후 → Foundation Phase 1·2·3 진입
 
 - **현재 위치**: `~/projects/bus-cignal/`
@@ -53,9 +57,9 @@ claude
 
 | # | 작업 | 도구 | 상태 |
 |---|---|---|---|
-| 1 | Supabase 프로젝트 (Seoul) | Cowork | ⏳ 대기 |
-| 2 | Firebase + Firestore + FCM | Cowork | ⏳ 대기 |
-| 3 | 카카오 개발자센터 앱 | Cowork | ⏳ 대기 |
+| 1 | Supabase 프로젝트 (Seoul) | Cowork | ✅ 완료 (2026-05-27) |
+| 2 | Firebase + Firestore + FCM | Cowork | ✅ 완료 (2026-05-28) |
+| 3 | 카카오 개발자센터 앱 | Cowork | 🟡 부분 완료 (2026-05-28) — 앱 생성·키·도메인 ✅ / 비즈 앱 전환·맵 권한 대기 |
 | 4 | Vercel 프로젝트 + GitHub 연동 + env vars | Cowork | ⏳ 대기 |
 | 5 | 마스터 비번 + bcrypt hash | CC + 1Password | ⏳ 대기 |
 
@@ -142,6 +146,63 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 ---
 
 ## ✅ 최근 완료 (Recent)
+
+### 2026-05-28 — 외부 셋업 3/5 진행 중: 카카오 앱·키·도메인·비즈 앱 전환 완료, 비즈니스 정보 심사 대기
+- App: **Bus Cignal** (App ID: **1470045**, 카테고리: 자동차/교통수단, 회사명: CCC IT 사역부)
+- 키 확보 (1Password 또는 vault 저장):
+  - **JavaScript 키**: `2970db3b1e9c5732e2449cf19e3660f4` → `NEXT_PUBLIC_KAKAO_MAP_API_KEY`
+  - **REST API 키**: `5f64a39e01a58f9f36b5c3c0a10a125e` → `KAKAO_REST_API_KEY`
+- JavaScript SDK 도메인 등록 (Default JS Key):
+  - `http://localhost:3000`
+  - `https://bus-cignal.vercel.app` (Vercel 도메인 확정 후 재확인)
+- 앱 아이콘 업로드 ✓ (GPT/Gemini로 생성)
+- **개인 개발자 비즈 앱 전환 완료** ✓ (전화번호 본인인증 + 카카오비즈니스 통합 서비스 약관 동의, 전환 목적: "직접 입력" + 카카오맵 사용 명시)
+- **신청 자격 확인 완료** ✓ (2026.05.28)
+- ⚠️ **카카오 정책 변경 발견** (2025년 12월 ~ 2026년 3월 사이):
+  - 카카오맵 사용 = 비즈 앱 전환 필수 (이전엔 단순 토글)
+  - 비즈 앱 전환은 사업자 등록 안 해도 가능 (개인 전화번호 본인인증 OK)
+  - 신의 악단(앱 1442060) 같은 옛 앱은 이전 정책 그대로 작동, 신규 앱은 새 정책 적용
+- 🚧 **막힌 지점**: 카카오 "비즈니스 정보 심사" 신청에 **실제 운영 중인 웹사이트 URL 필수**. Bus Cignal은 아직 출시 전이라 URL 없음.
+- ⏳ 남은 작업 (Vercel 셋업 후 가능):
+  - 비즈니스 정보 심사 신청 (URL = Vercel 임시 랜딩 페이지)
+  - 카카오맵 권한 신청 (비즈니스 정보 심사 통과 후)
+  - 카카오 측 승인 대기 (통상 1~2일)
+- 다음 작업: 외부 셋업 4/5 Vercel + 임시 랜딩 페이지 배포 → 카카오 재신청
+
+### 2026-05-28 — 외부 셋업 2/5: Firebase 프로젝트 생성
+- Project ID: **`bus-cignal`** (Spark 무료, Number: 745247736840)
+- Firestore (default DB): **`asia-northeast3` (Seoul)** ✓ — 프로덕션 모드 (모든 R/W 차단, Security Rules는 마이그에서 작성)
+- FCM API V1: 사용 설정됨 ✓
+- Web 앱 등록: nickname `bus-cignal-web` (Hosting 미설정)
+- Google Analytics: 비활성화 ✓ / Firebase Gemini AI: 비활성화 ✓
+- 자격증명 (1Password 또는 vault 저장 필요):
+  - **firebaseConfig** (6키, NEXT_PUBLIC_* 클라이언트 expose)
+    - apiKey, authDomain (bus-cignal.firebaseapp.com), projectId (bus-cignal),
+      storageBucket (bus-cignal.firebasestorage.app), messagingSenderId (745247736840),
+      appId (1:745247736840:web:9ba7e7a1787de06642fdbd)
+  - **VAPID public key** (Web 푸시용, 공개 — 클라이언트 expose OK)
+  - **Admin SDK JSON** ★★★ (~/Downloads/bus-cignal-firebase-adminsdk-*.json)
+    - 서비스 계정: firebase-adminsdk-fbsvc@bus-cignal.iam.gserviceaccount.com
+    - 최상위 권한 (Security Rules 우회 가능) — 즉시 안전 위치 이동 필수
+- 다음 작업: 외부 셋업 3/5 카카오 개발자센터
+
+### 2026-05-27 — 외부 셋업 1/5: Supabase 프로젝트 생성
+- Organization: **CCC IT 사역부** (Free plan, 신규 생성) — 기존 ai-agent-hub org 영구 삭제
+- Project: **bus-cignal-prod** (Free plan)
+- Region: **Northeast Asia (Seoul) ap-northeast-2** ✓
+- Project Ref ID: `zovrgrbrzxpzmgpkxmns`
+- Project URL: `https://zovrgrbrzxpzmgpkxmns.supabase.co`
+- Status: Healthy
+- Security:
+  - Enable Data API ✓ (기본)
+  - Automatically expose new tables ✓ (기본, RLS로 통제)
+  - Enable automatic RLS ✗ (마이그에서 명시적 RLS 작성)
+- 자격증명 (1Password "Supabase · bus-cignal-prod" 단일 item에 저장):
+  - DB password
+  - anon (legacy JWT) + service_role (legacy JWT) ★
+  - publishable key (sb_publishable_*) + secret key (sb_secret_*) ★
+- 운영 인스턴스 — 코드 작업 전까지 손대지 말 것 (로컬 dev DB는 Docker로)
+- 다음: 외부 셋업 2/5 Firebase
 
 ### 2026-05-27 23:00 — v1.0 Confirmed Final + 도구 분담·세션 시스템
 - SPEC v1.0 Confirmed Final 최종본 (vault README + repo docs/SPEC.md)
