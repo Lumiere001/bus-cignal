@@ -53,10 +53,42 @@
 - 도메인 등록 포함 (localhost:3000 + bus-cignal.vercel.app)
 - 5~10분 소요 예상, 팀원2 답변 대기 중
 
+### 🟡 Vercel Production env vars 11개 입력 + 재배포 시도 → Build Failed (2026-05-31)
+
+**완료**:
+- env vars 11개 bulk paste 성공 (Production 환경만, Sensitive 토글 ON)
+- 입력 완료된 변수:
+  - NEXT_PUBLIC_SUPABASE_URL
+  - NEXT_PUBLIC_FIREBASE_* (6개)
+  - FIREBASE_ADMIN_CLIENT_EMAIL
+  - MASTER_SESSION_SECRET, OPERATOR_SESSION_SECRET, CRON_SECRET (랜덤)
+- Redeploy 트리거 (main 71f0bff, PR #3 = v1.1 + Foundation Phase 3 정합성·테스트인프라·PWA·알림·cron·E2E·Sentry)
+
+**🚨 Build Failed (1m 3s)**:
+> "No Output Directory named 'dist' found after the Build completed. Configure the Output Directory in your Project Settings. Alternatively, configure vercel.json#outputDirectory."
+
+**원인**:
+- 임시 랜딩 페이지 셋업 시 Framework Preset = "Other" + Output Dir = "." 로 설정해뒀음
+- 지금 main = Next.js Foundation 코드 → 빌드 output은 `.next/`에 생성
+- Vercel이 옛 설정대로 `dist/` 찾아서 실패
+
+**해결 옵션 (CC가 결정)**:
+- **A) Vercel UI에서 Framework Preset → Next.js 변경** (모든 build/install/output 자동) — 권장
+- **B) `vercel.json`에 outputDirectory·buildCommand 명시 + cron Hobby용 daily 수정** (코드 수정 + PR)
+
+**같이 처리해야 할 부수 작업**:
+- ★ Hobby cron 제약: 현재 `vercel.json`에 `0 */6 * * *` (payment-reminder, 6시간) 있음 → Hobby에서 거부. 둘 다 daily로 수정 필요
+- 아직 미입력 시크릿 6개 (anon, service_role, admin private key, 카카오 2개, MASTER_PASSWORD_HASH) → 빌드 정상화 후 입력 단계
+
+**다음 세션 시작 시 CC 즉시 액션**:
+1. 사용자에게 옵션 A vs B 결정 받기
+2. A이면 → 사용자 Cowork으로 Settings 가서 Preset 변경 안내
+3. B이면 → CC가 vercel.json 수정 + PR + merge
+
 ### 🗑 팀장 카카오 앱(1470045) 영구 삭제 완료 (2026-05-31)
 - 노출됐던 옛 키 즉시 무효화:
-  - ~~JS 키 `2970db3b1e9c5732e2449cf19e3660f4`~~ → 무효
-  - ~~REST 키 `5f64a39e01a58f9f36b5c3c0a10a125e`~~ → 무효
+  - ~~JS 키 `(옛 키·무효)`~~ → 무효
+  - ~~REST 키 `(옛 키·무효)`~~ → 무효
 - 비즈 앱 전환·비즈니스 정보 심사 신청 이력도 함께 사라짐 (어차피 안 쓸 거였음)
 - 본인 인증·약관 동의 이력은 팀장 카카오 계정에 남음 (영향 없음)
 - 카카오 계정에 남은 앱: Carbus(1462065), 신의 악단(1442060) — 둘 다 카카오맵 무관 또는 다른 사람 명의
