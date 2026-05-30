@@ -214,9 +214,11 @@ export type Database = {
           approval_status: string
           approved_at: string | null
           approved_by: string | null
+          campus: string | null
+          ccc_id: string | null
+          ccc_role: string | null
           created_at: string
           email: string | null
-          google_uid: string | null
           id: string
           name: string | null
           phone: string | null
@@ -231,9 +233,11 @@ export type Database = {
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          campus?: string | null
+          ccc_id?: string | null
+          ccc_role?: string | null
           created_at?: string
           email?: string | null
-          google_uid?: string | null
           id?: string
           name?: string | null
           phone?: string | null
@@ -248,9 +252,11 @@ export type Database = {
           approval_status?: string
           approved_at?: string | null
           approved_by?: string | null
+          campus?: string | null
+          ccc_id?: string | null
+          ccc_role?: string | null
           created_at?: string
           email?: string | null
-          google_uid?: string | null
           id?: string
           name?: string | null
           phone?: string | null
