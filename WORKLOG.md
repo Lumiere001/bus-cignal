@@ -98,9 +98,9 @@ claude
 다음 순서로 진행:
 
 ### Phase 1 — ✅ 완료 (2026-05-28, PR #1 squash 머지)
-- Next.js 15 스캐폴드 + TypeScript strict + Tailwind
+- Next.js 16 스캐폴드 + TypeScript strict + Tailwind
 - shadcn/ui 초기 + Pretendard 폰트
-- 33개 페이지 placeholder 라우팅
+- 32개 라우트 placeholder 라우팅
 - 디자인 시스템 base (색상·spacing)
 - CI 설정 (GitHub Actions: typecheck·lint·test·build)
 - ESLint·Prettier 설정
@@ -108,14 +108,15 @@ claude
 
 ### Phase 2 — 외부 키 받은 후 (3~5일)
 - Supabase 클라이언트 (server/client/types)
-- Google OAuth 미들웨어 (operator)
+- 간사 인증 미들웨어 (**CCC 로그인** + 자체 세션, ⛔ CCC IT 신원 전달 방식 대기 — 그동안 dev 세션 우회로 개발)
 - 마스터 비번 인증 미들웨어 (/admin/login)
-- DB 마이그 1차 (12개 테이블 + RLS) + seed (52개 지구)
+- DB 마이그 1차 (12개 테이블 + RLS) + seed (53개 지구)
 - Firebase 클라이언트 + Custom Token 발급 API
 - 카카오맵 SDK 통합 + 지오코딩
 - PWA 셋업 (next-pwa + manifest + sw + FCM)
 
 ### Phase 3 — 완성 (1~3일)
+- **dev 로그인 우회 + seed 테스트 데이터** (간사·Trip·신청·매칭·예약번호) — 팀원이 화면 테스트 가능하게 (v1.1 추가)
 - Playwright E2E 스캐폴드 (S1·S4·S5 + iOS 푸시)
 - Sentry 통합
 - Vercel 배포 동작 확인
@@ -154,7 +155,8 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 
 4. **각 팀원별 맞춤 멘트 2개** (팀원 1·팀원 2 분담 명시)
 
-→ Foundation Phase 3 완료 시점에 CC가 위 3개 문서 + 멘트 작성. 사용자가 카톡으로 팀원에게 전달.
+→ 팀원 초대 카톡 멘트는 **채팅으로만 전달(repo 미보관 정책)** — 팀원도 repo를 보므로 초대·운영 노트는 남기지 않음.
+   COLLABORATION-GUIDE / TEAM-WARNINGS 내용은 `ROLES.md`·`docs/GIT-WORKFLOW.md`·`docs/TEAM-TASKS.md`·`CONTRIBUTING.md`가 커버(별도 파일 생략).
 
 ### 초대 전 사용자(팀장)가 할 일
 - 팀원 GitHub collaborator 추가
@@ -178,8 +180,8 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 - **P2-3** SSR 클라이언트 4종 (browser·server·middleware·admin) + 루트 세션 미들웨어
 - **P2-4** 마스터 비번 인증 ✅: `/admin/login` + jose JWT 세션 24h + 5회 1h 잠금 + `/admin` 미들웨어 보호. bcrypt 호환 검증
 - `feat/foundation-phase-2` 4 commit (453b6ee·a00356d·72b85bb)
-- ⏳ 남음: **Google OAuth(operator)** = Cowork 외부설정 → P2-5 Firebase → P2-6 PWA
-- ⚠️ RLS 세밀 정책(operator/passenger)은 OAuth 인증 스킴 확정 후 별도 마이그
+- ⏳ 남음: **Google OAuth(operator)** = Cowork 외부설정 → P2-5 Firebase → P2-6 PWA  *(→ v1.1 정정: Google OAuth 폐기, CCC 로그인으로 전환)*
+- ⚠️ RLS 세밀 정책(operator/passenger)은 OAuth 인증 스킴 확정 후 별도 마이그  *(→ v1.1: CCC 로그인 + 자체 세션 스킴, 앱레이어 강제)*
 
 ### 2026-05-28 — Foundation Phase 1 완료 (PR #1 squash 머지, main 2c16ad0)
 - Next.js **16** + React 19 + TS strict + Tailwind **v4** + ESLint 9 + Prettier 3
@@ -187,7 +189,7 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 - SPEC §4 폴더 구조 (lib·components·supabase·tests) + 33 라우트 placeholder + not-found
 - vitest 3 (+vite 6, .mts config) + GitHub Actions CI (typecheck·lint·test·build + gitleaks) + CODEOWNERS
 - CI 그린 통과 (verify + secret scan). 5 commit → squash 머지
-- ⚠️ **버전 메모**: SPEC "Next.js 15" → **16** 갱신 필요 (출시 일정도 7월보다 앞당겨짐 반영)
+- ⚠️ **버전 메모**: SPEC "Next.js 16" → **16** 갱신 필요 (출시 일정도 7월보다 앞당겨짐 반영)
 - ⚠️ **Vercel**: 임시 랜딩(정적) 설정이라 Next 앱 preview 배포 fail — 카카오 승인 후 main production 전환 시 Next.js 재설정 필요
 
 ### 2026-05-28 — 외부 셋업 5/5: 마스터 비번 + bcrypt hash (CC, vault 보관)
@@ -285,7 +287,7 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 - 모든 결정 사항 반영:
   - 마스터 = 비번 only
   - 간사 가입 시 location 등록 → 출발지 미지정 패널티 제거
-  - 부분 매칭 = 우선순위 자동
+  - 부분 매칭 = 우선순위 자동  *(→ v1.1 정정: 간사 수동 선택, priority=힌트)*
   - K2 자리 풀릴 때마다 알림
   - 학생 자의 취소 + "환불 각 지구 문의"
   - PWA V1 도입 (옵션 C)

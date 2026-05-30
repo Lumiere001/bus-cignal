@@ -142,9 +142,9 @@ NEXT_PUBLIC_FIREBASE_VAPID_KEY=<...>
 FIREBASE_ADMIN_PRIVATE_KEY=<...>
 FIREBASE_ADMIN_CLIENT_EMAIL=<...>
 
-# 카카오맵
-NEXT_PUBLIC_KAKAO_MAP_API_KEY=<팀장에게 받기>
-KAKAO_REST_API_KEY=<팀장에게 받기>
+# 카카오맵 (팀원2가 본인 카카오 앱 등록 후 제공 — 팀장 비즈 주체 충돌 예외)
+NEXT_PUBLIC_KAKAO_MAP_API_KEY=<팀원2 제공>
+KAKAO_REST_API_KEY=<팀원2 제공, 서버 지오코딩용>
 
 # 마스터 비번 (개발 환경에서는 본인이 정함)
 MASTER_PASSWORD_HASH=<bcrypt hash, 본인 dev용>
@@ -153,7 +153,7 @@ MASTER_PASSWORD_HASH=<bcrypt hash, 본인 dev용>
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-> Firebase·카카오·마스터 비번 등은 팀장이 운영용 키 별도 1Password에 보관. 팀원은 dev 키만 사용.
+> Firebase·마스터 비번은 팀장이 운영 키 보관(팀원은 dev 키만). **카카오 키는 팀원2가 본인 앱에서 발급해 공유** (팀장 비즈 주체 충돌 예외).
 
 ### 2.5 개발 서버 실행
 
@@ -173,6 +173,19 @@ pnpm build       # 빌드 가능한지 확인
 ```
 
 전부 통과해야 PR 머지 가능.
+
+### 2.7 테스트 데이터 + dev 로그인 (화면 띄워보기)
+
+CCC 로그인 연동 전이라도 seed 데이터로 화면을 바로 테스트할 수 있어요.
+
+```bash
+supabase db reset   # 마이그 + 지구 + 테스트 데이터(seed-dev) 자동 로드
+pnpm dev
+```
+
+- **간사·마스터**: `/dev/login` → seed 간사(김광주/박부산)·마스터 선택 → 진입
+- **학생**: `/r/BUS-7K9M` → 이름 `이지은` + 전화 끝 4자리 `4444`
+- ⚠️ `/dev/login`·seed-dev는 **로컬 전용** (프로덕션 비활성). 자세히는 `docs/TEAM-TASKS.md` §0b.
 
 ---
 
@@ -234,7 +247,7 @@ git checkout -b feat/<영역>-<요약>
 # 예: feat/matching-queue-ui
 ```
 
-브랜치 네이밍은 `CONTRIBUTING.md` 참조.
+브랜치 규칙·금지사항은 **`docs/GIT-WORKFLOW.md`** (AI도 필독) + `CONTRIBUTING.md` 참조.
 
 ### 4.2 개발
 

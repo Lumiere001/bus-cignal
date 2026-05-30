@@ -8,6 +8,27 @@
 
 ## [Unreleased]
 
+### Changed — v1.1 간사 피드백 반영 (2026-05-30)
+- 간사 인증: Google OAuth → **CCC 로그인** (`operators.google_uid`→`ccc_id` + `campus`·`ccc_role`, 자체 세션)
+- 매칭: FIFO 강제·우선순위 자동 부분매칭·자동 후속매칭·자동 거절 제거 → **간사 수동 선택** (`priority`=힌트)
+- 송금: 24h 자동 만료 폐지 → **소프트 리마인더 + 간사 수동 [자리 풀기]**
+- 학생·간사 PWA = **옵트인** / 이메일·성별 **미수집** / 지구 내 차량관리 = V1.5 stretch
+- 마이그 `20260530000000_ccc_login_operators.sql` · `lib/auth/{operator-session,ccc}.ts` · `docs/TEAM-TASKS.md`
+- 문서 v1.1 동기화: SPEC·OVERVIEW·CLAUDE·AGENTS·CONTRIBUTING·SESSION-HANDOFF·ONBOARDING
+- 🔒 카카오 REST API Key 평문 제거 (rotation 권장)
+
+### Added — Phase 3 (테스트 인프라, 2026-05-30)
+- `supabase/seed-dev.sql` — 로컬 테스트 데이터(간사 2·Trip·신청 2·매칭 1·예약번호 `BUS-7K9M`). `config.toml` sql_paths로 `db reset` 시 자동 로드
+- `/dev/login` (dev 전용, 프로덕션 비활성) — seed 간사·마스터로 세션 발급해 화면 테스트
+- `lib/auth/operator.ts` (`getOperatorSession`·`requireOperator`·`clearOperatorSession`) — 간사 세션 헬퍼
+- `pnpm seed:dev`(psql) · `ENABLE_DEV_LOGIN` env · ONBOARDING §2.7 / TEAM-TASKS §0b 가이드
+- ✅ 로컬 `supabase db reset`로 마이그(ccc_id·payment_due_at nullable) + seed 실 검증 통과
+- `docs/GIT-WORKFLOW.md` — 팀원 AI용 브랜치/PR 규칙 (CLAUDE·AGENTS §2.3 강화)
+- `app/manifest.ts` + `public/icon.svg` — PWA 설치 기본(아이콘 placeholder)
+- `lib/notifications/` — 18 이벤트 카탈로그 + `notify()`(인앱 insert + 푸시 stub)
+- `app/api/cron/{payment-reminder,anonymize}` + `vercel.json` — CRON_SECRET 가드 (리마인더=v1.1 알림만)
+- Playwright(`tests/e2e/smoke.spec.ts`) + Sentry(`instrumentation*.ts`, DSN 없으면 no-op) 스캐폴드
+
 ### Added
 - 로컬 Supabase (Docker) 셋업 가이드 ONBOARDING §2.3
 - OVERVIEW 디테일 보강 (팀·간사 스팩 파악용, 18개 섹션)

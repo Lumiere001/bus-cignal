@@ -34,10 +34,11 @@
 - service_role, master 비번 등은 1Password 보관
 - 시크릿 의심 시 즉시 멈추고 팀장 알림
 
-### 2.3 Git
-- `main` 직접 push 금지 — PR만
-- 팀장 승인 + CI 통과 필수
-- `--force` push 절대 X, hook 우회 금지
+### 2.3 Git (AI 필독 — 전체 `docs/GIT-WORKFLOW.md`)
+- **항상 새 브랜치에서 작업** (`<type>/<영역>-<요약>`). `main` 직접 commit·push 절대 X
+- 한 작업 = 한 브랜치 = 한 PR. 머지는 팀장만
+- 팀장 승인 + CI(typecheck·lint·test·build) 통과 필수
+- `--force`(공유 브랜치)·hook 우회 X
 
 ### 2.4 개인정보
 - 학생 정보 최소 수집 + 90일 후 자동 익명화
@@ -47,9 +48,9 @@
 
 ## 3. 기술 스택
 
-- Next.js 15 App Router + TypeScript
+- Next.js 16 App Router + TypeScript
 - Tailwind CSS + shadcn/ui
-- Supabase (PostgreSQL + Auth + RLS) — Seoul
+- Supabase (PostgreSQL + RLS) — Seoul. 간사 인증 = CCC 로그인 + 자체 세션 (Supabase Auth 미사용)
 - Firebase Firestore — asia-northeast3 (채팅 전용)
 - 카카오맵 JavaScript SDK
 - Vercel 배포 (기본 도메인)
@@ -91,9 +92,9 @@ bus-cignal/
 
 ---
 
-## 6. DB 모델 핵심 (v1.0 Confirmed)
+## 6. DB 모델 핵심 (v1.1)
 
-테이블 11개 (partial_offers 제거): `regions`·`operators`(approval_status)·`trips`·`seat_offers`·`seat_requests`·`request_passengers`(**priority**)·`matches`(passenger_id·cancellation_source)·`match_passengers`·`notifications`(channel)·`rejection_log`·`system_config`.
+테이블 12개: `regions`·`operators`(**ccc_id**·campus·ccc_role·approval_status)·`region_locations`·`trips`·`seat_offers`·`seat_requests`·`request_passengers`(**priority**=힌트)·`matches`(passenger_id·cancellation_source)·`match_passengers`·`notifications`(channel)·`rejection_log`·`system_config`.
 
 자세한 스키마는 `docs/SPEC.md` §6.
 
@@ -104,21 +105,20 @@ bus-cignal/
 
 ---
 
-## 7. 매칭 알고리즘 핵심 (v1.0 Confirmed)
+## 7. 매칭 방식 핵심 (v1.1)
 
-**FIFO + 우선순위 기반 자동 부분 매칭**:
+**시각순 정렬 + 간사 수동 선택** (FIFO 강제·자동 매칭 전부 제거):
 
 ```
-approve(req):
-  FIFO 큐 1번째만 활성
-  avail >= req.count → 전체 매칭 (학생 1명당 Match 1개)
-  avail > 0 → 우선순위 ASC로 avail개 매칭, 나머지 큐 잔류 (requested_at 원본)
-  avail = 0 → 자동 거절 + 마스터 알림
+approve(req, selected_ids):
+  큐 = requested_at ASC 정렬 (보여주기용, 강제 잠금 없음)
+  공급 간사가 어느 신청이든 + 그 안의 학생을 직접 선택
+  selected 학생만 Match 생성 (avail 한도 검사). 나머지는 큐 잔류 (자동 분할 X)
+  자동 거절 없음 — 안 태우면 큐에 남음
 
-on_available_seat_increase(trip):
-  큐 잔류 요청에서 우선순위 다음 학생 즉시 자동 매칭 (간사 개입 X)
-
-expire: matched_at + 24h 자동, 자리 풀림 + 큐 다음 자동 부분 매칭
+release_seat(match): 송금 지연 등 간사 수동 [자리 풀기] → status=expired (자동 cron 아님)
+on_seat_freed(trip): 자동 재매칭 X — 큐 재노출 + 알림 + 재신청 추천
+payment_delay_reminder: 자동 만료 아님 — 리마인더만 (자리 회수 X)
 cancel (Phase 2): 송금완료 후 미입금 시 공급 지구 권한 (status='payment_reported'에서만)
 ★ paid 후 공급 측 자의 취소 = 불가능
 passenger_cancel: 학생 자의 취소 → 양쪽 간사 알림 + 자리 풀림
@@ -126,7 +126,7 @@ passenger_cancel: 학생 자의 취소 → 양쪽 간사 알림 + 자리 풀림
 
 자세한 흐름은 `docs/SPEC.md` §7.
 
-**※ v1.0 변경**: `partial_offers` 테이블·B 응답 2h 데드라인 모두 제거. 우선순위 기반 자동.
+**※ v1.1 변경**: FIFO 강제·우선순위 자동 부분매칭·자동 후속매칭·24h 자동만료 모두 제거. priority=힌트.
 
 ---
 
@@ -209,9 +209,9 @@ Scope: matching · settlement · chat · auth · db · ui · operator · passeng
 ## 9. 관련 문서
 
 - `README.md` — 저장소 첫화면
-- `docs/SPEC.md` — **v1.0 정본 (최우선)**
+- `docs/SPEC.md` — **v1.1 정본 (최우선)**
 - `docs/OVERVIEW.md` — 외부 공유 친근 톤
-- `docs/REGIONS.md` — 지구 마스터 52개
+- `docs/REGIONS.md` — 지구 마스터 53개
 - `ONBOARDING.md` — 팀원 시작 가이드
 - `CONTRIBUTING.md` — commit·PR 규칙
 - `COWORK.md` — Cowork 활용

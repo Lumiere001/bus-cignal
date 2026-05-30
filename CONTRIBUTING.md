@@ -44,13 +44,13 @@
 - `matching` — 매칭 엔진·큐
 - `settlement` — 정산·ledger
 - `chat` — Firebase 채팅
-- `auth` — Google OAuth·세션
+- `auth` — CCC 로그인·마스터 비번·세션
 - `db` — 마이그레이션·RLS·시드
 - `ui` — 디자인 시스템·shadcn 컴포넌트
 - `operator` — 차량 간사 화면
 - `passenger` — 학생 화면
 - `admin` — 마스터 화면
-- `notifications` — 인앱·이메일
+- `notifications` — 인앱·푸시(FCM) *(이메일 미발송)*
 - `kakao` — 카카오맵·지오코딩
 - `infra` — Vercel·CI·deps
 - `meta` — 문서·repo 설정

@@ -23,6 +23,7 @@ To: 다음 CC 세션 / Cowork / 팀원
   - 간사 = **CCC 로그인** (Google OAuth 폐기) / 매칭 = 시각순 정렬 + 간사 **수동 선택** (FIFO 강제·자동 매칭 제거) / 송금 = **자동 만료 폐지** → 소프트 리마인더 + 수동 [자리 풀기] / 학생·간사 PWA = **옵트인** / 이메일·성별 미수집 / 지구 내 차량관리 = V1.5
   - 코드 반영: 마이그(`20260530000000_ccc_login_operators.sql`)·`lib/auth/operator-session.ts`·`lib/auth/ccc.ts`(스텁)·types·`/login` placeholder
   - 게이트: typecheck 0 · lint 0 · test 2 · build OK
+- **🆕 Phase 3 인프라 (2026-05-30)** — 테스트 인프라(seed-dev·`/dev/login`·operator 세션) + PWA manifest + 알림 엔진(`lib/notifications`) + cron(리마인더·익명화) + Playwright·Sentry 스캐폴드 + `docs/GIT-WORKFLOW.md`. 로컬 `supabase db reset` 실 검증 통과.
 
 ### 다음 (우선순위)
 
@@ -51,7 +52,7 @@ To: 다음 CC 세션 / Cowork / 팀원
 > (과거 커밋에 카카오 REST API Key가 평문 노출 → **rotation 권장**, 아래 자동화 규칙 참조)
 
 - 운영 시크릿(service_role·Firebase Admin·MASTER_PASSWORD): 팀장 1Password
-- 팀원 dev 키(anon·dev Firebase·카카오 JS): "Bus Cignal Team Dev" 1Password vault
+- 팀원 dev 키(dev Firebase 웹 config): 공유. **카카오 JS/REST 키는 팀원2가 본인 앱 등록해 제공** (팀장 비즈 주체 충돌 예외)
 
 ---
 
