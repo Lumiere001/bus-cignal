@@ -20,6 +20,25 @@
 
 ---
 
+## 0b. 로컬에서 화면 테스트하기 (CCC 로그인 전)
+
+CCC 인증이 아직 없어도 **seed 데이터 + dev 로그인**으로 운영자·마스터·학생 화면을 바로 띄워볼 수 있어요.
+
+```bash
+supabase start            # 로컬 DB(Docker)
+supabase db reset         # 마이그 + 지구 + 테스트 데이터(seed-dev) 자동 로드
+pnpm dev                  # http://localhost:3000
+```
+
+- **간사·마스터 화면**: `/dev/login` 접속 → seed된 간사(김광주/박부산) 또는 마스터 선택 → 바로 진입
+- **학생 화면**: `/r/BUS-7K9M` → 이름 `이지은` + 전화 끝 4자리 `4444`
+- **seed 내용**: 광주 간사 Trip(평창→광주, 44석) + 부산 신청 2건(승인 대기) + 매칭 1건(예약번호 발급됨)
+- 재시드(psql 있으면): `pnpm seed:dev`. 보통은 `supabase db reset`로 충분.
+- ⚠️ `/dev/login`·seed-dev는 **로컬 전용** (프로덕션 비활성: `NODE_ENV`/`ENABLE_DEV_LOGIN`).
+- 본인 페이지에서 간사 세션이 필요하면 `lib/auth/operator.ts`의 `requireOperator()` 사용.
+
+---
+
 ## 1. 분담 경계 (충돌 방지)
 
 | | 영역 |

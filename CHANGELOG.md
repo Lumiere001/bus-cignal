@@ -17,6 +17,12 @@
 - 문서 v1.1 동기화: SPEC·OVERVIEW·CLAUDE·AGENTS·CONTRIBUTING·SESSION-HANDOFF·ONBOARDING
 - 🔒 카카오 REST API Key 평문 제거 (rotation 권장)
 
+### Added — Phase 3 (테스트 인프라, 2026-05-30)
+- `supabase/seed-dev.sql` — 로컬 테스트 데이터(간사 2·Trip·신청 2·매칭 1·예약번호 `BUS-7K9M`). `config.toml` sql_paths로 `db reset` 시 자동 로드
+- `/dev/login` (dev 전용, 프로덕션 비활성) — seed 간사·마스터로 세션 발급해 화면 테스트
+- `lib/auth/operator.ts` (`getOperatorSession`·`requireOperator`·`clearOperatorSession`) — 간사 세션 헬퍼
+- `pnpm seed:dev`(psql) · `ENABLE_DEV_LOGIN` env · ONBOARDING §2.7 / TEAM-TASKS §0b 가이드
+
 ### Added
 - 로컬 Supabase (Docker) 셋업 가이드 ONBOARDING §2.3
 - OVERVIEW 디테일 보강 (팀·간사 스팩 파악용, 18개 섹션)
