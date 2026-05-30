@@ -35,11 +35,11 @@
 - 만약 시크릿이 commit에 포함되었다면 **즉시 작업 멈추고** 팀장에 알림 + 해당 시크릿 즉시 재발급
 - `service_role` key, master 비밀번호, OAuth client secret 등은 **1Password 공유 vault** 보관
 
-### 2.3 Git
-- **`main` 직접 push 금지** — PR만 머지 (브랜치 보호 활성)
-- **팀장 승인 1명 필수**
-- **CI 통과 필수**: typecheck + lint + test
-- 시크릿·DB 마이그·매칭 엔진·RLS 변경 PR은 추가 검토
+### 2.3 Git (AI 필독 — 전체 `docs/GIT-WORKFLOW.md`)
+- **항상 새 브랜치에서 작업** (`<type>/<영역>-<요약>`). `main`에 직접 commit·push 절대 금지
+- 한 작업 = 한 브랜치 = 한 PR. **머지는 팀장만** (브랜치 보호 + 승인 1명)
+- **CI 통과 필수**: typecheck + lint + test + build
+- `--force`(공유 브랜치)·hook 우회 X. 시크릿·DB 마이그·매칭 엔진·RLS 변경 PR은 추가 검토
 - **`git push --force`** 절대 X (사용자 명시 승인 시만)
 - Hook 우회 (`--no-verify`) 금지
 

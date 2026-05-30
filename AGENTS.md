@@ -34,10 +34,11 @@
 - service_role, master 비번 등은 1Password 보관
 - 시크릿 의심 시 즉시 멈추고 팀장 알림
 
-### 2.3 Git
-- `main` 직접 push 금지 — PR만
-- 팀장 승인 + CI 통과 필수
-- `--force` push 절대 X, hook 우회 금지
+### 2.3 Git (AI 필독 — 전체 `docs/GIT-WORKFLOW.md`)
+- **항상 새 브랜치에서 작업** (`<type>/<영역>-<요약>`). `main` 직접 commit·push 절대 X
+- 한 작업 = 한 브랜치 = 한 PR. 머지는 팀장만
+- 팀장 승인 + CI(typecheck·lint·test·build) 통과 필수
+- `--force`(공유 브랜치)·hook 우회 X
 
 ### 2.4 개인정보
 - 학생 정보 최소 수집 + 90일 후 자동 익명화
