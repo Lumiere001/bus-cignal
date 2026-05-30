@@ -44,7 +44,7 @@
 - `matching` — 매칭 엔진·큐
 - `settlement` — 정산·ledger
 - `chat` — Firebase 채팅
-- `auth` — Google OAuth·세션
+- `auth` — CCC 로그인·마스터 비번·세션
 - `db` — 마이그레이션·RLS·시드
 - `ui` — 디자인 시스템·shadcn 컴포넌트
 - `operator` — 차량 간사 화면

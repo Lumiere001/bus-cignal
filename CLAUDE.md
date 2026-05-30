@@ -23,7 +23,7 @@
 ## 2. 절대 규칙 (Don't Break)
 
 ### 2.1 도메인 코어 (팀장 사전 승인 없이 수정 금지)
-- **매칭 엔진** (`lib/matching/*`) — FIFO 큐 + 부분 매칭 + Phase 1/2 데드라인
+- **매칭 엔진** (`lib/matching/*`) — 시각순 큐 + 간사 수동 선택 (FIFO 강제·자동 매칭 없음, v1.1)
 - **RLS 정책** (Supabase 마이그레이션) — master/operator/passenger 권한
 - **정산 로직** (`lib/settlement/*`) — 지구별 ledger·매트릭스
 - **Firebase Security Rules** — 채팅 권한 검증
@@ -56,7 +56,7 @@
 |---|---|
 | Frontend | Next.js 15 App Router + TypeScript |
 | Styling | Tailwind CSS + shadcn/ui |
-| DB·Auth | Supabase PostgreSQL + Auth (Google OAuth) + RLS — Seoul 리전 |
+| DB | Supabase PostgreSQL + RLS — Seoul 리전 (간사 인증 = CCC 로그인 + 자체 세션, Supabase Auth 미사용) |
 | Chat | Firebase Firestore (asia-northeast3) — 채팅 전용 |
 | Maps | 카카오맵 JavaScript SDK |
 | Deploy | Vercel (Seoul 우선) |
@@ -146,7 +146,7 @@ bus-cignal/
 
 ### 주요 테이블
 - `regions` — 지구 (CCC 지구번호, 권역, 분류, 계좌)
-- `operators` — 간사 (Google OAuth + approval_status: pending→approved→rejected)
+- `operators` — 간사 (CCC 로그인: ccc_id·campus·ccc_role + approval_status: pending→approved→rejected)
 - `trips` — 운행 (방향·출발지·시간·요금·정원·메모, origin_* nullable)
 - `seat_offers` — 공급 슬라이스
 - `seat_requests` — 신청 슬라이스 (FIFO 큐, parent_request_id로 분할)
@@ -157,7 +157,7 @@ bus-cignal/
 - `rejection_log` — 거절 단순 로그 (V1, 임계값 X)
 - `system_config` — 신청 마감일·점검 모드
 
-**※ v1.0 변경**: `partial_offers` 제거 (우선순위 기반 자동 처리). `request_passengers.priority` 추가.
+**※ v1.1**: 매칭 자동화 전부 제거 → 간사 수동 선택. `request_passengers.priority` = 힌트. `operators.ccc_id`(구 google_uid) + campus·ccc_role.
 
 ### RLS 핵심
 - master: 전체 R/W + 간사 가입 승인
@@ -166,46 +166,35 @@ bus-cignal/
 
 ---
 
-## 7. 매칭 알고리즘 핵심 (v1.0 SPEC §7)
+## 7. 매칭 방식 핵심 (v1.1 SPEC §7)
 
-**FIFO + 우선순위 기반 자동 부분 매칭** (2h 데드라인·partial_offers 모두 제거):
+**시각순 정렬 + 간사 수동 선택** (FIFO 강제·자동 매칭·자동 만료 전부 제거):
 
 ```
-fn approve(request):
-  -- 큐 1번째인지 서버 검증 (UI 우회 방지)
-  assert request == queue(request.trip)[0]
+fn approve(request, selected_passenger_ids):
+  -- 강제 큐 1번째 assert 없음 (어느 신청이든 가능)
   avail = available(request.trip)
-  passengers = request.passengers ORDER BY priority ASC
+  selected = [p for p in request.passengers if p.id in selected_passenger_ids]
+  assert len(selected) <= avail          -- 자리 한도만 검사
+  for p in selected: Match.create(trip, request, p, status='awaiting_payment')
+  -- 선택 안 된 학생은 큐 잔류 (자동 분할 X). 자동 거절 없음.
 
-  if avail >= request.seat_count:
-    -- 전체 매칭 (학생 1명당 Match 1개)
-    for p in passengers: Match.create(trip, request, p, payment_due_at=NOW+24h)
-    request.status = 'matched'
-  elif avail > 0:
-    -- 우선순위 N명만 매칭 + 잔여 큐 잔류
-    for p in passengers[:avail]: Match.create(trip, request, p, ...)
-    new_request = SeatRequest.create(parent_request_id=request.id,
-                                     requested_at=request.requested_at,  -- 원본 유지
-                                     ...)
-    move unmatched passengers to new_request
-    request.status = 'matched'  -- 원본은 부분 매칭 완료 처리
-  else:
-    -- 잔여 0: 자동 거절 + 마스터 알림
-    request.status = 'rejected'
-    notify_master(request, 'risk_event')
+fn release_seat(match):       -- 송금 지연 등 간사 수동 [자리 풀기]
+  match.status = 'expired'    -- 자동 cron 아님
+  on_seat_freed(match.trip)
 
-fn on_available_seat_increase(trip, delta):
-  -- 다른 매칭 만료·취소·학생 자의 취소 시
-  for request in queue(trip):
-    passengers = request.unmatched_passengers ORDER BY priority ASC
-    matched = min(len(passengers), available(trip))
-    for p in passengers[:matched]: Match.create(...)
+fn on_seat_freed(trip):       -- 자동 재매칭 X
+  notify_supply_operator(trip)          -- 큐 재노출 + "자리 생김" 알림
+  notify stale request regions ('reapply_recommended')
+
+fn payment_delay_reminder():  -- cron: 만료 아님, 알림만 (자리 회수 X)
 ```
 
-**Phase 1 만료**: matched_at + 24h → 자동 expire, 자리 풀림, 큐 다음 자동 부분 매칭 trigger
-**Phase 2 취소**: 송금완료 클릭 후 미입금 시 공급 지구 [매칭 취소] 가능 (status='payment_reported'에서만)
-**★ paid 후 공급 측 자의 취소 = 불가능** (학생 자의 취소만 가능)
-**학생 자의적 취소**: 양쪽 지구 간사에게 자동 알림 + 자리 풀림
+**송금 지연**: 자동 만료 없음 → 리마인더만. 자리 회수는 간사 [자리 풀기] 수동.
+**Phase 2 취소**: 송금완료 클릭 후 미입금 시 공급 지구 [매칭 취소] (status='payment_reported'에서만)
+**★ paid 후 공급 측 자의 취소 = 불가능** (학생 자의 취소만)
+**학생 자의적 취소**: 양쪽 지구 간사 자동 알림 + 자리 풀림
+**priority** = 공급 간사 참고 힌트 (자동 매칭 아님)
 
 ---
 

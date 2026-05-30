@@ -108,7 +108,7 @@ claude
 
 ### Phase 2 — 외부 키 받은 후 (3~5일)
 - Supabase 클라이언트 (server/client/types)
-- Google OAuth 미들웨어 (operator)
+- 간사 인증 미들웨어 (**CCC 로그인** + 자체 세션, ⛔ CCC IT 신원 전달 방식 대기 — 그동안 dev 세션 우회로 개발)
 - 마스터 비번 인증 미들웨어 (/admin/login)
 - DB 마이그 1차 (12개 테이블 + RLS) + seed (52개 지구)
 - Firebase 클라이언트 + Custom Token 발급 API
@@ -116,6 +116,7 @@ claude
 - PWA 셋업 (next-pwa + manifest + sw + FCM)
 
 ### Phase 3 — 완성 (1~3일)
+- **dev 로그인 우회 + seed 테스트 데이터** (간사·Trip·신청·매칭·예약번호) — 팀원이 화면 테스트 가능하게 (v1.1 추가)
 - Playwright E2E 스캐폴드 (S1·S4·S5 + iOS 푸시)
 - Sentry 통합
 - Vercel 배포 동작 확인
@@ -285,7 +286,7 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 - 모든 결정 사항 반영:
   - 마스터 = 비번 only
   - 간사 가입 시 location 등록 → 출발지 미지정 패널티 제거
-  - 부분 매칭 = 우선순위 자동
+  - 부분 매칭 = 우선순위 자동  *(→ v1.1 정정: 간사 수동 선택, priority=힌트)*
   - K2 자리 풀릴 때마다 알림
   - 학생 자의 취소 + "환불 각 지구 문의"
   - PWA V1 도입 (옵션 C)

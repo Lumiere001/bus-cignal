@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+### Changed — v1.1 간사 피드백 반영 (2026-05-30)
+- 간사 인증: Google OAuth → **CCC 로그인** (`operators.google_uid`→`ccc_id` + `campus`·`ccc_role`, 자체 세션)
+- 매칭: FIFO 강제·우선순위 자동 부분매칭·자동 후속매칭·자동 거절 제거 → **간사 수동 선택** (`priority`=힌트)
+- 송금: 24h 자동 만료 폐지 → **소프트 리마인더 + 간사 수동 [자리 풀기]**
+- 학생·간사 PWA = **옵트인** / 이메일·성별 **미수집** / 지구 내 차량관리 = V1.5 stretch
+- 마이그 `20260530000000_ccc_login_operators.sql` · `lib/auth/{operator-session,ccc}.ts` · `docs/TEAM-TASKS.md`
+- 문서 v1.1 동기화: SPEC·OVERVIEW·CLAUDE·AGENTS·CONTRIBUTING·SESSION-HANDOFF·ONBOARDING
+- 🔒 카카오 REST API Key 평문 제거 (rotation 권장)
+
 ### Added
 - 로컬 Supabase (Docker) 셋업 가이드 ONBOARDING §2.3
 - OVERVIEW 디테일 보강 (팀·간사 스팩 파악용, 18개 섹션)
