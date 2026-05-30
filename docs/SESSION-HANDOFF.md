@@ -23,6 +23,7 @@ To: 다음 CC 세션 / Cowork / 팀원
   - 간사 = **CCC 로그인** (Google OAuth 폐기) / 매칭 = 시각순 정렬 + 간사 **수동 선택** (FIFO 강제·자동 매칭 제거) / 송금 = **자동 만료 폐지** → 소프트 리마인더 + 수동 [자리 풀기] / 학생·간사 PWA = **옵트인** / 이메일·성별 미수집 / 지구 내 차량관리 = V1.5
   - 코드 반영: 마이그(`20260530000000_ccc_login_operators.sql`)·`lib/auth/operator-session.ts`·`lib/auth/ccc.ts`(스텁)·types·`/login` placeholder
   - 게이트: typecheck 0 · lint 0 · test 2 · build OK
+- **🆕 Phase 3 인프라 (2026-05-30)** — 테스트 인프라(seed-dev·`/dev/login`·operator 세션) + PWA manifest + 알림 엔진(`lib/notifications`) + cron(리마인더·익명화) + Playwright·Sentry 스캐폴드 + `docs/GIT-WORKFLOW.md`. 로컬 `supabase db reset` 실 검증 통과.
 
 ### 다음 (우선순위)
 

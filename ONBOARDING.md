@@ -247,7 +247,7 @@ git checkout -b feat/<영역>-<요약>
 # 예: feat/matching-queue-ui
 ```
 
-브랜치 네이밍은 `CONTRIBUTING.md` 참조.
+브랜치 규칙·금지사항은 **`docs/GIT-WORKFLOW.md`** (AI도 필독) + `CONTRIBUTING.md` 참조.
 
 ### 4.2 개발
 

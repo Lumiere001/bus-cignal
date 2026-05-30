@@ -22,6 +22,12 @@
 - `/dev/login` (dev 전용, 프로덕션 비활성) — seed 간사·마스터로 세션 발급해 화면 테스트
 - `lib/auth/operator.ts` (`getOperatorSession`·`requireOperator`·`clearOperatorSession`) — 간사 세션 헬퍼
 - `pnpm seed:dev`(psql) · `ENABLE_DEV_LOGIN` env · ONBOARDING §2.7 / TEAM-TASKS §0b 가이드
+- ✅ 로컬 `supabase db reset`로 마이그(ccc_id·payment_due_at nullable) + seed 실 검증 통과
+- `docs/GIT-WORKFLOW.md` — 팀원 AI용 브랜치/PR 규칙 (CLAUDE·AGENTS §2.3 강화)
+- `app/manifest.ts` + `public/icon.svg` — PWA 설치 기본(아이콘 placeholder)
+- `lib/notifications/` — 18 이벤트 카탈로그 + `notify()`(인앱 insert + 푸시 stub)
+- `app/api/cron/{payment-reminder,anonymize}` + `vercel.json` — CRON_SECRET 가드 (리마인더=v1.1 알림만)
+- Playwright(`tests/e2e/smoke.spec.ts`) + Sentry(`instrumentation*.ts`, DSN 없으면 no-op) 스캐폴드
 
 ### Added
 - 로컬 Supabase (Docker) 셋업 가이드 ONBOARDING §2.3
