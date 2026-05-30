@@ -76,3 +76,12 @@ service_role*
 
 # team role (개인 머신마다 본인 역할 — commit X)
 .team-role
+
+# Playwright (E2E 산출물)
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Sentry
+.sentryclirc
