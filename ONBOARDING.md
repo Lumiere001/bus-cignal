@@ -8,7 +8,7 @@
 ## 0. 이 프로젝트는 무엇인가요?
 
 CCC 전국 여름 수련회 때 **타지구 차량 자리 나눔**을 매끄럽게 만드는 웹 서비스입니다.
-- 자세한 기획: `docs/SPEC.md` (정본, 1100줄)
+- 자세한 기획: `docs/SPEC.md` (정본, v1.1)
 - 외부 공유 요약: `docs/OVERVIEW.md`
 
 먼저 `docs/OVERVIEW.md`를 가볍게 읽고 오시면 좋아요. 시스템이 뭘 하는지 감이 잡힙니다.
@@ -231,7 +231,7 @@ pnpm build       # 빌드 가능한지 확인
 git checkout main
 git pull origin main
 git checkout -b feat/<영역>-<요약>
-# 예: feat/matching-fifo-queue
+# 예: feat/matching-queue-ui
 ```
 
 브랜치 네이밍은 `CONTRIBUTING.md` 참조.
@@ -248,7 +248,7 @@ git checkout -b feat/<영역>-<요약>
 
 ```bash
 git add <파일들>
-git commit -m "feat(matching): partial offer 슬라이스별 데드라인 구현"
+git commit -m "feat(matching): 큐 시각순 정렬 + 수동 승인 UI"
 ```
 
 Conventional Commits 형식 (`CONTRIBUTING.md` §commit).

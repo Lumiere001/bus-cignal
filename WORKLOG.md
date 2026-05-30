@@ -8,8 +8,9 @@
 
 ## 🔄 현재 작업 (Active)
 
-- **상태**: 외부 셋업 4.7/5 + Phase 1 ✅ + **Phase 2 진행 중** (`feat/foundation-phase-2`): P2-1 환경·P2-2 DB·P2-3 클라이언트·P2-4 마스터비번 ✅ / OAuth·Firebase·PWA 남음
-- **다음 단계**: Google OAuth(operator) = **Cowork 외부 설정 필요** (Google Cloud OAuth client + Supabase Auth provider) → P2-5 Firebase → P2-6 PWA
+- **상태**: 외부 셋업 4.7/5 + Phase 1 ✅ + **Phase 2 진행 중** (`feat/foundation-phase-2`): P2-1 환경·P2-2 DB·P2-3 클라이언트·P2-4 마스터비번 ✅ / **간사 인증(CCC)·Firebase·PWA 남음**
+- **🆕 v1.1 기획 개정 (2026-05-30, 간사 피드백)**: ① 간사 = **CCC 로그인** (Google OAuth 폐기) ② 매칭 = 시각순 정렬 + 간사 **수동 선택** (FIFO 강제·자동 부분/후속매칭·자동 거절 제거, priority=힌트) ③ 송금 = **자동 만료 폐지** → 소프트 리마인더 + 수동 [자리 풀기] ④ 학생·간사 PWA = **옵트인** ⑤ 이메일·성별 **미수집** ⑥ 지구 내 차량관리 = V1.5. → `docs/SPEC.md`·`docs/OVERVIEW.md` v1.1 반영 완료, vault 사본 동기화.
+- **다음 단계 (P2-5 간사 인증 = CCC 로그인)**: ⛔ **CCC IT 답 대기** — 신원 전달 방식(A 서명토큰 / B 일회용코드 / C OIDC) 확정 필요. 그 전까지 완료: 마이그(`20260530000000_ccc_login_operators.sql` = `operators.google_uid`→`ccc_id` + `campus`·`ccc_role`)·세션 골격(`lib/auth/operator-session.ts`)·검증 스텁(`lib/auth/ccc.ts`)·`/login` placeholder·types·.env.example. **방식 확정 후**: `verifyCccToken` 구현 → `/login` 연동 → 미들웨어 `/operator` 가드 → RLS(앱레이어). 마이그는 Cowork이 Supabase 적용 + 타입 재생성.
 - **로컬 Supabase 가동 중** (`supabase stop`으로 중지 가능, 재개는 `supabase start`)
 - **마지막 세션 종료**: 2026-05-28 (Cowork — 비즈니스 정보 심사 신청 후 검색으로 카카오 정책 재확인 → 전략 변경 검토)
 - **사용자 대기 중 (외부 합의)**: 신의 악단(앱 1442060) 영구 삭제 가능 여부 = 교수님 합의 필요. 신의 악단 = 학교 프로젝트로 만든 앱, 사용자 단독 결정 불가.
@@ -221,8 +222,8 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 ### 2026-05-28 — 외부 셋업 3/5 진행 중: 카카오 앱·키·도메인·비즈 앱 전환 완료, 비즈니스 정보 심사 대기
 - App: **Bus Cignal** (App ID: **1470045**, 카테고리: 자동차/교통수단, 회사명: CCC IT 사역부)
 - 키 확보 (1Password 또는 vault 저장):
-  - **JavaScript 키**: `2970db3b1e9c5732e2449cf19e3660f4` → `NEXT_PUBLIC_KAKAO_MAP_API_KEY`
-  - **REST API 키**: `5f64a39e01a58f9f36b5c3c0a10a125e` → `KAKAO_REST_API_KEY`
+  - **JavaScript 키**: `(1Password 참조)` → `NEXT_PUBLIC_KAKAO_MAP_API_KEY`
+  - **REST API 키**: `(1Password 참조 — git 평문 금지)` → `KAKAO_REST_API_KEY`  ⚠️ 과거 커밋에 평문 노출됨 → rotation 권장
 - JavaScript SDK 도메인 등록 (Default JS Key):
   - `http://localhost:3000`
   - `https://bus-cignal.vercel.app` (Vercel 도메인 확정 후 재확인)
