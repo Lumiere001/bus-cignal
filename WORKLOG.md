@@ -8,11 +8,18 @@
 
 ## 🔄 현재 작업 (Active)
 
-- **상태**: 외부 셋업 4.7/5 + Phase 1 ✅ + **Phase 2 진행 중** (`feat/foundation-phase-2`): P2-1 환경·P2-2 DB·P2-3 클라이언트·P2-4 마스터비번 ✅ / **간사 인증(CCC)·Firebase·PWA 남음**
+- 📍 **상태 (2026-05-31 CC 세션 종료 — 여기부터 읽으세요)**: **v1.1 기획 + Foundation Phase 3 완료, main 머지됨** (PR #3, `origin/main` = 71f0bff).
+  - ✅ **코드**: 테스트 인프라(`seed-dev`·`/dev/login`·`lib/auth/operator.ts`) + PWA manifest + 알림엔진(`lib/notifications`) + cron(`payment-reminder`·`anonymize`, Hobby용 daily) + Playwright·Sentry 스캐폴드 + `docs/GIT-WORKFLOW.md`. 게이트(typecheck·lint·test·build) 통과. 로컬 `supabase db reset` 실검증 OK.
+  - ✅ **팀원 온보딩 문서**: `_secrets/노션-공유용-팀원-dev-셋업.md` (셋업~AI개발 자기완결) → 노션 공유하면 팀원 시작 가능.
+  - ⏳ **Cowork 남음**: Vercel Production env 입력 — `_secrets/vercel-env-prod.txt`(15/18 채워둠; **MASTER_PASSWORD_HASH = setup-5에 있음, 카카오 2개 = 팀원2 대기**) bulk paste → 재배포.
+  - ⏳ **팀장 남음**: 팀원 GitHub username 받아 collaborator 추가 / 팀원2 카카오 키 받기.
+  - ⛔ **블로커**: CCC 인증 본구현 = CCC IT 답(A 서명토큰/B 일회용코드/C OIDC) 대기. 그동안 dev 세션 우회로 개발 가능.
+  - 🗑 팀장 카카오 앱(1470045) 삭제 완료 → 옛 노출 키 무효.
+  - ▶️ **다음 자연스러운 작업**: (A) 팀원 합류·개발 지원 / (B) CCC 답 오면 인증 연동 / (C) Cowork env 마무리 후 라이브 배포 확인.
 - **🆕 v1.1 기획 개정 (2026-05-30, 간사 피드백)**: ① 간사 = **CCC 로그인** (Google OAuth 폐기) ② 매칭 = 시각순 정렬 + 간사 **수동 선택** (FIFO 강제·자동 부분/후속매칭·자동 거절 제거, priority=힌트) ③ 송금 = **자동 만료 폐지** → 소프트 리마인더 + 수동 [자리 풀기] ④ 학생·간사 PWA = **옵트인** ⑤ 이메일·성별 **미수집** ⑥ 지구 내 차량관리 = V1.5. → `docs/SPEC.md`·`docs/OVERVIEW.md` v1.1 반영 완료, vault 사본 동기화.
 - **다음 단계 (P2-5 간사 인증 = CCC 로그인)**: ⛔ **CCC IT 답 대기** — 신원 전달 방식(A 서명토큰 / B 일회용코드 / C OIDC) 확정 필요. 그 전까지 완료: 마이그(`20260530000000_ccc_login_operators.sql` = `operators.google_uid`→`ccc_id` + `campus`·`ccc_role`)·세션 골격(`lib/auth/operator-session.ts`)·검증 스텁(`lib/auth/ccc.ts`)·`/login` placeholder·types·.env.example. **방식 확정 후**: `verifyCccToken` 구현 → `/login` 연동 → 미들웨어 `/operator` 가드 → RLS(앱레이어). 마이그는 Cowork이 Supabase 적용 + 타입 재생성.
 - **로컬 Supabase 가동 중** (`supabase stop`으로 중지 가능, 재개는 `supabase start`)
-- **마지막 세션 종료**: 2026-05-28 (Cowork — 비즈니스 정보 심사 신청 후 검색으로 카카오 정책 재확인 → 전략 변경 검토)
+- **마지막 세션 종료**: 2026-05-31 (CC — v1.1 + Foundation Phase 3 완료, PR #3 main 머지, 팀원 온보딩 문서·Vercel env 파일 준비)
 - **사용자 대기 중 (외부 합의)**: 신의 악단(앱 1442060) 영구 삭제 가능 여부 = 교수님 합의 필요. 신의 악단 = 학교 프로젝트로 만든 앱, 사용자 단독 결정 불가.
 
 ### ⚠️ 카카오맵 전략 재검토 (2026-05-28 검색 결과)
@@ -37,7 +44,60 @@
 - 비즈니스 정보 심사 (영업일 3~5일 대기) — 신의 악단 삭제 + 토글 ON 성공 시 무관해짐
 - Vercel 임시 랜딩 배포 — Foundation Phase 2까지 유지
 
-**다음 단계 진입 조건**: 사용자가 교수님 합의 결과 알려주면 새 전략 실행
+**다음 단계 진입 조건**: 사용자가 교수님 합의 결과 알려주면 새 전략 실행 / 또는 패턴 A (팀원2 카카오 앱 키 받기) 답변 받으면 그 키로 진행
+
+### 📨 팀원2 카카오 키 부탁 카톡 전달 완료 (2026-05-31)
+- 패턴 A 선택: 팀원2가 본인 카카오 계정으로 새 Bus Cignal 카카오 앱 생성 + 카카오맵 토글 ON → 키 두 개 전달
+- 카톡 안내문 작성 + 사용자가 팀원2에게 전달
+- 받을 키: `NEXT_PUBLIC_KAKAO_MAP_API_KEY` (JS), `KAKAO_REST_API_KEY` (REST)
+- 도메인 등록 포함 (localhost:3000 + bus-cignal.vercel.app)
+- 5~10분 소요 예상, 팀원2 답변 대기 중
+
+### 🗑 팀장 카카오 앱(1470045) 영구 삭제 완료 (2026-05-31)
+- 노출됐던 옛 키 즉시 무효화:
+  - ~~JS 키 `2970db3b1e9c5732e2449cf19e3660f4`~~ → 무효
+  - ~~REST 키 `5f64a39e01a58f9f36b5c3c0a10a125e`~~ → 무효
+- 비즈 앱 전환·비즈니스 정보 심사 신청 이력도 함께 사라짐 (어차피 안 쓸 거였음)
+- 본인 인증·약관 동의 이력은 팀장 카카오 계정에 남음 (영향 없음)
+- 카카오 계정에 남은 앱: Carbus(1462065), 신의 악단(1442060) — 둘 다 카카오맵 무관 또는 다른 사람 명의
+- **후속 작업**:
+  - [ ] 1Password 옛 카카오 항목 archive
+  - [ ] git history grep으로 옛 키 노출 흔적 검사 (`git log --all -p | grep "5f64a39e\|2970db3b"`)
+  - [ ] 채팅 스크롤백 클리어 (이번·이전 세션)
+
+---
+
+### 🟡 Vercel Production env vars 입력 대기 (2026-05-31)
+
+**진행 완료**:
+- ✅ Vercel Production Branch = `main`으로 복원 (이전 임시 `temp/landing-for-kakao` 해제)
+- ✅ Hobby Plan 확인 → ⚠️ `vercel.json`의 6시간 cron(`payment-reminder`) Hobby에서 거부됨 → working branch에서 daily로 수정 필요 (또는 Pro 업그레이드, $20/월 + $20 무료 크레딧)
+- ✅ 랜덤 시크릿 3개 생성 (1Password 저장 권장):
+  - `MASTER_SESSION_SECRET` = base64 48바이트
+  - `OPERATOR_SESSION_SECRET` = base64 48바이트
+  - `CRON_SECRET` = hex 32바이트
+  - (실제 값은 2026-05-31 Cowork 세션 채팅 참조 또는 1Password 저장본)
+
+**다음 세션에서 한꺼번에 bulk paste 예정 (17개)**:
+
+| 변수 | 출처 | 상태 |
+|---|---|---|
+| NEXT_PUBLIC_SUPABASE_URL | 캡처값 | ✅ 준비 |
+| NEXT_PUBLIC_SUPABASE_ANON_KEY | 1Password (legacy JWT) | ⏳ 사용자 수집 |
+| SUPABASE_SERVICE_ROLE_KEY | 1Password (legacy JWT) | ⏳ 사용자 수집 |
+| NEXT_PUBLIC_FIREBASE_API_KEY ~ APP_ID (6) | 캡처값 | ✅ 준비 |
+| FIREBASE_ADMIN_CLIENT_EMAIL | 캡처값 (공개) | ✅ 준비 |
+| FIREBASE_ADMIN_PRIVATE_KEY | `~/.secrets/bus-cignal/admin-sdk.json` 의 `private_key` (개행 `\n` escape) | ⏳ 사용자 수집 |
+| NEXT_PUBLIC_KAKAO_MAP_API_KEY | 팀원2 카카오 JS 키 | ⏳ 팀원2 답변 대기 |
+| KAKAO_REST_API_KEY | 팀원2 카카오 REST 키 | ⏳ 팀원2 답변 대기 |
+| MASTER_PASSWORD_HASH | bcrypt 해시 (외부 셋업 5/5) | ⏳ 사용자 수집 또는 생성 |
+| MASTER_SESSION_SECRET | 생성됨 | ✅ 준비 |
+| OPERATOR_SESSION_SECRET | 생성됨 | ✅ 준비 |
+| CRON_SECRET | 생성됨 | ✅ 준비 |
+
+**⚠️ Production에 절대 넣지 말 것**: `ENABLE_DEV_LOGIN` (dev 전용)
+
+**Foundation 빌드 검증 상태**: 최근 main 배포 모두 Error (env vars 0개 상태에서 빌드 시도해서) — env vars 입력 후 재배포 트리거 필요. Production Branch는 이미 main으로 복원됨
 
 ### 다음 세션 시작 방법 (사용자 가이드)
 
