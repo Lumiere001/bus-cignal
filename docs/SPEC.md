@@ -33,7 +33,7 @@ tags: [bus-cignal, planning, project, finalized, v1-1]
   - **간사 = CCC 로그인** (CCC 신원 전달 → 검증 → 자체 세션) / **마스터 = 비밀번호 only**
   - **PWA + FCM 푸시 = 옵트인** (간사·학생 모두, 카톡 내장 브라우저는 인앱만)
 - **사용자**: 마스터 (CCC IT 사역부) · 차량 간사 N명 · 학생 수련회당 수백~수천
-- **기술**: Next.js 15 + Supabase + Firebase Firestore + 카카오맵 + PWA (FCM) + Vercel (기본 도메인)
+- **기술**: Next.js 16 + Supabase + Firebase Firestore + 카카오맵 + PWA (FCM) + Vercel (기본 도메인)
 
 ---
 
@@ -61,11 +61,11 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 - v1.1 참고: 간사가 요청한 "지구 내 차량 인벤토리(버스/스타렉스/자차)·지구 내 학생 신청"은 본질적으로 carbus-web 영역. Bus Cignal에는 **V1.5 stretch**로만 검토 (시간 남으면).
 
 ### 1.4 목표
-1. **공정성**: timestamp + FIFO + 우선순위
+1. **공정성**: 신청 시각순 정렬 + 간사 수동 선택 + 승인/거절 로그 투명성
 2. **투명성**: ledger·매트릭스
 3. **학생 직접 접근**: 예약번호 + 매칭·지도·간사·채팅·취소
 4. **현장 소통**: 채팅 + PWA 푸시
-5. **확장**: 전국 52개 지구
+5. **확장**: 전국 53개 지구
 
 ---
 
@@ -296,7 +296,7 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 - `/admin/rejections` 거절 단순 알림 목록
 - `/admin/system` 신청 마감일·점검 모드·로그
 
-**총 31개 페이지** (risk-trips 제거, signup·login·admin/login 추가 정리).
+**총 32개 라우트** (page.tsx 기준; `/404`·`/500`은 Next not-found 컨벤션이라 별도). risk-trips 제거, signup·login·admin/login 정리.
 
 ### 4.5 PWA
 - `app/manifest.ts`
@@ -332,7 +332,7 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 [기본 정보 — CCC 로그인에서 수신]
 이름: (CCC 수신, 읽기 전용)
 전화: (CCC 수신)
-소속 지구: (CCC 제공 시 자동배정 / 미제공 시 드롭다운 52개)
+소속 지구: (CCC 제공 시 자동배정 / 미제공 시 드롭다운 53개)
 캠퍼스: (CCC 수신)
 
 [상행 출발지]
@@ -706,7 +706,7 @@ fn anonymize_expired_data():            -- cron 매일 새벽 3시 KST (#15)
 ## 9. 기술 스택
 
 ### 9.1 본체
-- Next.js 15 App Router + TypeScript strict
+- Next.js 16 App Router + TypeScript strict
 - Tailwind + shadcn/ui (Claude chat 디자인 선정)
 - Supabase (PostgreSQL + RLS) — Seoul. 간사 인증은 **CCC 로그인 + 자체 세션** (Supabase Auth/Google OAuth 미사용)
 - Vercel (기본 도메인, custom 도메인 X)
@@ -892,7 +892,7 @@ HTTPS · RLS · Firestore Rules · 1Password · 마스터 비번 · 접근 로�
 | 오프라인 | Firestore 캐시 + PWA `/offline` |
 | 접근성 | 시맨틱 · alt · label · 키보드 |
 | 보안 | RLS · Firestore Rules · 시크릿 1Password · 마스터 비번 |
-| 확장 | 52개 지구 + 수련회당 수천 |
+| 확장 | 53개 지구 + 수련회당 수천 |
 | 개인정보 | 최소 수집 · 90일 후 매일 새벽 익명화 |
 | 테스트 | 단위 90%+ (코어) · 통합 핵심 · **E2E 필수 (iOS PWA 푸시)** |
 
@@ -947,7 +947,7 @@ HTTPS · RLS · Firestore Rules · 1Password · 마스터 비번 · 접근 로�
 
 - `docs/SPEC.md` — 이 문서 (코드 저장소 사본)
 - `docs/OVERVIEW.md` — 외부 공유
-- `docs/REGIONS.md` — 52개 지구
+- `docs/REGIONS.md` — 53개 지구
 - `data/regions.csv` — seed
 - `CLAUDE.md` / `AGENTS.md` — AI 컨텍스트
 - `ONBOARDING.md`, `CONTRIBUTING.md`, `COWORK.md`

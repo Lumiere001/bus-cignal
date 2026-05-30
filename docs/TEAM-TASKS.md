@@ -26,6 +26,7 @@
 |---|---|
 | **팀원1 (운영자·마스터)** | `app/operator/*` · `app/admin/*` · `lib/matching/*` · `lib/admin/*`(신설) · `lib/settlement/*` · `components/operator|admin/*` |
 | **팀원2 (학생·채팅)** | `app/me/*` · `app/r/*` · `app/chat/*` · `lib/firebase/*` · `lib/kakao/*` · `lib/passenger/*`(신설) · `components/me|chat/*` |
+| **팀장/CC (Foundation·인프라)** | CCC 인증·세션·미들웨어 · `lib/notifications/*`(알림 엔진 18이벤트) · cron(리마인더·익명화) · PWA infra(manifest·sw·FCM 등록) · seed·dev로그인 우회 |
 | **공유 (변경 시 팀장+상대 합의)** | `lib/supabase/*`(types·client) · `supabase/migrations/*` · `lib/validators/*` · `lib/labels.ts`(신설) · `app/page.tsx` · `components/ui/*` |
 
 > 🔴 DB 마이그·RLS·매칭 엔진·정산 변경 = `core` 라벨 + 팀장 명시 합의 (ROLES §5).
@@ -60,14 +61,14 @@
 | 1 | `/r/:code` 학생 진입 (이름 + 전화 끝 4자리 검증 → 세션 30일) | §3.S5 | `match_passengers.access_token_hash` 검증 |
 | 2 | `/me` 다중 매칭 카드 (노선·시간·요금·예약번호·[지도][채팅][취소]) | §5.7 | 출발 시각 가까운 순 |
 | 3 | `/me/cancel/:matchId` 학생 자의 취소 (환불 문의 안내, D-1 강안내) | §5.8 | 양쪽 간사 알림 |
-| 4 | 카카오맵 임베드 컴포넌트 `lib/kakao/` (출발지 좌표 → 지도) | §9.4 | dev JS 키 |
+| 4 | 카카오맵 임베드 컴포넌트 `lib/kakao/` (출발지 좌표 → 지도) | §9.4 | 본인 카카오 앱 JS 키 (팀원2 등록·제공) |
 | 5 | **PWA 옵트인 흐름** — `/me` 부드러운 배너 → 홈화면추가/알림허용 안내 (iOS/Android 분기) | §9.3 | 조회는 설치 없이 항상 |
 | 6 | Firebase 채팅 `lib/firebase/` (Firestore onSnapshot, 세션→Custom Token, `/chat/:tripId`) | §9.2·§3.S6 | |
 
 - **지금 바로 가능**: 1·2·3은 Supabase만으로 개발 가능.
 - **블로커**:
   - Firebase Admin 키(Custom Token) = 팀장 1Password(dev). 받기 전엔 채팅(6) UI는 mock으로 선개발.
-  - 카카오맵 "추가 기능"(고급) = 심사 대기. **기본 지도 표시는 JS 키로 가능**.
+  - 카카오맵 키 = **팀원2가 본인 카카오 개발자 계정으로 앱 등록·제공** (팀장 비즈 주체 충돌 예외). 기본 지도는 JS 키로 가능, 고급(좌표 등)은 심사 대기.
 
 ---
 

@@ -51,7 +51,7 @@ To: 다음 CC 세션 / Cowork / 팀원
 > (과거 커밋에 카카오 REST API Key가 평문 노출 → **rotation 권장**, 아래 자동화 규칙 참조)
 
 - 운영 시크릿(service_role·Firebase Admin·MASTER_PASSWORD): 팀장 1Password
-- 팀원 dev 키(anon·dev Firebase·카카오 JS): "Bus Cignal Team Dev" 1Password vault
+- 팀원 dev 키(dev Firebase 웹 config): 공유. **카카오 JS/REST 키는 팀원2가 본인 앱 등록해 제공** (팀장 비즈 주체 충돌 예외)
 
 ---
 

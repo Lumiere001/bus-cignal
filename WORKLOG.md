@@ -98,9 +98,9 @@ claude
 다음 순서로 진행:
 
 ### Phase 1 — ✅ 완료 (2026-05-28, PR #1 squash 머지)
-- Next.js 15 스캐폴드 + TypeScript strict + Tailwind
+- Next.js 16 스캐폴드 + TypeScript strict + Tailwind
 - shadcn/ui 초기 + Pretendard 폰트
-- 33개 페이지 placeholder 라우팅
+- 32개 라우트 placeholder 라우팅
 - 디자인 시스템 base (색상·spacing)
 - CI 설정 (GitHub Actions: typecheck·lint·test·build)
 - ESLint·Prettier 설정
@@ -110,7 +110,7 @@ claude
 - Supabase 클라이언트 (server/client/types)
 - 간사 인증 미들웨어 (**CCC 로그인** + 자체 세션, ⛔ CCC IT 신원 전달 방식 대기 — 그동안 dev 세션 우회로 개발)
 - 마스터 비번 인증 미들웨어 (/admin/login)
-- DB 마이그 1차 (12개 테이블 + RLS) + seed (52개 지구)
+- DB 마이그 1차 (12개 테이블 + RLS) + seed (53개 지구)
 - Firebase 클라이언트 + Custom Token 발급 API
 - 카카오맵 SDK 통합 + 지오코딩
 - PWA 셋업 (next-pwa + manifest + sw + FCM)
@@ -179,8 +179,8 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 - **P2-3** SSR 클라이언트 4종 (browser·server·middleware·admin) + 루트 세션 미들웨어
 - **P2-4** 마스터 비번 인증 ✅: `/admin/login` + jose JWT 세션 24h + 5회 1h 잠금 + `/admin` 미들웨어 보호. bcrypt 호환 검증
 - `feat/foundation-phase-2` 4 commit (453b6ee·a00356d·72b85bb)
-- ⏳ 남음: **Google OAuth(operator)** = Cowork 외부설정 → P2-5 Firebase → P2-6 PWA
-- ⚠️ RLS 세밀 정책(operator/passenger)은 OAuth 인증 스킴 확정 후 별도 마이그
+- ⏳ 남음: **Google OAuth(operator)** = Cowork 외부설정 → P2-5 Firebase → P2-6 PWA  *(→ v1.1 정정: Google OAuth 폐기, CCC 로그인으로 전환)*
+- ⚠️ RLS 세밀 정책(operator/passenger)은 OAuth 인증 스킴 확정 후 별도 마이그  *(→ v1.1: CCC 로그인 + 자체 세션 스킴, 앱레이어 강제)*
 
 ### 2026-05-28 — Foundation Phase 1 완료 (PR #1 squash 머지, main 2c16ad0)
 - Next.js **16** + React 19 + TS strict + Tailwind **v4** + ESLint 9 + Prettier 3
@@ -188,7 +188,7 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 - SPEC §4 폴더 구조 (lib·components·supabase·tests) + 33 라우트 placeholder + not-found
 - vitest 3 (+vite 6, .mts config) + GitHub Actions CI (typecheck·lint·test·build + gitleaks) + CODEOWNERS
 - CI 그린 통과 (verify + secret scan). 5 commit → squash 머지
-- ⚠️ **버전 메모**: SPEC "Next.js 15" → **16** 갱신 필요 (출시 일정도 7월보다 앞당겨짐 반영)
+- ⚠️ **버전 메모**: SPEC "Next.js 16" → **16** 갱신 필요 (출시 일정도 7월보다 앞당겨짐 반영)
 - ⚠️ **Vercel**: 임시 랜딩(정적) 설정이라 Next 앱 preview 배포 fail — 카카오 승인 후 main production 전환 시 Next.js 재설정 필요
 
 ### 2026-05-28 — 외부 셋업 5/5: 마스터 비번 + bcrypt hash (CC, vault 보관)

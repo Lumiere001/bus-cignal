@@ -29,7 +29,7 @@
 
 | 작업 | 이유 |
 |---|---|
-| 외부 도구 프로젝트 생성 (Supabase·Firebase·카카오·Vercel) | 시크릿 발급·관리 권한 |
+| 외부 도구 프로젝트 생성 (Supabase·Firebase·Vercel) | 시크릿 발급·관리 권한 |
 | 운영 DB 마이그레이션 적용 | 운영 데이터 영향 |
 | Vercel 환경 변수 변경 | 운영 시크릿·재배포 |
 | 마스터 비밀번호 생성·rotation | 마스터 권한 |
@@ -66,7 +66,7 @@
 ## 3. 파일 접근 권한
 
 ### vault (`~/LIFE/projects/bus-cignal/`) — 팀장만
-- `README.md` (v1.0 정본)
+- `README.md` (v1.1 정본)
 - `OVERVIEW.md` (외부 공유용 원본)
 - `REGIONS.md`, `data/regions.csv`
 - **`team-lead-prompts/setup-*.md`** ← 외부 셋업
@@ -81,9 +81,15 @@
 - `docs/AI-PROMPTS/` (공통 프롬프트만, setup 제외)
 - `CHANGELOG.md`
 
-### 시크릿 (1Password)
+### ⚠️ 카카오맵 키 = 예외 (팀원이 등록·제공)
+- 팀장의 **비즈니스 주체 충돌**로 카카오맵 고급 권한을 팀장이 못 받음.
+- → **팀원2(또는 별도 사업주체를 가진 팀원)가 본인 카카오 개발자 계정으로 앱을 등록**하고 JS 키·REST 키를 제공.
+- 코드는 env var(`NEXT_PUBLIC_KAKAO_MAP_API_KEY`·`KAKAO_REST_API_KEY`) 기준이라 **키 출처와 무관하게 동작**.
+- 그 외 외부 도구(Supabase·Firebase·Vercel) 생성은 팀장.
+
+### 시크릿 (1Password / 팀 채널)
 - **팀장 vault**: 운영 시크릿 (service_role·Firebase Admin·MASTER_PASSWORD 등)
-- **공유 vault**: 팀원용 dev 키만 (anon key·dev Firebase·카카오 JS 키)
+- **공유**: 팀원용 dev 키 (dev Firebase 웹 config). **카카오 키는 팀원2가 제공**. (1Password 없으면 팀 노션 등 — 단 진짜 시크릿은 평문 공유 주의)
 
 ---
 

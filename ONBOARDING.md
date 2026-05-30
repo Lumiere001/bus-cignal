@@ -142,9 +142,9 @@ NEXT_PUBLIC_FIREBASE_VAPID_KEY=<...>
 FIREBASE_ADMIN_PRIVATE_KEY=<...>
 FIREBASE_ADMIN_CLIENT_EMAIL=<...>
 
-# 카카오맵
-NEXT_PUBLIC_KAKAO_MAP_API_KEY=<팀장에게 받기>
-KAKAO_REST_API_KEY=<팀장에게 받기>
+# 카카오맵 (팀원2가 본인 카카오 앱 등록 후 제공 — 팀장 비즈 주체 충돌 예외)
+NEXT_PUBLIC_KAKAO_MAP_API_KEY=<팀원2 제공>
+KAKAO_REST_API_KEY=<팀원2 제공, 서버 지오코딩용>
 
 # 마스터 비번 (개발 환경에서는 본인이 정함)
 MASTER_PASSWORD_HASH=<bcrypt hash, 본인 dev용>
@@ -153,7 +153,7 @@ MASTER_PASSWORD_HASH=<bcrypt hash, 본인 dev용>
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-> Firebase·카카오·마스터 비번 등은 팀장이 운영용 키 별도 1Password에 보관. 팀원은 dev 키만 사용.
+> Firebase·마스터 비번은 팀장이 운영 키 보관(팀원은 dev 키만). **카카오 키는 팀원2가 본인 앱에서 발급해 공유** (팀장 비즈 주체 충돌 예외).
 
 ### 2.5 개발 서버 실행
 

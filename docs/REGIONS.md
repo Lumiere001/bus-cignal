@@ -11,7 +11,7 @@ tags: [bus-cignal, data, regions, seed]
 # Bus Cignal — 전국 지구 데이터
 
 > CCC 전국 지구 마스터 데이터. seed import용 CSV는 `data/regions.csv`.
-> 총 **52개 지구** (특수 부서 3 + 일반 지구 48 + 해외 1).
+> 총 **53개 지구** (특수 부서 3 + 일반 지구 49 + 해외 1).
 
 ---
 
@@ -123,8 +123,8 @@ tags: [bus-cignal, data, regions, seed]
 2. 일반 지구 일괄 (2101~2906, 4701)
 3. 해외 (9999) — 운영 필요 시점에만
 
-### Region 모델 추가 필드 (Bus Cignal `regions` 테이블에)
-v1.0 spec의 `regions` 테이블에 다음 컬럼 추가 권장:
+### Region 모델 필드 (참고 — 이미 반영됨)
+> ⚠️ 아래 컬럼들은 **이미 `20260528000001_initial_schema.sql`에 포함**되어 있습니다. 추가 ALTER 불필요 (참고용).
 ```sql
 ALTER TABLE regions ADD COLUMN code TEXT UNIQUE;        -- CCC 지구번호 (1408 등)
 ALTER TABLE regions ADD COLUMN area TEXT;               -- 권역 (서울, 경기 등)
@@ -138,4 +138,4 @@ ALTER TABLE regions ADD COLUMN category TEXT            -- regular | special_min
 
 | 일자 | 변경 | 비고 |
 |---|---|---|
-| 2026-05-26 | 초기 작성. 팀장가 CCC 지구 목록 제공, 52개 등록 | v1.0 확정 시점 |
+| 2026-05-26 | 초기 작성. 팀장이 CCC 지구 목록 제공, 53개 등록 (seed 기준) | v1.0 확정 시점 |

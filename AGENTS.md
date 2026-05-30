@@ -47,7 +47,7 @@
 
 ## 3. 기술 스택
 
-- Next.js 15 App Router + TypeScript
+- Next.js 16 App Router + TypeScript
 - Tailwind CSS + shadcn/ui
 - Supabase (PostgreSQL + RLS) — Seoul. 간사 인증 = CCC 로그인 + 자체 세션 (Supabase Auth 미사용)
 - Firebase Firestore — asia-northeast3 (채팅 전용)
@@ -208,9 +208,9 @@ Scope: matching · settlement · chat · auth · db · ui · operator · passeng
 ## 9. 관련 문서
 
 - `README.md` — 저장소 첫화면
-- `docs/SPEC.md` — **v1.0 정본 (최우선)**
+- `docs/SPEC.md` — **v1.1 정본 (최우선)**
 - `docs/OVERVIEW.md` — 외부 공유 친근 톤
-- `docs/REGIONS.md` — 지구 마스터 52개
+- `docs/REGIONS.md` — 지구 마스터 53개
 - `ONBOARDING.md` — 팀원 시작 가이드
 - `CONTRIBUTING.md` — commit·PR 규칙
 - `COWORK.md` — Cowork 활용

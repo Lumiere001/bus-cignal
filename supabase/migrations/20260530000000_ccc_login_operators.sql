@@ -20,3 +20,8 @@ comment on column operators.campus   is 'CCC 캠퍼스(학교). 미제공 시 nu
 comment on column operators.ccc_role is 'CCC 직분 간사/순장/순원 (확인 예정, 권한 보조용). 미제공 시 null';
 
 -- ※ email은 이미 nullable — CCC는 이메일·성별을 전달하지 않음(미수집, PIPA 최소수집).
+
+-- 4) v1.1 매칭 수동화: 24h 자동 만료 폐지 → payment_due_at은 더 이상 강제 불필요(nullable).
+--    송금 지연 리마인더는 matched_at + threshold로 계산 (due 컬럼 미사용/선택).
+alter table matches alter column payment_due_at drop not null;
+comment on column matches.payment_due_at is 'v1.1: 자동 만료 폐지로 선택값(nullable). 리마인더는 matched_at 기준';

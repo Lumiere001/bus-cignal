@@ -38,7 +38,7 @@ pnpm build
 
 ## 기술 스택
 
-- **Frontend**: Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui
+- **Frontend**: Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
 - **DB·Auth**: Supabase (Seoul)
 - **Chat**: Firebase Firestore (asia-northeast3)
 - **Maps**: 카카오맵 SDK
@@ -51,9 +51,9 @@ pnpm build
 
 | 파일 | 용도 |
 |---|---|
-| [`docs/SPEC.md`](docs/SPEC.md) | **v1.0 정본 기획안** (필독) |
+| [`docs/SPEC.md`](docs/SPEC.md) | **v1.1 정본 기획안** (필독) |
 | [`docs/OVERVIEW.md`](docs/OVERVIEW.md) | 외부 공유용 친근 톤 |
-| [`docs/REGIONS.md`](docs/REGIONS.md) | 전국 지구 마스터 (52개) |
+| [`docs/REGIONS.md`](docs/REGIONS.md) | 전국 지구 마스터 (53개) |
 | [`CLAUDE.md`](CLAUDE.md) | AI 컨텍스트 (Claude Code 우선) |
 | [`AGENTS.md`](AGENTS.md) | AI 컨텍스트 (Codex 등, CLAUDE.md 미러) |
 | [`ONBOARDING.md`](ONBOARDING.md) | **팀원 시작 가이드** (먼저 읽기) |

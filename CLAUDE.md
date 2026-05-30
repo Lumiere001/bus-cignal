@@ -54,7 +54,7 @@
 
 | 영역 | 도구 |
 |---|---|
-| Frontend | Next.js 15 App Router + TypeScript |
+| Frontend | Next.js 16 App Router + TypeScript |
 | Styling | Tailwind CSS + shadcn/ui |
 | DB | Supabase PostgreSQL + RLS — Seoul 리전 (간사 인증 = CCC 로그인 + 자체 세션, Supabase Auth 미사용) |
 | Chat | Firebase Firestore (asia-northeast3) — 채팅 전용 |
@@ -95,7 +95,7 @@ bus-cignal/
 │   ├── migrations/             # 순차 SQL 마이그레이션
 │   └── seed.sql                # 지구 데이터 등
 ├── docs/
-│   ├── SPEC.md                 # v1.0 정본 기획안
+│   ├── SPEC.md                 # v1.1 정본 기획안
 │   ├── OVERVIEW.md             # 외부 공유용
 │   ├── REGIONS.md              # 지구 마스터
 │   └── decisions/              # 결정 로그
@@ -380,7 +380,7 @@ Closes #12
 | `README.md` | 저장소 첫화면 (짧은 소개·셋업) |
 | `docs/SPEC.md` | **v1.0 Confirmed Final 정본** (최우선 참조) |
 | `docs/OVERVIEW.md` | 외부 공유용 친근 톤 |
-| `docs/REGIONS.md` | 전국 지구 마스터 (52개) |
+| `docs/REGIONS.md` | 전국 지구 마스터 (53개) |
 | `docs/decisions/` | 결정 로그 (작성 예정) |
 | **`WORKLOG.md`** | **작업 진행 (AI 자동 갱신)** |
 | **`docs/SESSION-HANDOFF.md`** | **도구 전환 인계 (AI 자동 작성)** |
