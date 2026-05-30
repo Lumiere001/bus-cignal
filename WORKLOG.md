@@ -155,7 +155,8 @@ Foundation 끝나고 팀원 초대 직전에 CC가 만들어야 할 것:
 
 4. **각 팀원별 맞춤 멘트 2개** (팀원 1·팀원 2 분담 명시)
 
-→ Foundation Phase 3 완료 시점에 CC가 위 3개 문서 + 멘트 작성. 사용자가 카톡으로 팀원에게 전달.
+→ ✅ (2026-05-30) `docs/TEAM-INVITE-MESSAGE.md` 생성 — 팀원1·2 카톡 + 받을자료 체크리스트.
+   COLLABORATION-GUIDE / TEAM-WARNINGS 내용은 `ROLES.md`·`docs/GIT-WORKFLOW.md`·`docs/TEAM-TASKS.md`·`CONTRIBUTING.md`가 커버(별도 파일 생략).
 
 ### 초대 전 사용자(팀장)가 할 일
 - 팀원 GitHub collaborator 추가
