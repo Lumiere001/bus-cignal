@@ -19,10 +19,10 @@
 - `chore/` — 빌드·설정·의존성
 
 **예시**:
-- `feat/matching-fifo-queue`
-- `fix/auth-google-oauth-redirect`
+- `feat/matching-queue-ui`
+- `fix/auth-ccc-session-redirect`
 - `refactor/settlement-matrix-query`
-- `docs/spec-v1-clarify-partial-match`
+- `docs/spec-v1-1-clarify-manual-match`
 
 ---
 
@@ -75,19 +75,17 @@
 
 **Good**:
 ```
-feat(matching): partial_offers 슬라이스별 독립 데드라인 구현
+feat(matching): 큐 시각순 정렬 + 간사 수동 승인 UI
 
-S3b 케이스 1 (잔여 자리 증가 시) 처리. Supabase Realtime trigger로
-trip.available_seats 변동 구독, 자동으로 partial_offer 추가 생성.
-
-각 offer는 본인 offered_at + 2h 데드라인 (reset 없음).
+공급 간사가 큐(시각순)에서 신청·학생을 직접 선택해 승인.
+FIFO 강제 없음, 선택 안 된 학생은 큐 잔류 (자동 분할 없음, v1.1).
 
 Closes #12
 ```
 
 **Good**:
 ```
-fix(auth): Google OAuth redirect 후 세션 누락 수정
+fix(auth): CCC 세션 쿠키 누락 수정
 
 Vercel의 cold start에서 cookie가 SetCookie 헤더로 전송되지 않던
 이슈. middleware에서 명시적으로 cookie write 추가.
@@ -121,7 +119,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
 
 ### 제목
 - Commit 메시지 형식과 동일
-- `feat(matching): partial_offers 슬라이스별 데드라인`
+- `feat(matching): 큐 시각순 정렬 + 수동 승인`
 
 ### 본문 템플릿
 
@@ -134,8 +132,8 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
 
 ## 관련 SPEC
 - docs/SPEC.md §3.S3b
-- docs/SPEC.md §6 (partial_offers)
-- docs/SPEC.md §7.4
+- docs/SPEC.md §7 (매칭 방식 — 수동 선택)
+- docs/SPEC.md §6 (도메인 모델)
 
 ## 테스트
 - [ ] pnpm typecheck
@@ -227,11 +225,11 @@ pnpm test
 import { describe, it, expect } from 'vitest'
 
 describe('approve()', () => {
-  it('FIFO 큐 1번째에서만 호출 가능', () => {
+  it('선택한 학생만 매칭, 나머지는 큐 잔류', () => {
     // ...
   })
 
-  it('잔여 자리 부족 시 propose_partial 호출', () => {
+  it('자리보다 많이 선택하면 거부 (avail 한도)', () => {
     // ...
   })
 })

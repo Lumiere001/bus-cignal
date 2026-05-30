@@ -8,78 +8,50 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: Cowork 세션 (2026-05-28, 외부 셋업 1/5·2/5·3/5 부분 진행)
-To: CC 세션
-목적: 임시 랜딩 페이지 코드 작성 + Vercel 배포 + 카카오 비즈니스 정보 심사 재신청
+From: CC 세션 (2026-05-30, v1.1 기획 개정 + 팀원 온보딩 준비)
+To: 다음 CC 세션 / Cowork / 팀원
+목적: 팀원 2명 합류 → feature 병렬 개발 시작
 ```
 
-### 사용자 가이드 (CC 세션 시작)
+### 상황 요약 (2026-05-30 기준)
 
-```bash
-cd /Users/east_star/LIFE   # 또는 본인 cwd
-claude                     # CC 시작
-```
+- **Foundation Phase 1 ✅** (main 머지, PR #1)
+- **Foundation Phase 2 진행 중** (`feat/foundation-phase-2`):
+  - P2-1 로컬 Supabase ✅ / P2-2 DB 12테이블+RLS골격+지구 seed+타입 ✅
+  - P2-3 SSR 클라이언트 4종+미들웨어 ✅ / P2-4 마스터 비번 인증 ✅ (`/admin/login`)
+- **🆕 v1.1 기획 개정 (간사 피드백)** — `docs/SPEC.md`·`docs/OVERVIEW.md` v1.1:
+  - 간사 = **CCC 로그인** (Google OAuth 폐기) / 매칭 = 시각순 정렬 + 간사 **수동 선택** (FIFO 강제·자동 매칭 제거) / 송금 = **자동 만료 폐지** → 소프트 리마인더 + 수동 [자리 풀기] / 학생·간사 PWA = **옵트인** / 이메일·성별 미수집 / 지구 내 차량관리 = V1.5
+  - 코드 반영: 마이그(`20260530000000_ccc_login_operators.sql`)·`lib/auth/operator-session.ts`·`lib/auth/ccc.ts`(스텁)·types·`/login` placeholder
+  - 게이트: typecheck 0 · lint 0 · test 2 · build OK
 
-**CC에게 줄 첫 메시지 (한 줄):**
+### 다음 (우선순위)
 
-```
-Cowork 세션에서 카카오 비즈 앱 전환까지 완료했어. 비즈니스 정보 심사에 운영 중 웹사이트 URL이 필요한데 Bus Cignal이 출시 전이라 막혔어. Vercel 셋업 + 임시 랜딩 페이지 배포해서 그 URL을 카카오에 넣는 흐름으로 가자. WORKLOG.md 읽어보고 시작해줘.
-```
+1. **팀원 2명 온보딩** ← 지금 단계
+   - 팀장: GitHub collaborator 추가 (Cowork/gh) + 1Password "Team Dev" vault 공유 (dev 키만)
+   - 팀원: `ONBOARDING.md` 따라 셋업 → `docs/TEAM-TASKS.md`의 본인 첫 작업
+   - 분담: 팀원1 = 운영자·마스터 UI / 팀원2 = 학생·채팅
+2. **간사 인증 (CCC 로그인)** — ⛔ **CCC IT 답 대기** (신원 전달 방식 A/B/C). 스키마·세션 골격·스텁까지 완료, 방식 확정 후 `verifyCccToken` 구현 + `/login` 연동 + `/operator` 가드 + RLS(앱레이어)
+3. **Firebase 채팅·FCM 클라이언트 통합** (팀원2 영역, 외부 프로젝트는 생성됨)
+4. **PWA (manifest·sw·옵트인 흐름)**
 
-(CC가 자동으로 WORKLOG·SESSION-HANDOFF·CHANGELOG·`.team-role` 읽음)
+### 블로커
 
-### 이번 인계 핵심 (CC가 받아서 할 일)
+- **간사 인증**: CCC IT의 신원 전달 방식 확정 대기 (간사님께 질문 발송 예정)
+- **카카오맵 추가 기능**: 비즈 심사 + 교수님 합의 대기 (기본 JS 지도는 사용 가능)
 
-**상황 요약**
-- Cowork 세션에서 외부 도구 셋업 진행 중: Supabase ✅, Firebase ✅, 카카오 부분 진행
-- 카카오는 **비즈 앱 전환 + 신청 자격 확인까지 완료**. 다음 단계 "비즈니스 정보 심사 신청"에서 막힘
-- 막힌 이유: 카카오가 **실제 운영 중인 웹사이트 URL** + **서비스 화면/기획안 파일** 필수 요구
-- Bus Cignal은 아직 코드 한 줄 없는 출시 전 단계 → URL 없음
+### 자원 상태
 
-**해법 (CC가 진행할 작업 순서)**
-1. **Vercel 계정 확인** (사용자에게 Vercel 가입 여부 물어보기, 없으면 가입 안내 Cowork 프롬프트 발행)
-2. **GitHub repo `Lumiere001/bus-cignal`에 임시 랜딩 페이지 추가**
-   - 옵션 A: 단순 정적 `index.html` (`public/index.html`) — 가장 빠름
-   - 옵션 B: Next.js 스캐폴드 시작 + 임시 `app/page.tsx` — Foundation Phase 1 진입과 동시에
-   - 추천: **옵션 A** (카카오 심사용 임시, Foundation Phase 1은 별도 진행)
-   - 페이지 내용: 서비스명·운영 주체·서비스 설명·예정 출시 일정·연락처
-3. **Vercel 프로젝트 생성 + GitHub 연결** (Cowork 프롬프트로 사용자에게 전달)
-4. **배포 URL 확보** → 사용자가 Cowork으로 카카오 비즈니스 정보 심사 재신청
-   - 카카오 비즈니스 정보 심사 모달 (URL + 기획안 파일)
-   - 기획안 파일 = `docs/OVERVIEW.md`를 PDF로 export 권장 (CC가 만들어서 제공)
-5. 카카오 측 승인 대기 (1~2 영업일)
-6. 승인 후 → 카카오맵 추가 기능 신청 (Cowork)
+- 로컬 Supabase: `supabase start`로 재개 (데이터 유지)
+- `feat/foundation-phase-2`: origin push됨 (단, v1.1 변경분은 **로컬 커밋 후 push 필요**)
+- 외부 프로젝트(Supabase·Firebase·카카오·Vercel): 생성 완료
 
-**랜딩 페이지 콘텐츠 (CC가 작성)**
+### 시크릿 (참고)
 
-서비스 소개·운영 일정·CCC IT 사역부 정보 명시. 다음 요소 포함:
-- Bus Cignal 서비스명 + 짧은 한 줄 소개 ("CCC 전국 여름 수련회 차량 매칭 시스템")
-- 운영 주체: CCC IT 사역부 (한국대학생선교회)
-- 예정 출시: 2026년 7~8월 (여름 수련회 기간)
-- 비영리·CCC 내부 운영 명시
-- 연락처 (운영자 이메일 또는 CCC 공식)
-- 디자인: 미니멀, 카카오맵 사용 의도 짐작 가능 (지도 이미지·버스 일러스트 등)
+> ⚠️ **모든 키 값은 1Password에만.** git·채팅·문서에 평문 금지.
+> (과거 커밋에 카카오 REST API Key가 평문 노출 → **rotation 권장**, 아래 자동화 규칙 참조)
 
-**작업 영역**
-- 팀장 권한 (외부 인프라 셋업 + 운영 repo 수정)
-- 임시 랜딩 = Foundation 진입 아님, 그냥 카카오 심사용 임시
-- 정식 코드 시작은 외부 셋업 5/5 완료 후
-
-**시크릿 정보 (참고용, 사용자가 1Password에 있음)**
-- Kakao App ID: `1470045`
-- JavaScript Key: `2970db3b1e9c5732e2449cf19e3660f4`
-- REST API Key: `5f64a39e01a58f9f36b5c3c0a10a125e`
-- Firebase Project: `bus-cignal` (Number: `745247736840`)
-- Supabase Ref: `zovrgrbrzxpzmgpkxmns` (URL: `https://zovrgrbrzxpzmgpkxmns.supabase.co`)
-
-### 자동 절차 (CC 시작 시 자동 수행)
-
-1. `git fetch origin main` + log 비교
-2. `cat WORKLOG.md` (위 핵심 컨텍스트 확인)
-3. `cat docs/SESSION-HANDOFF.md` (이 파일)
-4. `cat .team-role` → team-lead 확인
-5. `ls ~/LIFE/projects/bus-cignal/team-lead-prompts/` → vault 존재 확인 (팀장 머신)
-6. 사용자에게 "Vercel 계정 있어요? 없으면 가입 프롬프트 드릴게요" 첫 질문
+- 운영 시크릿(service_role·Firebase Admin·MASTER_PASSWORD): 팀장 1Password
+- 팀원 dev 키(anon·dev Firebase·카카오 JS): "Bus Cignal Team Dev" 1Password vault
 
 ---
 
@@ -87,7 +59,8 @@ Cowork 세션에서 카카오 비즈 앱 전환까지 완료했어. 비즈니스
 
 (완료된 인계 시간 역순)
 
-- 없음 (이번이 첫 도구 전환 인계)
+- **2026-05-28** — Foundation Phase 2 P2-1~P2-4 (마스터 비번) 완료. 임시 랜딩(카카오 심사용) 완료.
+- 2026-05-27 — 첫 도구 전환 인계 (외부 셋업)
 
 ---
 
@@ -96,19 +69,20 @@ Cowork 세션에서 카카오 비즈 앱 전환까지 완료했어. 비즈니스
 (`CLAUDE.md`·`AGENTS.md`에 강제 절차 명시되어 있음)
 
 ### Trigger (이 파일 자동 작성 의도)
-- "Cowork으로 넘기자"
-- "디자인 mock 만들자 (Chat에서)"
-- "Supabase 가서 직접 확인"
-- "끝내자", "다음에 이어서"
-- 세션 포화 임박 알림
+- "Cowork으로 넘기자" / "디자인 mock 만들자 (Chat)" / "Supabase 가서 직접 확인"
+- "끝내자", "다음에 이어서" / 세션 포화 임박 알림
 
 ### 자동 작성 절차
-1. 현재 작업 컨텍스트 요약
+1. 현재 작업 컨텍스트 요약 (시크릿 평문 금지 — 1Password 참조만)
 2. `docs/AI-PROMPTS/` 적절한 템플릿 로드
 3. 변수 채워서 복사용 코드 블록 제공
 4. 이 파일 `🔄 현재 인계` 섹션 갱신
 
+### 시크릿 노출 대응 (rotation)
+- 카카오 REST API Key가 과거 커밋에 평문 노출됨 (private repo). 팀원 합류 전 **rotation 권장**:
+  1. 카카오 개발자센터 → 앱 → 보안 → REST API Key 재발급 (Cowork/팀장)
+  2. 1Password + Vercel env(`KAKAO_REST_API_KEY`) 갱신 → 재배포
+  3. (선택) git history 정리는 private+rotation으로 갈음 (filter-repo는 과함)
+
 ### 완료 처리
-사용자 인계 완료 알림 시:
-- `🔄 현재 인계` → `📚 인계 이력`로 이동
-- WORKLOG 갱신 (다음 작업)
+사용자 인계 완료 알림 시: `🔄 현재 인계` → `📚 인계 이력` 이동 + WORKLOG 갱신

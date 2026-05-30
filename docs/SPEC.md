@@ -2,17 +2,17 @@
 agent: claude-code
 status: finalized
 created: 2026-05-26T15:00:00+09:00
-last_modified: 2026-05-27T22:00:00+09:00
+last_modified: 2026-05-30T11:00:00+09:00
 awaiting_approval: false
 priority: high
-tags: [bus-cignal, planning, project, finalized, v1]
+tags: [bus-cignal, planning, project, finalized, v1-1]
 ---
 
-# Bus Cignal — 서비스 기획안 v1.0 (Confirmed Final)
+# Bus Cignal — 서비스 기획안 v1.1 (간사 피드백 반영)
 
 > CCC 전국 여름 수련회 **타지구 차량 매칭·정산·소통 통합 시스템**
 > 운영 주체: **CCC IT 사역부** / 운영 목표: 2026 여름 수련회
-> **v1.0 Confirmed Final (2026-05-27)** — 모든 결정 완료, 본격 개발 진입 직전.
+> **v1.1 (2026-05-30)** — 간사 피드백 반영: ① 간사 = **CCC 로그인** ② 매칭 = **시각순 정렬 + 간사 수동 선택**(FIFO 강제 해제) ③ 부분 매칭 = **수동** ④ 송금 = **자동 만료 폐지, 소프트 리마인더** ⑤ 학생·간사 PWA = **옵트인**. (v1.0 Confirmed Final 2026-05-27)
 
 ---
 
@@ -20,18 +20,18 @@ tags: [bus-cignal, planning, project, finalized, v1]
 
 - **현행 문제**: 카톡 오픈채팅 선착순 손들기 → 순서 분쟁·메시지 묻힘·명단 누락·정산 불투명·학생↔담당자 단절
 - **해결**:
-  - 신청 슬라이스 **FIFO 큐** + 공급 지구 **수동 승인 (큐 1번째만 활성)**
-  - **부분 매칭 = 우선순위 기반 자동** (간사가 학생 등록 시 우선순위 부여)
-  - 송금 데드라인 = 매칭 → "송금 완료" 클릭까지 **24h** (자동 만료)
+  - 신청 슬라이스 **시각순 큐** + 공급 간사 **수동 승인 (강제 잠금 없음, 자유 선택)**
+  - **부분 매칭 = 간사 수동 선택** (우선순위는 참고 힌트, 자동 아님)
+  - 송금 = 수동 2단계("송금 완료" → "입금 확인"). **자동 만료 없음** — 송금 지연 리마인더 + 간사 수동 [자리 풀기]
   - **매칭 후 공급 측 자의 취소 = 불가능** (승인 전 신중 안내)
   - **학생 자의적 취소 가능** — 양쪽 간사 자동 알림 + "환불은 각 지구로 문의" 안내
-  - 만료/취소 시 자리 풀리면 **큐 잔류 row의 우선순위 다음 학생 자동 매칭** (간사 개입 X)
-  - **K2 재신청 추천 알림** — 자리 풀릴 때마다 (B 옵션)
+  - 자리 풀리면 **큐 재노출 + 알림** (자동 재매칭 X, 간사가 다시 수동 선택)
+  - **재신청 추천 알림** — 자리 풀릴 때마다 (거절·취소된 신청 지구)
   - 예약번호 `BUS-XXXX` (이름 + 전화 끝 4자리 검증) + Trip 단위 채팅
   - 지구별 정산 매트릭스
   - **간사 가입 시 출발/도착지 등록** → 출발지 미지정 패널티 불필요
-  - **마스터 = 비밀번호 only** (OAuth X)
-  - **PWA + FCM 푸시 알림** (학생은 첫 매칭 paid 시점에 권유)
+  - **간사 = CCC 로그인** (CCC 신원 전달 → 검증 → 자체 세션) / **마스터 = 비밀번호 only**
+  - **PWA + FCM 푸시 = 옵트인** (간사·학생 모두, 카톡 내장 브라우저는 인앱만)
 - **사용자**: 마스터 (CCC IT 사역부) · 차량 간사 N명 · 학생 수련회당 수백~수천
 - **기술**: Next.js 15 + Supabase + Firebase Firestore + 카카오맵 + PWA (FCM) + Vercel (기본 도메인)
 
@@ -58,6 +58,7 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 
 ### 1.3 carbus-web과의 관계
 **별개 프로젝트.** carbus-web = 광주지구 내부(단일), Bus Cignal = 전국 지구 간(N:N). 코드 별도. 패턴·UI 컴포넌트만 학습 source.
+- v1.1 참고: 간사가 요청한 "지구 내 차량 인벤토리(버스/스타렉스/자차)·지구 내 학생 신청"은 본질적으로 carbus-web 영역. Bus Cignal에는 **V1.5 stretch**로만 검토 (시간 남으면).
 
 ### 1.4 목표
 1. **공정성**: timestamp + FIFO + 우선순위
@@ -76,15 +77,17 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 - 역할: 시스템 전체 관리·간사 가입 승인·지구 부여·이상상황 개입·신청 마감일/점검 모드 settings·전국 정산 매트릭스·거절 발생 모니터링 (단순 알림, V2 임계값)
 
 ### 2.2 차량 간사 (Operator)
-- **인증**: Google OAuth + 마스터 승인 대기 → 승인 후 권한 활성
+- **인증**: **CCC 로그인** — ccc-summer 진입점에서 CCC가 신원(`ccc_id`·이름·전화·소속 지구·캠퍼스, +직분 확인 예정)을 전달 → 우리가 **검증** → **자체 세션 발급**(마스터와 동일 JWT 쿠키 패턴). + 마스터 승인 대기 → 승인 후 권한 활성.
+  - ※ 신원 전달 방식(서명 토큰 JWT / 일회용 코드 + 검증 API / OIDC 중)은 **CCC IT 확인 후 확정** → 그때까지 인증 구현 보류.
+  - ※ "차량 간사 여부"는 CCC가 제공하지 않음 → **마스터 승인이 권한 결정권자**.
 - **가입 시 등록 필수**:
-  - 본인 정보 (이름·전화)
-  - 본인 지구 선택
+  - 본인 정보 (CCC에서 이름·전화 수신)
+  - 본인 지구 (CCC가 제공하면 자동배정, 아니면 선택)
   - **상행 출발지 N개** (지구 내 출발 가능 장소들)
   - **하행 출발지 N개** (평창의 어느 지점)
   - **하행 도착지 N개** (지구 내 도착 가능 장소들)
-- **본인 정보 수정**: 이름·전화 자유. 소속 지구 변경 = 마스터 재승인 필요. Email(Google 계정)은 변경 X.
-- 역할: Trip CRUD (등록된 location에서 선택, 자유 입력 X), Offer 공개, 다른 지구 신청 (학생 명단 + 우선순위), 매칭 승인·거절, 송금 알림 / 입금 확인, 본인 지구 정산
+- **본인 정보 수정**: 이름·전화는 CCC 동기화. 소속 지구 변경 = 마스터 재승인 필요.
+- 역할: Trip CRUD (등록된 location에서 선택, 자유 입력 X), Offer 공개, 다른 지구 신청 (학생 명단 + 우선순위 힌트), 매칭 **수동** 승인·거절, 송금 알림 / 입금 확인, 본인 지구 정산
 
 ### 2.3 학생 (Passenger)
 - **별도 가입 없음**
@@ -121,37 +124,38 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 
 1. `/operator/requests/new` → 검색 (출발지·도착지·날짜)
 2. Trip 선택 → 학생 명단 입력
-3. **각 학생에 우선순위 부여** (입력 순 default 1·2·3·4·5, 명시 수정 가능)
+3. **각 학생에 우선순위 부여** (입력 순 default, 수정 가능) — 공급 간사가 누구를 태울지 고를 때 **참고 힌트** (자동 매칭 아님)
 4. 개인정보 동의 confirm 체크박스 필수
 5. SeatRequest 생성 (requested_at=NOW)
 6. 큐 진입 → 공급 지구 알림 (인앱 + 푸시)
 
-### S3. 매칭 승인 (FIFO + 우선순위 자동 부분 매칭)
+### S3. 매칭 승인 (간사 수동 선택)
 
-**FIFO 강제**: 큐 1번째에만 [승인]·[거절] 활성.
+**자유 선택**: 큐는 시각순 정렬로 **보여주기만** 함. 공급 간사가 어느 신청·어느 학생이든 직접 선택 (강제 잠금 없음).
 
-1. A `/operator/trips/:id` → 큐 1번째 (부산 5명) [승인]
+1. A `/operator/trips/:id` → 큐(시각순) 확인 → 승인할 신청 + 태울 학생 선택
 2. **승인 전 안내 모달**:
-   > "승인 후 공급 지구 본인 사정으로 취소가 불가능합니다. 학생 자의 취소 또는 송금 미완료 시에만 자리가 풀립니다. 신중히 진행해 주세요."
+   > "입금 확정 후 공급 지구 본인 사정으로 취소가 불가능합니다. 학생 자의 취소 또는 송금 미완료 시에만 자리가 풀립니다. 신중히 진행해 주세요."
 3. [승인 확정]:
-   - **잔여 ≥ 5**: 5명 전체 자동 매칭 (학생 1명당 Match 1개, 각 24h Phase 1)
-   - **잔여 = 3**: 우선순위 1·2·3 매칭 + 4·5는 새 SeatRequest로 큐 잔류 (parent_request_id, requested_at 원본, **새 row priority 재정렬 1·2**)
-   - **잔여 = 0**: 자동 거절 + 마스터 알림
-4. B에 알림 + 큐 다음이 1번째로
+   - 선택한 학생만 Match 생성 (학생 1명당 Match 1개)
+   - 자리보다 많이 신청됐으면 **간사가 일부만 선택** (자동 분할·우선순위 재정렬 없음)
+   - 매칭 안 된 학생은 큐 잔류 (간사가 나중에 다시 선택)
+   - **자동 거절 없음** — 안 태우면 큐에 그대로 남음
+4. B에 알림 (송금 안내, 마감 시한 없음)
 
-**거절**: [거절] + 사유 10자+ 필수 → status=rejected, B 알림 + 마스터 알림 (V1 단순 로그)
+**거절**: 신청 선택 → [거절] + 사유 10자+ 필수 → status=rejected, B 알림 + 마스터 알림 (V1 단순 로그)
 
-### S3b. 잔여 자리 변동 시 자동 매칭
+### S3b. 잔여 자리 변동 시 (수동 재매칭)
 
-**Trigger**: 다른 매칭 만료·취소, 학생 자의 취소 → 잔여 자리 +N
+**Trigger**: 송금 지연 [자리 풀기], Phase 2 취소, 학생 자의 취소 → 잔여 자리 +N
 
-→ 시스템 자동:
-- 큐 잔류 SeatRequest 순회 (requested_at ASC)
-- 각 row의 unmatched 학생 ORDER BY priority ASC
-- 가능한 만큼 자동 매칭 (간사 개입 X)
-- 매칭된 학생들에게 알림
+→ 시스템: **자동 재매칭 없음**. 대신
+- 큐에 남아있던 SeatRequest를 그대로 다시 노출 (시각순 정렬)
+- 공급 간사에게 "자리 N석 생김" 알림
+- 거절·취소된 신청 지구에 "자리 났어요" 재신청 추천 알림
+→ 공급 간사가 큐에서 다시 수동 승인 (S3 동일)
 
-### S4. 송금 + Confirm + 만료
+### S4. 송금 + Confirm (자동 만료 없음)
 
 **Happy path**:
 1. B 매칭 화면 → 송금 정보 + 송금 실행
@@ -159,11 +163,10 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 3. A 통장 확인 → [입금 확인] → status=paid + 예약번호 발급
 4. B 화면에 학생별 카톡 공유 문구 [복사]
 
-**Sad path 1 — Phase 1 만료**:
-- matched_at + 23h: B에 "1h 후 만료" 알림
-- matched_at + 24h, payment_reported_at NULL → 자동 expire
-- 자리 풀림 → S3b 자동 매칭 trigger
-- **K2 재신청 추천**: 거절·만료된 SeatRequest의 신청 지구에 "자리 풀림" 알림 (자리 풀릴 때마다, 학생 prefill 재신청 버튼)
+**Sad path 1 — 송금 지연 (자동 만료 없음)**:
+- 매칭 후 일정 시간(예: 24h) 경과 + payment_reported_at NULL → B·A에 "송금 지연" 리마인더 (자동 expire X)
+- 자리는 그대로 잡혀 있음 — 공급 간사가 [자리 풀기]를 눌러야 풀림
+- [자리 풀기] → S3b (수동 재매칭) + 신청 지구 "자리 났어요" 알림 (학생 prefill 재신청 버튼)
 
 **Sad path 2 — Phase 2 취소 (송금 보고 후 미입금)**:
 - B 송금 완료 클릭했지만 실제 입금 X
@@ -205,7 +208,7 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 4. **D-1 이내 취소 시 추가 안내**: "운행이 임박했습니다. 환불이 어려울 수 있어요."
 5. Match.status = cancelled, cancellation_source = passenger
 6. 양쪽 간사 자동 알림 (인앱 + 푸시)
-7. 자리 풀림 → S3b 자동 매칭
+7. 자리 풀림 → S3b (큐 재노출·수동 재매칭)
 
 ### S6. 채팅 (Trip 생성 시점부터 활성)
 
@@ -236,10 +239,10 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 | 매칭 큐 신규 신청 | 공급 지구 | ⭕ | ⭕ |
 | 매칭 확정 | 신청 지구 | ⭕ | ⭕ |
 | 매칭 거절 + 사유 | 신청 지구 | ⭕ | ⭕ |
-| 부분 매칭 자동 처리 (우선순위) | 양쪽 | ⭕ | ⭕ |
-| 자동 후속 매칭 (S3b) | 신청 지구 + 학생 | ⭕ | ⭕ |
-| 송금 데드라인 D-1h | 신청 지구 | ⭕ | ⭕ |
-| Phase 1 만료 (자동) | 양쪽 | ⭕ | ⭕ |
+| 부분 매칭 처리 (간사 수동) | 양쪽 | ⭕ | ⭕ |
+| 자리 풀림 — 큐 재노출/재신청 추천 (S3b) | 신청 지구 + 학생 | ⭕ | ⭕ |
+| 송금 지연 사전 알림 | 신청 지구 | ⭕ | ⭕ |
+| 송금 장기 지연 — [자리 풀기] 권유 | 양쪽 | ⭕ | ⭕ |
 | 송금 완료 보고 | 공급 지구 | ⭕ | ⭕ |
 | 입금 확인 + 예약번호 발급 | 신청 지구 + 학생 | ⭕ | ⭕ |
 | 매칭 취소 (Phase 2) | 신청 지구 | ⭕ | ⭕ |
@@ -261,7 +264,7 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 
 ### 4.1 공통
 - `/` 랜딩 (간사 vs 학생 분기)
-- `/login` Google OAuth (간사 only)
+- `/login` CCC 로그인 진입 (간사 only, ccc-summer에서 넘어옴)
 - `/admin/login` 마스터 비번
 - `/signup` 간사 가입 (이름·전화·지구·**출발/도착지 N개 등록**)
 - `/pending` 마스터 승인 대기
@@ -326,10 +329,11 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 ### 5.3 가입 화면 (`/signup`) — Location 등록 핵심
 
 ```
-[기본 정보]
-이름: [___]
-전화: [___]
-소속 지구: [드롭다운: 52개 지구]
+[기본 정보 — CCC 로그인에서 수신]
+이름: (CCC 수신, 읽기 전용)
+전화: (CCC 수신)
+소속 지구: (CCC 제공 시 자동배정 / 미제공 시 드롭다운 52개)
+캠퍼스: (CCC 수신)
 
 [상행 출발지]
 + 추가 버튼으로 N개
@@ -356,14 +360,18 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 - **도착지**: 본인 등록 location 드롭다운 (방향에 따라 한쪽 평창 고정)
 - 출발 시각·정원·요금·메모 (500자)
 
-### 5.5 매칭 큐 (FIFO 강제 + 승인 안내 모달)
+### 5.5 매칭 큐 (시각순 정렬 + 간사 자유 선택)
 
 ```
-1번  부산 5명  7/15 10:30  [승인] [거절]
-2번  대구 5명  7/15 11:05  🔒 1번 처리 후
+[시각순 정렬 — 강제 잠금 없음. 어느 신청이든 선택 가능]
+부산 5명  7/15 10:30  [학생 선택▾] [승인] [거절]
+대구 5명  7/15 11:05  [학생 선택▾] [승인] [거절]
+… 연락 두절·긴급 등은 순서와 무관하게 처리
+
+[학생 선택] 자리보다 많으면 태울 학생만 체크 (우선순위는 정렬 힌트)
 
 [승인 안내 모달]
-⚠️ 승인 후 공급 지구 본인 사정으로 매칭 취소가 불가능합니다.
+⚠️ 입금 확정 후에는 공급 지구 본인 사정으로 매칭 취소가 불가능합니다.
    신중히 진행해 주세요.
 [취소] [승인 확정]
 ```
@@ -374,7 +382,7 @@ CCC 전국 여름 수련회는 평창에서 진행. 학생은:
 1️⃣ 김○○ · 010-XXXX-1234 · 부산대  [↑↓]
 2️⃣ 박○○ · 010-XXXX-5678 · 부경대  [↑↓]
 …
-※ 잔여 자리 부족 시 우선순위 1번부터 매칭
+※ 우선순위 = 공급 간사 참고 힌트 (자동 매칭 아님 — 공급 간사가 직접 선택)
 
 ☐ 개인정보 처리 본인 동의 받았음 확인
 
@@ -484,8 +492,12 @@ region_locations (                       -- ★ 신규 (가입 시 등록)
 
 operators (
   id uuid pk,
-  region_id uuid fk → regions null,      -- 승인 후 채워짐
-  google_uid text unique, email text, name text, phone text,
+  region_id uuid fk → regions null,      -- 승인 후 채워짐 (CCC가 지구 제공 시 자동)
+  ccc_id text unique,                    -- ★ CCC 고유·불변 식별자 (구 google_uid)
+  email text null,                       -- 미수집 (CCC 미제공) — nullable
+  name text, phone text,
+  campus text null,                      -- ★ CCC 캠퍼스 (있으면)
+  ccc_role text null,                    -- ★ CCC 직분 간사/순장/순원 (확인 예정, 권한 보조용)
   requested_region_id uuid fk → regions null,
   approval_status text check (approval_status in ('pending','approved','rejected','revoked')),
   approved_at timestamptz null, approved_by uuid fk → operators null,
@@ -493,6 +505,8 @@ operators (
   role text check (role in ('operator')) default 'operator',  -- master는 별도 없음
   created_at timestamptz
 )
+-- ※ 간사 인증 = CCC 로그인 (신원 검증 → 자체 세션). Supabase Auth(Google OAuth) 미사용.
+-- ※ "차량 간사 여부"는 CCC 미제공 → approval_status(마스터 승인)가 권한 최종 결정.
 -- ※ master role 제거. master는 환경변수 MASTER_PASSWORD_HASH로만 인증
 
 trips (
@@ -534,7 +548,7 @@ request_passengers (
   UNIQUE (request_id, priority),
   created_at timestamptz
 )
--- ※ 부분 매칭 시 새 row에서 priority 1·2·... 재정렬 (#7)
+-- ※ priority = 공급 간사 참고 힌트 (수동 선택). 자동 분할·재정렬 없음 (v1.1)
 
 matches (
   id uuid pk,
@@ -545,6 +559,7 @@ matches (
   payment_reported_at timestamptz NULL,
   paid_at timestamptz NULL,
   status text check (status in ('awaiting_payment','payment_reported','paid','expired','cancelled')),
+  -- ※ expired = 자동 만료 아님 → 간사가 [자리 풀기]로 수동 해제한 상태 (v1.1)
   reservation_code text unique NULL,
   cancellation_source text NULL check (cancellation_source in ('operator','passenger','system')),
   cancellation_reason text NULL,
@@ -599,62 +614,40 @@ channels/{tripId}/members/{memberId}
 
 ---
 
-## 7. 매칭 알고리즘
+## 7. 매칭 방식 (시각순 정렬 + 간사 수동 선택)
+
+> v1.1: FIFO 강제·자동 부분매칭·자동 후속매칭·자동 만료 **전부 제거**. 간사 수동 선택으로 단순화.
 
 ```
 fn queue(trip):
   return SeatRequest WHERE trip_id = trip.id AND status = 'queued'
-    ORDER BY requested_at ASC
+    ORDER BY requested_at ASC          -- 정렬은 유지 (보여주기용, 강제 아님)
 
 fn available(trip):
   return sum(offers.open) - sum(matches in (awaiting_payment, payment_reported, paid))
 
-fn approve(request):
-  assert request == queue(request.trip)[0]
+fn approve(request, selected_passenger_ids):   -- ★ 간사가 신청·학생을 직접 선택
+  -- 강제 큐 1번째 assert 없음 (어느 신청이든 가능)
   avail = available(request.trip)
-  passengers = request.passengers ORDER BY priority ASC
+  selected = [p for p in request.passengers if p.id in selected_passenger_ids]
+  assert len(selected) <= avail            -- 자리 한도만 검사
+  for p in selected:
+    Match.create(trip, request, p, status='awaiting_payment')   -- payment_due_at 없음 (소프트)
+  -- 선택 안 된 학생은 request에 그대로 잔류 (자동 분할 X)
+  if all passengers matched: request.status = 'matched'
+  log_action(operator, 'approve', request, selected)            -- 투명성 로그
 
-  if avail >= request.seat_count:
-    for p in passengers: Match.create(trip, request, p, payment_due_at=NOW+24h)
-    request.status = 'matched'
-  elif avail > 0:
-    matched = passengers[:avail]
-    unmatched = passengers[avail:]
-    for p in matched: Match.create(trip, request, p, ...)
-    new_request = SeatRequest.create(
-      parent_request_id=request.id,
-      requested_at=request.requested_at,   -- ★ 원본 시각 유지
-      seat_count=len(unmatched),
-      status='queued'
-    )
-    -- ★ 새 row의 priority 1·2·... 재정렬 (#7)
-    for i, p in enumerate(unmatched, start=1):
-      RequestPassenger.move(p, new_request, priority=i)
-    request.status = 'matched'
-  else:
-    request.status = 'rejected'
-    request.reject_reason = 'no_available_seat (auto)'
-    notify_master(request, 'risk_event')
+fn reject(request, reason):              -- 간사 수동 거절 (사유 10자+)
+  request.status = 'rejected'
+  request.reject_reason = reason
+  notify_request_region(request); notify_master(request, 'rejection')
+  log_action(operator, 'reject', request, reason)
 
-fn on_available_seat_increase(trip):   -- ★ S3b 자동
-  -- trigger: match expire/cancel, passenger 자의 취소, capacity 증가
-  for request in queue(trip):
-    avail = available(trip)
-    if avail == 0: break
-    passengers = request.unmatched_passengers ORDER BY priority ASC
-    take = min(len(passengers), avail)
-    for p in passengers[:take]: Match.create(trip, request, p, ...)
-    if take == len(passengers): request.status = 'matched'
-    notify_both_regions(request)
-  -- K2: 만료·거절된 SeatRequest 신청 지구에 "자리 풀림" 알림 (자리 풀릴 때마다, #8)
-  for stale in SeatRequest WHERE status in ('expired','rejected') AND trip_id = trip.id:
-    notify_request_region(stale, 'reapply_recommended')
-
-fn check_payment_phase1_timeout():     -- cron 1분
-  for match in matches WHERE status='awaiting_payment' AND payment_due_at < NOW:
-    match.status = 'expired'
-    notify_both(match)
-    on_available_seat_increase(match.trip)
+fn release_seat(match, operator, reason):   -- ★ 송금 지연 등 간사 수동 [자리 풀기]
+  assert match.status in ('awaiting_payment','payment_reported')
+  match.status = 'expired'                 -- 수동 해제 (자동 cron 아님)
+  notify_both(match)
+  on_seat_freed(match.trip)
 
 fn cancel_match(match, source, reason):
   if source == 'operator': assert match.status == 'payment_reported'  -- Phase 2만
@@ -663,16 +656,26 @@ fn cancel_match(match, source, reason):
   match.cancellation_source = source
   match.cancellation_reason = reason
   notify_both(match)
-  on_available_seat_increase(match.trip)
+  on_seat_freed(match.trip)
+
+fn on_seat_freed(trip):                  -- ★ 자동 재매칭 없음 — 노출 + 알림만
+  -- 큐는 queue(trip)로 그대로 다시 보임 (잔류 신청)
+  notify_supply_operator(trip, 'seats_available')
+  for stale in SeatRequest WHERE status in ('expired','rejected','cancelled') AND trip_id=trip.id:
+    notify_request_region(stale, 'reapply_recommended')   -- 재신청 추천
+  -- 이후 매칭은 간사가 approve()로 수동 진행
+
+fn payment_delay_reminder():             -- cron (만료 아님, 알림만)
+  for match in matches WHERE status='awaiting_payment'
+      AND matched_at < NOW - reminder_threshold:
+    notify_both(match, 'payment_delayed')   -- 자리 회수 X, 간사 판단에 맡김
 
 fn anonymize_expired_data():            -- cron 매일 새벽 3시 KST (#15)
   cutoff = retreat_end_date + 90 days
   if NOW < cutoff: return
   for row in operators, request_passengers, match_passengers, ...:
     if row.created_at < cutoff and not row.anonymized:
-      row.name = '○○○'
-      row.phone = sha256(phone)
-      row.email = sha256(email)
+      row.name = '○○○'; row.phone = sha256(phone); row.email = sha256(email)
       row.anonymized = true
 ```
 
@@ -693,6 +696,11 @@ fn anonymize_expired_data():            -- cron 매일 새벽 3시 KST (#15)
 - 16자+ 권장, 1Password 보관, 90일 rotation 권장
 - **분실 복구**: 새 비번 bcrypt → `.env` + Vercel env 갱신 → 재배포
 
+### 간사 인증 (v1.1 — CCC 로그인)
+- ccc-summer 진입점 → CCC가 신원 전달 → **검증** → 자체 세션 쿠키 발급 (jose JWT, 마스터와 동일 패턴, `bc_operator_session`)
+- 신원 전달 방식(서명 토큰 / 일회용 코드 / OIDC)은 CCC IT 확인 후 확정 → **그때까지 구현 보류**
+- **RLS 주의**: 간사는 Supabase Auth(`auth.uid()`)를 쓰지 않으므로, 간사 영역 접근통제는 **앱 서버 레이어(자체 세션 검증) + service_role 경유**로 강제. 테이블 RLS는 기본 deny + 서버 경유 (또는 세션 기반 커스텀 클레임 — 구현 시 확정).
+
 ---
 
 ## 9. 기술 스택
@@ -700,12 +708,12 @@ fn anonymize_expired_data():            -- cron 매일 새벽 3시 KST (#15)
 ### 9.1 본체
 - Next.js 15 App Router + TypeScript strict
 - Tailwind + shadcn/ui (Claude chat 디자인 선정)
-- Supabase (PostgreSQL + Auth Google OAuth + RLS) — Seoul
+- Supabase (PostgreSQL + RLS) — Seoul. 간사 인증은 **CCC 로그인 + 자체 세션** (Supabase Auth/Google OAuth 미사용)
 - Vercel (기본 도메인, custom 도메인 X)
 
 ### 9.2 채팅 — Firebase Firestore (asia-northeast3)
 - onSnapshot 실시간, offline 캐시, 무료 plan
-- Supabase 인증 후 Firebase Custom Token (Admin SDK)
+- 간사 세션(또는 학생 예약번호) 인증 후 Firebase Custom Token (Admin SDK)
 
 ### 9.3 PWA + 푸시
 - `next-pwa` + manifest + service worker
@@ -713,6 +721,7 @@ fn anonymize_expired_data():            -- cron 매일 새벽 3시 KST (#15)
 - **학생 진입 = 옵션 C** (바로 웹, "홈 화면 추가"는 부드러운 배너, 첫 매칭 paid 시 권유)
 - iOS 16.4+ + 홈 화면 추가 시 푸시 가능
 - 카톡 내장 브라우저 → "Safari로 열기" 안내
+- **간사·학생 모두 푸시 = 옵트인** (CCC 전용 앱 없음 — 카톡 내장이면 인앱만, 크롬·사파리 + 홈화면 추가 시 푸시)
 - **iOS PWA QA 체크리스트 필수** (Playwright + 실기기)
 
 ### 9.4 지도 — 카카오맵 SDK + 지오코딩
@@ -742,7 +751,7 @@ fn anonymize_expired_data():            -- cron 매일 새벽 3시 KST (#15)
 
 ### 9.10 자동 작업 (cron)
 - **익명화** (#15): 매일 새벽 3시 KST. 수련회 종료 + 90일 지난 row 처리
-- Phase 1 만료 체크: 1분
+- 송금 지연 리마인더: 주기적 (자동 만료 아님 — 자리 회수 X, 알림만)
 - 알림 재시도: 위 정책
 
 ### 9.11 보안
@@ -757,7 +766,7 @@ fn anonymize_expired_data():            -- cron 매일 새벽 3시 KST (#15)
 ### 10.1 수집
 | 대상 | 항목 |
 |---|---|
-| 간사 | 이름·이메일(Google)·전화·소속지구·역할 |
+| 간사 | CCC 식별자(ccc_id)·이름·전화·소속지구·캠퍼스 (이메일·성별 미수집) |
 | 학생 | 이름·전화·학교/소속·메모 |
 | 정산 | 매칭 금액·계좌 |
 | 위치 정보 | 출발지·도착지 주소·좌표 (간사가 가입 시 등록) |
@@ -829,7 +838,7 @@ HTTPS · RLS · Firestore Rules · 1Password · 마스터 비번 · 접근 로�
 | K3 | 학생 검증 | 이름 + 전화 끝 4자리 |
 | K5 | public 전환 | 완성 후 |
 | M1 | 알림 채널 | 인앱 + PWA 푸시 (이메일 X) |
-| M2 | 간사 가입 | 가입 → 마스터 승인 → 지구 할당 + location 등록 |
+| M2 | 간사 가입 | CCC 로그인 → 가입 → 마스터 승인 → 지구(자동/할당) + location 등록 (v1.1) |
 | M3 | 학생 자의 취소 | 가능 + 양쪽 간사 알림 + **"환불은 각 지구로 문의" 문구** |
 | M4 | 90일 후 자동 익명화 | 매일 새벽 3시 KST, 마스터 화면 D-day |
 | M5 | 운영 시나리오 | 장애 시 마스터 알림 |
@@ -845,14 +854,19 @@ HTTPS · RLS · Firestore Rules · 1Password · 마스터 비번 · 접근 로�
 | N8 | 우선순위 서버 검증 | DB unique + API Zod |
 | N9 | 동기화 파이프라인 | AI 자동 (CLAUDE.md 강제 절차) |
 | N13 | 거절 모니터링 | V1 단순, V2 임계값 |
-| 부분 매칭 | 우선순위 기반 자동 (2h 룰 제거) |
-| 잔여 row priority | **재정렬** (#7) |
+| 부분 매칭 | **간사 수동 선택** (우선순위 = 힌트, v1.1) |
+| 잔여 row priority | **재정렬 없음** — 큐 잔류 (v1.1) |
 | 카카오톡 알림 | V2 |
 | PWA | V1 도입 (FCM, iOS QA 강화, 학생 진입 = C) |
 | E2E | V1 필수 (iOS PWA 푸시 포함) |
 | carbus-web | 별개 |
 | "팀장" 표기 | 개인 별명 비공개 |
 | **마스터 인증** | **비번 only** (OAuth X) |
+| **간사 인증 (v1.1)** | **CCC 로그인** + 자체 세션 + 마스터 승인 (Google OAuth 폐기) |
+| **매칭 승인 (v1.1)** | 시각순 정렬 + **간사 수동 선택** (FIFO 강제 해제) |
+| **송금 만료 (v1.1)** | **자동 만료 폐지** — 소프트 리마인더 + 수동 [자리 풀기] |
+| **PWA 푸시 (v1.1)** | 간사·학생 모두 **옵트인** (조회 항상, 푸시 선택) |
+| **계좌 추적 (v1.1)** | **안 함** — 수동 송금완료/입금확인 (간사 확인 재확인) |
 | **간사 가입 시 location 등록** | 상행 출발·하행 출발·하행 도착 N개 |
 | **출발지 미지정 패널티** | **제거** (location 등록으로 해결) |
 | **티켓 번호** | `BUS-XXXX` 30자 셋 (혼동 글자 제외) |
@@ -901,6 +915,7 @@ HTTPS · RLS · Firestore Rules · 1Password · 마스터 비번 · 접근 로�
 | 자동 배차 추천 | 김도영 기획 참조 |
 | 카풀 | 안전·책임 이슈 |
 | 통계·분석 | 다음 해 계획 |
+| **지구 내 차량 관리** (차량 인벤토리 버스44/스타렉스11/자차4 + 지구 내 학생 신청) | **V1.5 stretch** (시간 남으면 — 간사 요청) |
 | `/help` 운영자 가이드 | V1.5 |
 | 학생 푸시 ON/OFF 설정 | V1.5 |
 | 다크 모드 | V2 |
@@ -950,3 +965,4 @@ HTTPS · RLS · Firestore Rules · 1Password · 마스터 비번 · 접근 로�
 | 2026-05-26 | v0.3 — 부분 매칭 응답 중 잔여 변동 실시간·partial_offers 슬라이스·정책 1B/2/3 |
 | 2026-05-27 | **v1.0 Confirmed** — 17개 미해결 안건 결정 + 우선순위 기반 자동 부분 매칭 (partial_offers 제거) + PWA V1 도입 + E2E 필수 |
 | 2026-05-27 | **v1.0 Confirmed Final** — 추가 결정 11개 + 핵심 단순화: ① **마스터 인증 = 비번 only** (OAuth 제거) ② **간사 가입 시 출발/도착지 등록** (region_locations 신설) → **출발지 미지정 패널티 전부 제거** ③ 디자인 = Claude chat 선정 ④ PWA 학생 진입 = C (시점별 권유) ⑤ 티켓 번호 `BUS-XXXX` 30자 셋 ⑥ 잔여 row priority 재정렬 ⑦ K2 자리 풀릴 때마다 알림 ⑧ 학생 자의 취소 시 "환불은 각 지구로 문의" 문구 ⑨ Trip 수정 단계화 ⑩ 익명화 매일 새벽 3시 ⑪ 알림 발송 3회 재시도 ⑫ 도구 분담 + 세션 손실 방지 (§15) |
+| 2026-05-30 | **v1.1 — 간사 피드백 반영**: ① 간사 = **CCC 로그인** (Google OAuth 폐기, `operators.google_uid`→`ccc_id`, +campus·ccc_role) ② 매칭 = **시각순 정렬 + 간사 수동 선택** (FIFO 강제·자동 부분매칭·자동 후속매칭·자동 거절 제거, priority=힌트) ③ 송금 = **자동 만료 폐지** → 소프트 리마인더 + 수동 [자리 풀기] ④ 학생·간사 PWA = **옵트인** ⑤ 이메일·성별 **미수집** ⑥ 지구 내 차량 관리 = **V1.5 stretch** |
