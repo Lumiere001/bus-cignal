@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
-import { createHash } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  anonymizeMatchPassengerFields,
+  anonymizeOperatorFields,
+  anonymizeRequestPassengerFields,
+} from "@/lib/anonymize";
 
 export const dynamic = "force-dynamic";
 
-// 수련회 종료 + 90일 후 개인정보 익명화 (매일 새벽 3시 KST). SPEC §10.3·§15.
+// 수련회 종료 + 90일 후 개인정보 익명화 (매일 새벽 3시 KST = 18:00 UTC). SPEC §10.3·§15.
 // 보관 마감일 = system_config 'anonymize_after' (ISO 날짜). 미설정 시 skip.
+// 필드 스크럽 규칙·근거는 lib/anonymize.ts.
 
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
   return !!secret && req.headers.get("authorization") === `Bearer ${secret}`;
-}
-
-function sha(v: string | null): string | null {
-  return v ? createHash("sha256").update(v).digest("hex") : null;
 }
 
 export async function GET(req: Request) {
@@ -35,17 +36,19 @@ export async function GET(req: Request) {
   }
 
   let anonymized = 0;
+  let failed = 0;
 
   const { data: rps } = await db
     .from("request_passengers")
     .select("id, phone")
     .eq("anonymized", false);
   for (const r of rps ?? []) {
-    await db
+    const { error } = await db
       .from("request_passengers")
-      .update({ name: "○○○", phone: sha(r.phone) ?? "", anonymized: true })
+      .update(anonymizeRequestPassengerFields(r))
       .eq("id", r.id);
-    anonymized++;
+    if (error) failed++;
+    else anonymized++;
   }
 
   const { data: mps } = await db
@@ -53,11 +56,12 @@ export async function GET(req: Request) {
     .select("id, phone")
     .eq("anonymized", false);
   for (const m of mps ?? []) {
-    await db
+    const { error } = await db
       .from("match_passengers")
-      .update({ name: "○○○", phone: sha(m.phone) ?? "", anonymized: true })
+      .update(anonymizeMatchPassengerFields(m))
       .eq("id", m.id);
-    anonymized++;
+    if (error) failed++;
+    else anonymized++;
   }
 
   const { data: ops } = await db
@@ -65,17 +69,16 @@ export async function GET(req: Request) {
     .select("id, phone, email")
     .eq("anonymized", false);
   for (const o of ops ?? []) {
-    await db
+    const { error } = await db
       .from("operators")
-      .update({
-        name: "○○○",
-        phone: sha(o.phone),
-        email: sha(o.email),
-        anonymized: true,
-      })
+      .update(anonymizeOperatorFields(o))
       .eq("id", o.id);
-    anonymized++;
+    if (error) failed++;
+    else anonymized++;
   }
 
-  return NextResponse.json({ ok: true, anonymized });
+  if (failed > 0) {
+    console.error(`[cron/anonymize] ${failed}건 익명화 실패 (재시도는 다음 실행)`);
+  }
+  return NextResponse.json({ ok: true, anonymized, failed });
 }
