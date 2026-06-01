@@ -8,18 +8,26 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **상태 (2026-05-31 CC 세션 종료 — 여기부터 읽으세요)**: **v1.1 기획 + Foundation Phase 3 완료, main 머지됨** (PR #3, `origin/main` = 71f0bff).
-  - ✅ **코드**: 테스트 인프라(`seed-dev`·`/dev/login`·`lib/auth/operator.ts`) + PWA manifest + 알림엔진(`lib/notifications`) + cron(`payment-reminder`·`anonymize`, Hobby용 daily) + Playwright·Sentry 스캐폴드 + `docs/GIT-WORKFLOW.md`. 게이트(typecheck·lint·test·build) 통과. 로컬 `supabase db reset` 실검증 OK.
-  - ✅ **팀원 온보딩 문서**: `_secrets/노션-공유용-팀원-dev-셋업.md` (셋업~AI개발 자기완결) → 노션 공유하면 팀원 시작 가능.
-  - ⏳ **Cowork 남음**: Vercel Production env 입력 — `_secrets/vercel-env-prod.txt`(15/18 채워둠; **MASTER_PASSWORD_HASH = setup-5에 있음, 카카오 2개 = 팀원2 대기**) bulk paste → 재배포.
-  - ⏳ **팀장 남음**: 팀원 GitHub username 받아 collaborator 추가 / 팀원2 카카오 키 받기.
+- 📍 **상태 (2026-06-01 CC 세션 — 여기부터 읽으세요)**: **알림 엔진 완성 + 마스터 로그인 E2E 통과 + 로컬 마스터해시 버그 발견·수정.** 외부 블로커(팀원·CCC)는 그대로, CC가 코드로 진척.
+  - ✅ **알림 엔진 완성** (`lib/notifications/`): SPEC §8 18개 이벤트 전부에 대한 **타입안전 `emit()`** (이벤트별 수신자 슬롯 컴파일타임 강제) + 다중 타겟 fanout(양쪽 간사·학생·마스터) + master(둘 다 null row) + 푸시 재시도 백오프(1m→5m→30m, `retry.ts`) 순수로직. 순수 모듈(`events`·`targets`·`retry`) + server-only(`index`) 분리. **Vitest 22개 신규(총 24) 통과.** cron(payment-reminder) `notify()`→`emit("payment_delay", 양쪽 간사)` 이전. 4게이트(typecheck·lint·test·build) 통과. ⚠️ 트리거 wiring(operator·student 페이지 삽입)은 팀원1·2 영역 — 안 건드림(엔진 API만 제공).
+  - 🐞 **버그 발견·수정 (중요)**: **로컬 dev 마스터 로그인이 깨져 있었음.** `MASTER_PASSWORD_HASH`의 `$`(`$2b$12$`)가 `@next/env`(dotenv-expand) 변수확장에 먹혀 런타임에 `/WWy…`로 잘림 → `bcrypt.compare` 항상 실패. **수정**: `.env.local`에서 `$`→`\$` 이스케이프 (resolve `$2b$12$…` 정상 복구 확인). **프로덕션(Vercel)은 무관** — Vercel은 env를 process.env에 직접 주입, `@next/env`가 기존 process.env를 안 덮음 → 해시 리터럴 유지. (⚠️ 향후 `$` 포함 시크릿 추가 시 .env에선 항상 이스케이프)
+  - ✅ **마스터 로그인 E2E 통과** (`tests/e2e/master-auth.spec.ts`, 3 케이스): ① 미인증 `/admin`→`/admin/login` 가드 ② 틀린 비번→오류+남은횟수 ③ **올바른 비번→`/admin` 세션 발급·가드 통과.** dev 서버엔 결정적 테스트 해시를 `.env.development.local`로 주입(`global-setup.ts`, 시크릿 무관, teardown 정리). `pnpm test:e2e` 6/6 통과.
+  - ✅ **Vercel 마스터 해시 점검**: `_secrets/vercel-env-prod.md` 원본 = `$2b$12$…` 정상(첫 `$` 살아있음), 로컬 `.env.local` 해시와 sha256 동일 = 정본 1개. **Vercel엔 RAW 값(이스케이프 X)** 이 들어가야 함(대시보드 env는 dotenv 안 거침). **확정 확인 = 라이브 로그인 1회(Cowork)** — 실패 시 _secrets/1Password의 RAW 해시를 (옵시디언 **소스모드**에서 복사) Vercel `MASTER_PASSWORD_HASH`(Sensitive·Production)에 재입력 + 재배포.
+  - ▶️ **다음**: (A) 팀원 PR 리뷰·머지 (수락 완료 → 개발 시작 가능) / (B) CCC 답 오면 `verifyCccToken` / (C) 알림 엔진을 operator·student 플로우에 wiring(팀원) / (D) PWA push_subscriptions 테이블 마이그(core, 별도) → FCM 실발송.
+  - ✅ **머지됨 (PR #5 squash → `origin/main` = 8398d53)**: `lib/notifications/{events,targets,retry,index}.ts` + `*.test.ts`, `app/api/cron/payment-reminder/route.ts`, `playwright.config.ts`, `tests/e2e/{master-auth.spec,master-auth.fixtures,global-setup,global-teardown}.ts`, `.env.example`. (`.env.local` 이스케이프 = gitignore, 로컬만)
+- 📍 **상태 (2026-05-31 CC 세션 종료 — 여기부터 읽으세요)**: **v1.1 + Foundation Phase 3 + public·merge보호·Vercel 라이브까지 전부 끝. 팀원 합류만 남음.** (`origin/main` = edf45f7, PR #4)
+  - ✅ **코드**: 테스트 인프라(`seed-dev`·`/dev/login`·`lib/auth/operator.ts`) + PWA + 알림엔진(`lib/notifications`) + cron(daily) + Playwright·Sentry + `docs/GIT-WORKFLOW.md`. 게이트 통과. 로컬 `supabase db reset` 실검증 OK.
+  - ✅ **GitHub**: **public + main ruleset 활성**(PR 필수·팀장 코드오너 승인 필수, 팀장 admin bypass) = merge는 팀장만.
+  - ✅ **Vercel 라이브**: https://bus-cignal.vercel.app = **200 OK**. Production env **18개 전부 입력 완료**(Supabase·Firebase·세션시크릿·마스터해시·카카오 2개). `framework=nextjs`로 빌드 해결.
+  - ⚠️ **MASTER_PASSWORD_HASH 주의**: 옵시디언 마크다운이 첫 `$`를 삼켜 `2b$12$...`(첫 `$` 누락) 형태로 들어갔을 수 있음. **마스터 로그인 실패 시 재생성** → `node -e "console.log(require('bcryptjs').hashSync('비번',12))"` → Vercel 재입력.
+  - ⏳ **팀원 합류 대기**: collaborator 초대 발송됨(`dddyoung2`, `dbtjd410-hub`) — **수락 대기 중**. 노션 온보딩 문서 공유 완료. 수락하면 바로 개발 시작.
+  - ✅ **카카오 키 = Vercel 추가 완료** (팀원2 본인 앱 JS·REST, env 18/18, 라이브 200 유지). ※ **지도 동작하려면** 팀원2가 카카오 **JavaScript 키 → "JavaScript SDK 도메인"**(또는 앱설정→플랫폼→Web)에 도메인 2개 등록 필요 — 현재 '제품 링크 관리'에만 등록(그건 카톡 공유용).
   - ⛔ **블로커**: CCC 인증 본구현 = CCC IT 답(A 서명토큰/B 일회용코드/C OIDC) 대기. 그동안 dev 세션 우회로 개발 가능.
-  - 🗑 팀장 카카오 앱(1470045) 삭제 완료 → 옛 노출 키 무효.
-  - ▶️ **다음 자연스러운 작업**: (A) 팀원 합류·개발 지원 / (B) CCC 답 오면 인증 연동 / (C) Cowork env 마무리 후 라이브 배포 확인.
+  - ▶️ **다음 자연스러운 작업**: (A) 팀원 수락→clone→개발 → **팀장 PR 리뷰·머지** / (B) CCC 답 오면 인증 연동(`verifyCccToken`→`/login`→미들웨어 `/operator` 가드→RLS) / (C) 마스터 로그인(`/admin/login`) 테스트 → 해시 깨졌으면 재생성·Vercel 재입력 / (D) 팀원2 지도 SDK 도메인 등록 확인.
 - **🆕 v1.1 기획 개정 (2026-05-30, 간사 피드백)**: ① 간사 = **CCC 로그인** (Google OAuth 폐기) ② 매칭 = 시각순 정렬 + 간사 **수동 선택** (FIFO 강제·자동 부분/후속매칭·자동 거절 제거, priority=힌트) ③ 송금 = **자동 만료 폐지** → 소프트 리마인더 + 수동 [자리 풀기] ④ 학생·간사 PWA = **옵트인** ⑤ 이메일·성별 **미수집** ⑥ 지구 내 차량관리 = V1.5. → `docs/SPEC.md`·`docs/OVERVIEW.md` v1.1 반영 완료, vault 사본 동기화.
 - **다음 단계 (P2-5 간사 인증 = CCC 로그인)**: ⛔ **CCC IT 답 대기** — 신원 전달 방식(A 서명토큰 / B 일회용코드 / C OIDC) 확정 필요. 그 전까지 완료: 마이그(`20260530000000_ccc_login_operators.sql` = `operators.google_uid`→`ccc_id` + `campus`·`ccc_role`)·세션 골격(`lib/auth/operator-session.ts`)·검증 스텁(`lib/auth/ccc.ts`)·`/login` placeholder·types·.env.example. **방식 확정 후**: `verifyCccToken` 구현 → `/login` 연동 → 미들웨어 `/operator` 가드 → RLS(앱레이어). 마이그는 Cowork이 Supabase 적용 + 타입 재생성.
-- **로컬 Supabase 가동 중** (`supabase stop`으로 중지 가능, 재개는 `supabase start`)
-- **마지막 세션 종료**: 2026-05-31 (CC — v1.1 + Foundation Phase 3 완료, PR #3 main 머지, 팀원 온보딩 문서·Vercel env 파일 준비)
+- **로컬 Supabase 중지됨** (세션 종료 시 정리, 데이터 보존 — 재개 `supabase start && supabase db reset`)
+- **마지막 세션 종료**: 2026-05-31 (CC — Foundation 전부 완료: v1.1+Phase3, public+ruleset, Vercel 라이브 200 + env 18개(카카오 포함). 남음: 팀원 수락·CCC답·마스터해시 검증·팀원2 지도 SDK 도메인)
 - **사용자 대기 중 (외부 합의)**: 신의 악단(앱 1442060) 영구 삭제 가능 여부 = 교수님 합의 필요. 신의 악단 = 학교 프로젝트로 만든 앱, 사용자 단독 결정 불가.
 
 ### ⚠️ 카카오맵 전략 재검토 (2026-05-28 검색 결과)
@@ -52,6 +60,34 @@
 - 받을 키: `NEXT_PUBLIC_KAKAO_MAP_API_KEY` (JS), `KAKAO_REST_API_KEY` (REST)
 - 도메인 등록 포함 (localhost:3000 + bus-cignal.vercel.app)
 - 5~10분 소요 예상, 팀원2 답변 대기 중
+
+### 🎉 Vercel Production 라이브 정상화 완료 (2026-05-31, 2차 시도)
+
+- **빌드**: Ready (1m 9s) — PR #4 (vercel framework 수정 + 카카오키 정리) 후 정상
+- **라이브 URL**: https://bus-cignal.vercel.app → **200 OK** ✅
+- 페이지 정상 렌더링: 🚌 출시 준비 중 / Bus Cignal h1 / 서비스 소개 / [간사 로그인] [예약 조회] 버튼
+- Foundation Next.js SSR 동작 확인 (Supabase 클라이언트 초기화 성공)
+
+**입력된 env vars 16개 (Production 전용)**:
+- Supabase: URL, anon JWT ★ (500 푼 핵심), service_role JWT
+- Firebase 공개값 7개 + VAPID + admin_client_email + admin_private_key
+- 랜덤 시크릿 3개 (master·operator session, cron)
+- 마스터 비번 해시 (★ 형식 점검 필요 — `2b$12$...` 첫 $ 누락 가능, 인증 단계에서 재확인)
+
+**보류·미입력 2개** → ✅ **2026-05-31 추가 완료**:
+- NEXT_PUBLIC_KAKAO_MAP_API_KEY = `(키값=_secrets·1Password)` (팀원2 발급, 1Password 저장)
+- KAKAO_REST_API_KEY = `(키값=_secrets·1Password)` (팀원2 발급, 1Password 저장)
+- Vercel Production env vars 총 18개 (Sensitive ON, Production 전용)
+- Redeploy 후 라이브 200 유지 확인 (1m 16s 빌드, https://bus-cignal.vercel.app 정상)
+
+**알려진 잔여 이슈**:
+- ✅ **MASTER_PASSWORD_HASH 정상화 완료** (2026-05-31):
+  - 1차 검증: /admin/login 시도 → "비밀번호 올바르지 않습니다" (4회 남음) — 해시 깨짐 확정 (옵시디언 미리보기 모드가 `$2b$12$...` 양쪽 `$`를 LaTeX로 삼킴)
+  - 옵시디언 RAW(소스) 모드로 재복사 → Vercel UI Edit으로 RAW 해시 paste → Save → Redeploy
+  - 2차 검증: 로그인 성공 ✓ /admin 진입 확인
+  - 1Password에는 RAW 해시(`$2b$12$...`)로 저장 OK. Vercel env에도 RAW 그대로 입력됨
+- ⚠️ FIREBASE_ADMIN_CLIENT_EMAIL은 기존 깨끗한 값 유지 (사용자 새 paste는 마크다운 hyperlink 포맷이라 그건 안 씀)
+- Hobby cron 제약은 PR #4에서 사용자가 daily로 수정해놓은 듯 (커밋 메시지 "vercel framework 수정")
 
 ### 🟡 Vercel Production env vars 11개 입력 + 재배포 시도 → Build Failed (2026-05-31)
 
