@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notify, NOTIFICATION_EVENTS } from "@/lib/notifications";
+import { emit } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -21,26 +21,33 @@ export async function GET(req: Request) {
     Date.now() - REMINDER_HOURS * 60 * 60 * 1000,
   ).toISOString();
 
-  // 매칭됐지만 송금 미보고 + 일정 시간 경과 → 신청 지구에 리마인더
+  // 매칭됐지만 송금 미보고 + 일정 시간 경과 → 송금 장기 지연 알림 (SPEC §8: 양쪽 지구)
   const { data: stale } = await db
     .from("matches")
-    .select("id, request_id")
+    .select("id, request_id, trip_id")
     .eq("status", "awaiting_payment")
     .lt("matched_at", cutoff);
 
   let reminded = 0;
   for (const m of stale ?? []) {
-    const { data: req } = await db
-      .from("seat_requests")
-      .select("operator_id")
-      .eq("id", m.request_id)
-      .maybeSingle();
-    if (req?.operator_id) {
-      await notify({
-        operatorId: req.operator_id,
-        type: NOTIFICATION_EVENTS.PAYMENT_DELAY,
-        payload: { matchId: m.id },
-      });
+    // 신청 지구 간사 = 신청자, 공급 지구 간사 = trip 생성자
+    const [{ data: req }, { data: trip }] = await Promise.all([
+      db
+        .from("seat_requests")
+        .select("operator_id")
+        .eq("id", m.request_id)
+        .maybeSingle(),
+      db.from("trips").select("created_by").eq("id", m.trip_id).maybeSingle(),
+    ]);
+    if (req?.operator_id || trip?.created_by) {
+      await emit(
+        "payment_delay",
+        {
+          supplyOperatorId: trip?.created_by ?? null,
+          requestOperatorId: req?.operator_id ?? null,
+        },
+        { matchId: m.id },
+      );
       reminded++;
     }
   }

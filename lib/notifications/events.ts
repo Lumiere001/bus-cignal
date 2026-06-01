@@ -1,6 +1,8 @@
 /**
  * 알림 이벤트 카탈로그 — SPEC §8 (18개 + 권한 해제).
  * 채널: 인앱 + PWA 푸시(옵트인). 이메일·SMS·알림톡 X.
+ *
+ * 이 파일은 순수(server-only X) — 상수·타입만. 실제 발송은 ./index 의 emit().
  */
 export const NOTIFICATION_EVENTS = {
   REQUEST_NEW: "request_new", // 매칭 큐 신규 신청 → 공급
@@ -26,3 +28,85 @@ export const NOTIFICATION_EVENTS = {
 
 export type NotificationEvent =
   (typeof NOTIFICATION_EVENTS)[keyof typeof NOTIFICATION_EVENTS];
+
+/**
+ * 수신자 슬롯 — emit()이 받는 대상 식별자.
+ * - 키는 이벤트별로 컴파일 타임 강제(RecipientsFor) → 호출자가 누락 못 함.
+ * - 값은 nullable(string|null): 실데이터에서 공급 간사 미지정 등 가능 → 런타임에 skip.
+ * - master는 운영자 row가 없음(MASTER_PASSWORD_HASH env 인증) → operator_id·passenger_id 모두 null로 기록.
+ */
+export type RecipientSlots = {
+  /** 공급 지구(버스 내는 쪽) 간사 */
+  supplyOperatorId: string | null;
+  /** 신청 지구(타는 쪽) 간사 */
+  requestOperatorId: string | null;
+  /** 신청 지구 간사 여럿 — K2 재신청 추천(거절·만료된 지구들) */
+  requestOperatorIds: string[];
+  /** 임의 간사 목록 — 권한 해제(해당 + 동지구 다른 간사) */
+  operatorIds: string[];
+  /** 학생 (match_passengers.id) */
+  passengerId: string | null;
+  /** 마스터 — 별도 식별자 없음 (둘 다 null row) */
+  master: true;
+};
+
+/** 이벤트 → 필요한 수신자 슬롯. SPEC §8 대상 컬럼 그대로. */
+export const EVENT_SLOTS = {
+  request_new: ["supplyOperatorId"],
+  match_confirmed: ["requestOperatorId"],
+  match_rejected: ["requestOperatorId"],
+  partial_match: ["supplyOperatorId", "requestOperatorId"],
+  seat_freed: ["requestOperatorId", "passengerId"],
+  payment_delay_pre: ["requestOperatorId"],
+  payment_delay: ["supplyOperatorId", "requestOperatorId"],
+  payment_reported: ["supplyOperatorId"],
+  paid_code_issued: ["requestOperatorId", "passengerId"],
+  match_cancelled_p2: ["requestOperatorId"],
+  passenger_cancelled: ["supplyOperatorId", "requestOperatorId"],
+  reapply_recommended: ["requestOperatorIds"],
+  depart_d1: ["supplyOperatorId", "requestOperatorId", "passengerId"],
+  depart_d1h: ["supplyOperatorId", "requestOperatorId", "passengerId"],
+  trip_changed: ["supplyOperatorId", "requestOperatorId", "passengerId"],
+  rejection_occurred: ["master"],
+  system_error: ["master"],
+  chat_message: ["supplyOperatorId", "requestOperatorId", "passengerId"],
+  operator_revoked: ["operatorIds"],
+} as const satisfies Record<
+  NotificationEvent,
+  readonly (keyof RecipientSlots)[]
+>;
+
+/**
+ * 이벤트별 페이로드 — 인앱 카드 렌더·딥링크에 필요한 최소 데이터.
+ * notifications.payload(jsonb)에 그대로 저장.
+ */
+export interface NotificationPayloads {
+  request_new: { requestId: string; tripId: string; seatCount: number };
+  match_confirmed: { matchId: string; tripId: string };
+  match_rejected: { requestId: string; reason: string };
+  partial_match: { matchId: string; requestId: string; seatCount: number };
+  seat_freed: { tripId: string; requestId?: string };
+  payment_delay_pre: { matchId: string };
+  payment_delay: { matchId: string };
+  payment_reported: { matchId: string };
+  paid_code_issued: { matchId: string; reservationCode: string };
+  match_cancelled_p2: { matchId: string; reason?: string };
+  passenger_cancelled: { matchId: string; passengerName?: string };
+  reapply_recommended: { tripId: string };
+  depart_d1: { tripId: string; departureAt: string };
+  depart_d1h: { tripId: string; departureAt: string };
+  trip_changed: { tripId: string; changed: string[] };
+  rejection_occurred: { requestId: string; reason: string };
+  system_error: { context: string; detail?: string };
+  chat_message: { tripId: string; preview?: string };
+  operator_revoked: { operatorId: string };
+}
+
+/** 이벤트가 요구하는 수신자 객체 타입 (슬롯 키만 강제). */
+export type RecipientsFor<E extends NotificationEvent> = {
+  [K in (typeof EVENT_SLOTS)[E][number]]: RecipientSlots[K];
+};
+
+/** 이벤트의 페이로드 타입. */
+export type PayloadFor<E extends NotificationEvent> =
+  E extends keyof NotificationPayloads ? NotificationPayloads[E] : never;
