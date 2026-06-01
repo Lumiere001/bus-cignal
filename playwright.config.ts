@@ -13,6 +13,9 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   use: { baseURL, trace: "on-first-retry" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // 마스터 인증 E2E용 결정적 해시를 .env.development.local(.env.local보다 우선)로 주입/정리.
+  globalSetup: "./tests/e2e/global-setup.ts",
+  globalTeardown: "./tests/e2e/global-teardown.ts",
   webServer: {
     command: "pnpm dev",
     url: baseURL,
