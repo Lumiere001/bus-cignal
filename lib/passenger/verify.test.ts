@@ -4,6 +4,7 @@ vi.mock("server-only", () => ({}));
 
 const matchSingle = vi.fn();
 const mpSingle = vi.fn();
+const mpUpdate = vi.fn();
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
@@ -13,6 +14,7 @@ vi.mock("@/lib/supabase/admin", () => ({
       }
       return {
         select: () => ({ eq: () => ({ maybeSingle: mpSingle }) }),
+        update: mpUpdate,
       };
     },
   }),
@@ -27,13 +29,16 @@ describe("verifyReservationEntry", () => {
   beforeEach(() => {
     matchSingle.mockResolvedValue({ data: VALID_MATCH });
     mpSingle.mockResolvedValue({ data: VALID_MP });
+    mpUpdate.mockClear();
   });
 
-  it("유효한 예약번호·이름·전화 끝 4자리 → passengerId 반환", async () => {
+  it("유효한 예약번호·이름·전화 끝 4자리 → passengerId 반환, DB update 없음", async () => {
     const claims = await verifyReservationEntry("BUS-7K9M", "이지은", "4444");
 
     expect(claims).not.toBeNull();
     expect(claims!.passengerId).toBe("mp-1");
+    // access_token_hash 갱신 정책 제거 — 어떤 DB update도 호출하지 않음
+    expect(mpUpdate).not.toHaveBeenCalled();
   });
 
   it("이름 불일치 → null, 세션 미발급", async () => {
