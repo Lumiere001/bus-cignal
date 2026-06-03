@@ -46,6 +46,17 @@
 
 ---
 
+## 결정 4 — 학생 세션(JWT)은 우리 구현 기준 (팀원2 버전 비교 X)
+
+**결정**: 학생 세션·JWT 관련은 **우리가 올린 `lib/auth/passenger-session.ts`·`passenger.ts`·`logout.ts` 기준**으로 진행한다. 팀원2가 테스트로 만든 별도 세션 구현과는 **비교·병합하지 않는다**(우리 버전이 정본).
+
+- 팀원2는 학생 *페이지*에서 우리 헬퍼(`issuePassengerSession`·`requirePassenger`·`logoutPassenger`)를 **호출만** 한다.
+- 근거: operator·master와 동일 패턴 + Vitest 통과 + auth 인프라(팀장/CC) 영역의 올바른 위치. 두 구현을 합치는 비용보다 일원화가 명확.
+
+**재검토**: 없음 (확정).
+
+---
+
 ## 열린 질문 — CCC IT 답변 대기 (결정 보류)
 
 간사 인증·학생 접근 본구현 전 받아야 할 항목. (전체 정리는 팀장이 간사와 소통 중)
