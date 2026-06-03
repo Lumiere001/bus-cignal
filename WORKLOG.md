@@ -8,7 +8,16 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **상태 (2026-06-01 CC 세션 — 여기부터 읽으세요)**: **알림 엔진 완성 + 마스터 로그인 E2E 통과 + 로컬 마스터해시 버그 발견·수정.** 외부 블로커(팀원·CCC)는 그대로, CC가 코드로 진척.
+- 📍 **상태 (2026-06-03 CC 세션 — 여기부터 읽으세요)**: **학생 세션(JWT)+로그아웃 추가, 익명화 강화, 결정 기록 정리 완료. 인프라는 거의 다 깔림 — 이제 팀원1(운영 흐름)·CCC답(간사 인증) 대기 단계.** (`origin/main` = 56d3630)
+  - ✅ **이번 세션 머지 (PR #5~#9)**: 알림엔진+마스터E2E(로컬 해시 `$` 버그 수정) · 익명화 PIPA강화 · WORKLOG동기화 · **학생세션(`lib/auth/passenger*`)+로그아웃3종(`lib/auth/logout.ts`)+온보딩env** · **결정기록**(`docs/decisions/2026-06-03-student-access-and-ccc-integration.md`).
+  - 🔑 **학생 인증 방침 확정**: 학생 세션·JWT는 **우리가 올린 `lib/auth/passenger*` 기준**으로 진행. 팀원2 테스트 버전과 **비교·병합 안 함**(우리 버전 정본). 팀원2는 학생 페이지에서 `issuePassengerSession`/`requirePassenger`/`logoutPassenger` **호출만**. (결정 §4)
+  - ⛔ **대기 2건**: ① **CCC IT 신원 전달방식**(서명토큰/일회용코드/OIDC — 평문 금지) → 간사 인증 본구현 전제 ② **팀원1 PR**(차량등록·신청·매칭 = operator 영역) → 핵심 운영 흐름. (상세·대기항목 = 결정문서)
+  - ▶️ **다음 할 일 (시점별)**:
+    - **지금(대기·지원)**: 팀원1/2 PR 리뷰·머지 / 간사께 CCC 항목 ①②③·④·⑦⑧⑨ 받아오기 / 팀원1이 trips 폼 만들면 **총무 연락처 컬럼 마이그(팀장, core)**.
+    - **CCC 답 오면 ⭐(우리 다음 큰 작업)**: `verifyCccToken` 구현 → `/login` 연동 → 미들웨어 `/operator` 가드 → RLS 앱레이어 + 학생 CCC 라우팅(`operators` 조회로 간사/학생 분기 → 예약페이지).
+    - **출시 전**: PWA 푸시 실발송(`push_subscriptions` 마이그 + FCM) / Vercel prod에 `PASSENGER_SESSION_SECRET` 추가 / 실데이터 E2E(S1·S4·S5) / 수련회 종료일 → `anonymize_after` 설정.
+  - 🧩 **역할 경계**: operator 페이지+기능백엔드(매칭 `lib/matching`·정산 `lib/settlement`)=**팀원1**(매칭·정산·스키마·RLS=core→팀장 리뷰). 학생페이지·채팅·카카오=**팀원2**. 인증·세션·미들웨어·알림엔진·cron·PWA인프라·마이그=**팀장/CC**.
+- 📍 **상태 (2026-06-01 CC 세션)**: **알림 엔진 완성 + 마스터 로그인 E2E 통과 + 로컬 마스터해시 버그 발견·수정.** 외부 블로커(팀원·CCC)는 그대로, CC가 코드로 진척.
   - ✅ **알림 엔진 완성** (`lib/notifications/`): SPEC §8 18개 이벤트 전부에 대한 **타입안전 `emit()`** (이벤트별 수신자 슬롯 컴파일타임 강제) + 다중 타겟 fanout(양쪽 간사·학생·마스터) + master(둘 다 null row) + 푸시 재시도 백오프(1m→5m→30m, `retry.ts`) 순수로직. 순수 모듈(`events`·`targets`·`retry`) + server-only(`index`) 분리. **Vitest 22개 신규(총 24) 통과.** cron(payment-reminder) `notify()`→`emit("payment_delay", 양쪽 간사)` 이전. 4게이트(typecheck·lint·test·build) 통과. ⚠️ 트리거 wiring(operator·student 페이지 삽입)은 팀원1·2 영역 — 안 건드림(엔진 API만 제공).
   - 🐞 **버그 발견·수정 (중요)**: **로컬 dev 마스터 로그인이 깨져 있었음.** `MASTER_PASSWORD_HASH`의 `$`(`$2b$12$`)가 `@next/env`(dotenv-expand) 변수확장에 먹혀 런타임에 `/WWy…`로 잘림 → `bcrypt.compare` 항상 실패. **수정**: `.env.local`에서 `$`→`\$` 이스케이프 (resolve `$2b$12$…` 정상 복구 확인). **프로덕션(Vercel)은 무관** — Vercel은 env를 process.env에 직접 주입, `@next/env`가 기존 process.env를 안 덮음 → 해시 리터럴 유지. (⚠️ 향후 `$` 포함 시크릿 추가 시 .env에선 항상 이스케이프)
   - ✅ **마스터 로그인 E2E 통과** (`tests/e2e/master-auth.spec.ts`, 3 케이스): ① 미인증 `/admin`→`/admin/login` 가드 ② 틀린 비번→오류+남은횟수 ③ **올바른 비번→`/admin` 세션 발급·가드 통과.** dev 서버엔 결정적 테스트 해시를 `.env.development.local`로 주입(`global-setup.ts`, 시크릿 무관, teardown 정리). `pnpm test:e2e` 6/6 통과.
