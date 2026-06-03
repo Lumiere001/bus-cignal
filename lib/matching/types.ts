@@ -5,7 +5,7 @@ export type MatchStatus =
   | "paid"
   | "expired"
   | "cancelled";
-export type RequestStatus = "queued" | "partially_matched" | "fully_matched" | "rejected";
+export type RequestStatus = "queued" | "matched" | "rejected" | "cancelled";
 
 export interface Trip {
   id: string;

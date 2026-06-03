@@ -5,7 +5,6 @@ import {
   MatchingError,
   MatchingException,
   type SeatRequest,
-  type Trip,
 } from "./types";
 
 const ACTIVE_STATUSES: MatchStatus[] = [
@@ -14,6 +13,7 @@ const ACTIVE_STATUSES: MatchStatus[] = [
   "paid",
 ];
 
+// 정렬만 수행. status 필터(queued만 보이기 등)는 caller 책임.
 export function queue(requests: SeatRequest[]): SeatRequest[] {
   return [...requests].sort(
     (a, b) =>
@@ -21,13 +21,16 @@ export function queue(requests: SeatRequest[]): SeatRequest[] {
   );
 }
 
-export function available(trip: Trip, existingMatches: Match[]): number {
+// openSeatCount = sum(open seat_offers.seat_count) — 공개한 좌석만. trip.capacity(총 정원) X.
+export function available(openSeatCount: number, existingMatches: Match[]): number {
   const activeCount = existingMatches.filter((m) =>
     ACTIVE_STATUSES.includes(m.status as MatchStatus),
   ).length;
-  return Math.max(0, trip.capacity - activeCount);
+  return Math.max(0, openSeatCount - activeCount);
 }
 
+// request 상태 전이(전원 선택 → matched / 부분 선택 → queued 잔류)는 caller 책임.
+// 이 함수는 Match 생성과 잔여 자리 계산만 수행.
 export function approve(
   request: SeatRequest,
   selectedPassengerIds: string[],

@@ -1,23 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { approve, available, queue } from "./index";
 import { MatchingError, MatchingException } from "./types";
-import type { Match, RequestPassenger, SeatRequest, Trip } from "./types";
+import type { Match, RequestPassenger, SeatRequest } from "./types";
 
 // ─── fixtures ────────────────────────────────────────────────────────────────
 
-const makeTrip = (overrides: Partial<Trip> = {}): Trip => ({
-  id: "trip-1",
-  capacity: 10,
-  status: "published",
-  departure_at: "2026-07-30T14:00:00+09:00",
-  direction: "down",
-  price_per_seat: 35000,
-  operator_region_id: "region-1",
-  origin_location_id: "loc-1",
-  destination_location_id: "loc-2",
-  note: null,
-  ...overrides,
-});
 
 const makePassenger = (overrides: Partial<RequestPassenger> = {}): RequestPassenger => ({
   id: "p-1",
@@ -99,9 +86,10 @@ describe("queue", () => {
 
 // ─── available ────────────────────────────────────────────────────────────────
 
+// openSeatCount = 공개한 seat_offers.seat_count 합계 (trip.capacity 아님)
 describe("available", () => {
-  it("매칭이 없으면 capacity 전체를 반환한다", () => {
-    expect(available(makeTrip({ capacity: 10 }), [])).toBe(10);
+  it("매칭이 없으면 공개 좌석 수 전체를 반환한다", () => {
+    expect(available(10, [])).toBe(10);
   });
 
   it("awaiting_payment 매칭은 카운트한다", () => {
@@ -110,7 +98,7 @@ describe("available", () => {
       makeMatch({ id: "m-2", status: "awaiting_payment" }),
       makeMatch({ id: "m-3", status: "awaiting_payment" }),
     ];
-    expect(available(makeTrip({ capacity: 10 }), matches)).toBe(7);
+    expect(available(10, matches)).toBe(7);
   });
 
   it("paid + cancelled 혼합 시 cancelled는 카운트하지 않는다", () => {
@@ -121,7 +109,7 @@ describe("available", () => {
       makeMatch({ id: "m-4", status: "cancelled" }),
       makeMatch({ id: "m-5", status: "cancelled" }),
     ];
-    expect(available(makeTrip({ capacity: 10 }), matches)).toBe(8);
+    expect(available(10, matches)).toBe(8);
   });
 
   it("payment_reported + expired 혼합 시 expired는 카운트하지 않는다", () => {
@@ -130,21 +118,21 @@ describe("available", () => {
       makeMatch({ id: "m-2", status: "expired" }),
       makeMatch({ id: "m-3", status: "expired" }),
     ];
-    expect(available(makeTrip({ capacity: 10 }), matches)).toBe(9);
+    expect(available(10, matches)).toBe(9);
   });
 
   it("available이 0 미만이 되지 않는다", () => {
     const matches = Array.from({ length: 15 }, (_, i) =>
       makeMatch({ id: `m-${i}`, status: "paid" }),
     );
-    expect(available(makeTrip({ capacity: 10 }), matches)).toBe(0);
+    expect(available(10, matches)).toBe(0);
   });
 
   it("모든 자리가 차면 0을 반환한다", () => {
     const matches = Array.from({ length: 10 }, (_, i) =>
       makeMatch({ id: `m-${i}`, status: "paid" }),
     );
-    expect(available(makeTrip({ capacity: 10 }), matches)).toBe(0);
+    expect(available(10, matches)).toBe(0);
   });
 });
 
