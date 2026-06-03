@@ -2,14 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { cookiesGet, redirectFn, verifyTokenFn } = vi.hoisted(() => ({
-  cookiesGet: vi.fn(),
-  redirectFn: vi.fn(),
-  verifyTokenFn: vi.fn(),
-}));
+const { cookiesGet, cookiesSet, cookiesDelete, redirectFn, verifyTokenFn, signTokenFn } =
+  vi.hoisted(() => ({
+    cookiesGet: vi.fn(),
+    cookiesSet: vi.fn(),
+    cookiesDelete: vi.fn(),
+    redirectFn: vi.fn(),
+    verifyTokenFn: vi.fn(),
+    signTokenFn: vi.fn(),
+  }));
 
 vi.mock("next/headers", () => ({
-  cookies: () => Promise.resolve({ get: cookiesGet }),
+  cookies: () =>
+    Promise.resolve({ get: cookiesGet, set: cookiesSet, delete: cookiesDelete }),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -18,14 +23,19 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("./passenger-session", () => ({
   PASSENGER_COOKIE: "bc_passenger_session",
+  PASSENGER_SESSION_DAYS: 30,
   verifyPassengerToken: verifyTokenFn,
+  signPassengerToken: signTokenFn,
 }));
 
-import { getPassengerSession, requirePassenger } from "./passenger";
+import {
+  getPassengerSession,
+  requirePassenger,
+  issuePassengerSession,
+} from "./passenger";
 
 const VALID_CLAIMS = {
-  matchPassengerId: "mp-1",
-  sessionToken: "tok-abc",
+  passengerId: "mp-1",
 };
 
 describe("getPassengerSession", () => {
@@ -74,5 +84,30 @@ describe("requirePassenger", () => {
     const result = await requirePassenger();
     expect(result).toEqual(VALID_CLAIMS);
     expect(redirectFn).not.toHaveBeenCalled();
+  });
+});
+
+describe("issuePassengerSession", () => {
+  beforeEach(() => {
+    cookiesSet.mockReset();
+    signTokenFn.mockReset();
+  });
+
+  it("passengerId로 JWT 서명 후 쿠키 세팅", async () => {
+    signTokenFn.mockResolvedValue("signed-jwt");
+
+    await issuePassengerSession("mp-1");
+
+    expect(signTokenFn).toHaveBeenCalledWith({ passengerId: "mp-1" });
+    expect(cookiesSet).toHaveBeenCalledWith(
+      "bc_passenger_session",
+      "signed-jwt",
+      expect.objectContaining({
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 30 * 24 * 60 * 60,
+      }),
+    );
   });
 });

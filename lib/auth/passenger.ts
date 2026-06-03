@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   PASSENGER_COOKIE,
+  PASSENGER_SESSION_DAYS,
+  signPassengerToken,
   verifyPassengerToken,
   type PassengerClaims,
 } from "./passenger-session";
@@ -27,4 +29,17 @@ export async function requirePassenger(): Promise<PassengerClaims> {
 export async function clearPassengerSession(): Promise<void> {
   const c = await cookies();
   c.delete(PASSENGER_COOKIE);
+}
+
+/** Issue a signed session cookie for the given passengerId. */
+export async function issuePassengerSession(passengerId: string): Promise<void> {
+  const token = await signPassengerToken({ passengerId });
+  const c = await cookies();
+  c.set(PASSENGER_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: PASSENGER_SESSION_DAYS * 24 * 60 * 60,
+  });
 }

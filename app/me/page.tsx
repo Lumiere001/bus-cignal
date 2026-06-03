@@ -4,10 +4,7 @@ import { MatchCard } from "@/components/me/MatchCard";
 
 export default async function MePage() {
   const session = await requirePassenger();
-  const matches = await getMatchesForPassenger(
-    session.matchPassengerId,
-    session.sessionToken,
-  );
+  const matches = await getMatchesForPassenger(session.passengerId);
 
   return (
     <main className="mx-auto flex max-w-md flex-1 flex-col gap-4 p-4">

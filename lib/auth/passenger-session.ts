@@ -6,9 +6,7 @@ export const PASSENGER_COOKIE = "bc_passenger_session";
 export const PASSENGER_SESSION_DAYS = 30;
 
 export type PassengerClaims = {
-  matchPassengerId: string;
-  /** Raw token issued after verification; SHA-256 must match access_token_hash. */
-  sessionToken: string;
+  passengerId: string;
 };
 
 function secret(): Uint8Array {
@@ -37,10 +35,9 @@ export async function verifyPassengerToken(
   try {
     const { payload } = await jwtVerify(token, secret());
     if (payload.role !== "passenger") return null;
-    if (!payload.matchPassengerId || !payload.sessionToken) return null;
+    if (!payload.passengerId) return null;
     return {
-      matchPassengerId: String(payload.matchPassengerId),
-      sessionToken: String(payload.sessionToken),
+      passengerId: String(payload.passengerId),
     };
   } catch {
     return null;

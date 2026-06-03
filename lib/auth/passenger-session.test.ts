@@ -14,14 +14,10 @@ beforeAll(() => {
 
 describe("passenger-session", () => {
   it("signs and verifies passenger claims", async () => {
-    const token = await signPassengerToken({
-      matchPassengerId: "mp-123",
-      sessionToken: "raw-session-token",
-    });
+    const token = await signPassengerToken({ passengerId: "mp-123" });
 
     expect(await verifyPassengerToken(token)).toEqual({
-      matchPassengerId: "mp-123",
-      sessionToken: "raw-session-token",
+      passengerId: "mp-123",
     });
   });
 
@@ -36,8 +32,7 @@ describe("passenger-session", () => {
   it("rejects tokens with a non-passenger role", async () => {
     const forged = await new SignJWT({
       role: "operator",
-      matchPassengerId: "x",
-      sessionToken: "raw",
+      passengerId: "x",
     })
       .setProtectedHeader({ alg: "HS256" })
       .sign(new TextEncoder().encode(process.env.PASSENGER_SESSION_SECRET!));

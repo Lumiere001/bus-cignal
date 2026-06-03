@@ -1,16 +1,9 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ReservationEntrySchema } from "@/lib/validators/passenger";
 import { verifyReservationEntry } from "@/lib/passenger/verify";
-import {
-  signPassengerToken,
-  PASSENGER_COOKIE,
-  PASSENGER_SESSION_DAYS,
-} from "@/lib/auth/passenger-session";
-
-const SESSION_MAX_AGE = PASSENGER_SESSION_DAYS * 24 * 60 * 60;
+import { issuePassengerSession } from "@/lib/auth/passenger";
 
 // 예약번호 형식: 대문자 영숫자 1~10자 + 하이픈 + 대문자 영숫자 1~10자 (예: BUS-7K9M)
 const CODE_PATTERN = /^[A-Z0-9]{1,10}-[A-Z0-9]{1,10}$/;
@@ -42,15 +35,7 @@ export async function verifyEntry(code: string, formData: FormData): Promise<voi
     redirect(`/r/${encodeURIComponent(code)}?error=notfound`);
   }
 
-  const token = await signPassengerToken(claims);
-  const c = await cookies();
-  c.set(PASSENGER_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: SESSION_MAX_AGE,
-  });
+  await issuePassengerSession(claims.passengerId);
 
   redirect("/me");
 }

@@ -4,7 +4,7 @@ import type { PassengerClaims } from "@/lib/auth/passenger-session";
 
 /**
  * 예약번호 + 이름 + 전화 끝 4자리로 학생 신원 확인.
- * 성공 시 access_token_hash를 갱신하고 PassengerClaims 반환.
+ * 성공 시 PassengerClaims 반환.
  * 개인정보(이름·전화)는 로그·에러 메시지에 포함하지 않음.
  */
 export async function verifyReservationEntry(
@@ -39,26 +39,5 @@ export async function verifyReservationEntry(
 
   if (!nameOk || !phoneOk) return null;
 
-  // access_token_hash 갱신 (검증 흐름 — 세션 발급 기록 + last_seen 갱신)
-  const rawToken = crypto.randomUUID();
-  const hashBuffer = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(rawToken),
-  );
-  const hash = Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  const { error: updateError } = await db
-    .from("match_passengers")
-    .update({
-      access_token_hash: hash,
-      last_seen_at: new Date().toISOString(),
-    })
-    .eq("id", mp.id);
-
-  // hash 저장 실패 시 세션 발급 차단 (fail-closed)
-  if (updateError) return null;
-
-  return { matchPassengerId: mp.id, sessionToken: rawToken };
+  return { passengerId: mp.id };
 }

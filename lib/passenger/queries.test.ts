@@ -1,13 +1,11 @@
-import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-// match_passengers 첫 번째 호출 (hash 검증용 단건 조회) 터미널 mock
-const mpHashSingle = vi.fn();
+// match_passengers 첫 번째 호출 (passengerId → name+phone 단건 조회)
+const mpSingleMock = vi.fn();
 
 // match_passengers 두 번째 호출 (name+phone 다중 조회)
-// .eq("phone",...) → mpMultiEq1 / .eq("name",...) → mpMultiEq2 로 인자 캡처
 const mpMultiEq1 = vi.fn();
 const mpMultiEq2 = vi.fn();
 
@@ -25,8 +23,8 @@ vi.mock("@/lib/supabase/admin", () => ({
       if (table === "match_passengers") {
         mpFromIdx++;
         if (mpFromIdx === 1) {
-          // 1st: .select("name,phone,access_token_hash").eq("id",...).maybeSingle()
-          return { select: () => ({ eq: () => ({ maybeSingle: mpHashSingle }) }) };
+          // 1st: .select("name, phone").eq("id",...).maybeSingle()
+          return { select: () => ({ eq: () => ({ maybeSingle: mpSingleMock }) }) };
         }
         // 2nd: .select("match_id").eq("phone",...).eq("name",...)
         return { select: () => ({ eq: mpMultiEq1 }) };
@@ -44,17 +42,9 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 import { getMatchesForPassenger } from "./queries";
 
-function hashOf(v: string): string {
-  return createHash("sha256").update(v).digest("hex");
-}
-
-const SESSION_TOKEN = "test-session-token-abc123";
-const SESSION_HASH = hashOf(SESSION_TOKEN);
-
 const BASE_MP_ROW = {
   name: "이지은",
   phone: "010-3333-4444",
-  access_token_hash: SESSION_HASH,
 };
 
 const BASE_MATCH = {
@@ -81,7 +71,7 @@ const BASE_LOCS = [
 describe("getMatchesForPassenger", () => {
   beforeEach(() => {
     mpFromIdx = 0;
-    mpHashSingle.mockResolvedValue({ data: BASE_MP_ROW });
+    mpSingleMock.mockResolvedValue({ data: BASE_MP_ROW });
     mpMultiEq1.mockReturnValue({ eq: mpMultiEq2 });
     mpMultiEq2.mockResolvedValue({ data: [{ match_id: "m-1" }] });
     matchesIn.mockClear();
@@ -92,31 +82,9 @@ describe("getMatchesForPassenger", () => {
     locsIn.mockResolvedValue({ data: BASE_LOCS });
   });
 
-  it("access_token_hash가 null이면 빈 배열 반환 + matches/trips 조회 미진행", async () => {
-    mpHashSingle.mockResolvedValue({
-      data: { ...BASE_MP_ROW, access_token_hash: null },
-    });
-    const result = await getMatchesForPassenger("mp-1", SESSION_TOKEN);
-    expect(result).toEqual([]);
-    // hash 검증 실패 시 개인정보가 포함된 하위 쿼리로 진행하지 않음
-    expect(matchesIn).not.toHaveBeenCalled();
-    expect(tripsIn).not.toHaveBeenCalled();
-    expect(locsIn).not.toHaveBeenCalled();
-  });
-
-  it("sessionToken 해시 불일치 → 빈 배열 + matches/trips 조회 미진행 (구 세션 자동 무효화)", async () => {
-    // 새 로그인으로 DB hash가 교체된 후 기존 JWT 사용 시나리오
-    const result = await getMatchesForPassenger("mp-1", "stale-old-token");
-    expect(result).toEqual([]);
-    // hash 불일치 시 매칭 데이터 조회로 진행하지 않음 (타인 데이터 노출 방지)
-    expect(matchesIn).not.toHaveBeenCalled();
-    expect(tripsIn).not.toHaveBeenCalled();
-    expect(locsIn).not.toHaveBeenCalled();
-  });
-
   it("match_passengers 행 없음 → 빈 배열 + matches/trips 조회 미진행", async () => {
-    mpHashSingle.mockResolvedValue({ data: null });
-    const result = await getMatchesForPassenger("mp-1", SESSION_TOKEN);
+    mpSingleMock.mockResolvedValue({ data: null });
+    const result = await getMatchesForPassenger("mp-1");
     expect(result).toEqual([]);
     expect(matchesIn).not.toHaveBeenCalled();
     expect(tripsIn).not.toHaveBeenCalled();
@@ -140,7 +108,7 @@ describe("getMatchesForPassenger", () => {
       ],
     });
 
-    const result = await getMatchesForPassenger("mp-1", SESSION_TOKEN);
+    const result = await getMatchesForPassenger("mp-1");
 
     expect(result).toHaveLength(2);
     expect(result[0].reservationCode).toBe("BUS-EARLY"); // 출발 빠름
@@ -148,7 +116,7 @@ describe("getMatchesForPassenger", () => {
   });
 
   it("DB 조회 시 name+phone 튜플을 필터로 전달 (phone 단독 조회 방지)", async () => {
-    await getMatchesForPassenger("mp-1", SESSION_TOKEN);
+    await getMatchesForPassenger("mp-1");
 
     // phone 조회: mpMultiEq1("phone", <phone>)
     expect(mpMultiEq1).toHaveBeenCalledWith("phone", "010-3333-4444");
@@ -158,7 +126,6 @@ describe("getMatchesForPassenger", () => {
 
   it("(V1 정책) 동일 name+phone은 같은 학생으로 묶어 복수 매칭 반환", async () => {
     // 같은 이름·전화로 등록된 복수 match_passengers 행 → 모두 대시보드에 표시
-    // V2에서 학생 identity DB 연동 시 이 정책은 교체됨
     mpMultiEq2.mockResolvedValue({
       data: [{ match_id: "m-1" }, { match_id: "m-2" }],
     });
@@ -169,7 +136,7 @@ describe("getMatchesForPassenger", () => {
       ],
     });
 
-    const result = await getMatchesForPassenger("mp-1", SESSION_TOKEN);
+    const result = await getMatchesForPassenger("mp-1");
     expect(result).toHaveLength(2);
   });
 });

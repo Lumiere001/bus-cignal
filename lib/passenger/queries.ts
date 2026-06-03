@@ -13,35 +13,22 @@ export type MatchForDashboard = {
   tripId: string;
 };
 
-/** 학생의 모든 매칭을 출발 시각 가까운 순으로 반환. sessionToken을 DB hash와 검증. */
+/** 학생의 모든 매칭을 출발 시각 가까운 순으로 반환. */
 export async function getMatchesForPassenger(
-  matchPassengerId: string,
-  sessionToken: string,
+  passengerId: string,
 ): Promise<MatchForDashboard[]> {
   const db = createAdminClient();
 
-  // name, phone, access_token_hash 함께 조회
+  // passengerId(= match_passengers.id)로 name+phone 조회
   const { data: thisMp } = await db
     .from("match_passengers")
-    .select("name, phone, access_token_hash")
-    .eq("id", matchPassengerId)
+    .select("name, phone")
+    .eq("id", passengerId)
     .maybeSingle();
 
   if (!thisMp) return [];
 
-  // JWT의 sessionToken을 SHA-256 해시해서 DB의 access_token_hash와 비교
-  const hashBuffer = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(sessionToken),
-  );
-  const computedHash = Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  if (!thisMp.access_token_hash || computedHash !== thisMp.access_token_hash)
-    return [];
-
-  // phone 단독 조회 → name+phone 튜플로 좁혀 phone 충돌 시 타인 매칭 노출 방지
+  // phone + name 으로 묶어 전체 매칭 조회 (V1 정책: 동일 이름·전화 = 같은 학생)
   const { data: allMps } = await db
     .from("match_passengers")
     .select("match_id")
