@@ -149,6 +149,11 @@ KAKAO_REST_API_KEY=<팀원2 제공, 서버 지오코딩용>
 # 마스터 비번 (개발 환경에서는 본인이 정함)
 MASTER_PASSWORD_HASH=<bcrypt hash, 본인 dev용>
 
+# 세션 서명 키 — 각자 랜덤 생성 (값 공유 불필요, 머신마다 달라도 OK): openssl rand -base64 32
+MASTER_SESSION_SECRET=<랜덤 32자+>
+OPERATOR_SESSION_SECRET=<랜덤 32자+>
+PASSENGER_SESSION_SECRET=<랜덤 32자+>
+
 # 앱 URL
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
