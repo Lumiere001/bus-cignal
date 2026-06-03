@@ -4,9 +4,13 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ReservationEntrySchema } from "@/lib/validators/passenger";
 import { verifyReservationEntry } from "@/lib/passenger/verify";
-import { signPassengerToken, PASSENGER_COOKIE } from "@/lib/auth/passenger-session";
+import {
+  signPassengerToken,
+  PASSENGER_COOKIE,
+  PASSENGER_SESSION_DAYS,
+} from "@/lib/auth/passenger-session";
 
-const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30일 (초)
+const SESSION_MAX_AGE = PASSENGER_SESSION_DAYS * 24 * 60 * 60;
 
 // 예약번호 형식: 대문자 영숫자 1~10자 + 하이픈 + 대문자 영숫자 1~10자 (예: BUS-7K9M)
 const CODE_PATTERN = /^[A-Z0-9]{1,10}-[A-Z0-9]{1,10}$/;
