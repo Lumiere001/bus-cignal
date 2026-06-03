@@ -12,8 +12,13 @@ export type PassengerClaims = {
   passengerId: string;
 };
 
-function secret() {
-  return new TextEncoder().encode(process.env.PASSENGER_SESSION_SECRET!);
+function secret(): Uint8Array {
+  // 키 미설정 시 조용히 깨지지 말고 즉시 명확히 실패 (운영 오설정 빠르게 감지)
+  const value = process.env.PASSENGER_SESSION_SECRET;
+  if (!value) {
+    throw new Error("PASSENGER_SESSION_SECRET 환경변수가 설정되지 않았습니다.");
+  }
+  return new TextEncoder().encode(value);
 }
 
 /** 학생 세션 JWT 발급 (30일). 예약번호+이름+전화 검증 통과 후 호출. */
