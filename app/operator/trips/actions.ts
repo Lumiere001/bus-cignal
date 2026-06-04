@@ -30,7 +30,8 @@ export async function createTrip(
   if (!originId) return { error: "출발지를 선택해주세요." };
   if (!destId) return { error: "도착지를 선택해주세요." };
   if (!rawDeparture) return { error: "출발 시각을 입력해주세요." };
-  if (!Number.isInteger(capacity) || capacity < 1) return { error: "정원을 1 이상으로 입력해주세요." };
+  if (!Number.isInteger(capacity) || capacity < 1 || capacity > 200)
+    return { error: "정원은 1~200 사이로 입력해주세요." };
   if (!Number.isInteger(price) || price < 0) return { error: "요금을 올바르게 입력해주세요." };
   if (note && note.length > 500) return { error: "메모는 500자 이하로 입력해주세요." };
 
@@ -107,23 +108,27 @@ export async function publishTrip(tripId: string): Promise<ActionResult> {
   if (!trip) return { error: "Trip을 찾을 수 없습니다." };
   if (trip.status !== "draft") return { error: "이미 공개됐거나 마감된 Trip입니다." };
 
-  // seat_offer INSERT
-  const { data: offer, error: offerErr } = await supabase
-    .from("seat_offers")
-    .insert({ trip_id: tripId, seat_count: trip.capacity, status: "open" })
-    .select("id")
-    .single();
-
-  if (offerErr || !offer) return { error: "오류가 발생했습니다." };
-
-  // trip UPDATE — 실패 시 offer 롤백
-  const { error: tripErr } = await supabase
+  // 원자적 공개: status='draft'인 행에만 적용 → 동시·중복 호출 중 하나만 통과.
+  // (offer를 먼저 넣으면 두 호출이 각각 offer를 만들어 좌석이 2배가 됨)
+  const { data: published } = await supabase
     .from("trips")
     .update({ status: "published" })
-    .eq("id", tripId);
+    .eq("id", tripId)
+    .eq("operator_region_id", session.regionId)
+    .eq("status", "draft")
+    .select("id")
+    .maybeSingle();
 
-  if (tripErr) {
-    await supabase.from("seat_offers").delete().eq("id", offer.id);
+  if (!published) return { error: "이미 공개됐거나 마감된 Trip입니다." };
+
+  // 공개에 성공한 한 호출만 seat_offer 생성
+  const { error: offerErr } = await supabase
+    .from("seat_offers")
+    .insert({ trip_id: tripId, seat_count: trip.capacity, status: "open" });
+
+  if (offerErr) {
+    // offer 생성 실패 → 공개 롤백 (draft 복원)
+    await supabase.from("trips").update({ status: "draft" }).eq("id", tripId);
     return { error: "오류가 발생했습니다." };
   }
 
