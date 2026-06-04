@@ -155,6 +155,47 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
         </div>
       </div>
 
+      {/* 총무(학생 담당) 연락처 — 학생이 차편 카드에서 연락할 담당자 */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <label
+            className="text-sm font-medium text-gray-700"
+            htmlFor="treasurer_name"
+          >
+            총무 이름
+          </label>
+          <input
+            id="treasurer_name"
+            type="text"
+            name="treasurer_name"
+            required
+            maxLength={50}
+            placeholder="예) 홍길동"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          />
+        </div>
+        <div className="space-y-1">
+          <label
+            className="text-sm font-medium text-gray-700"
+            htmlFor="treasurer_phone"
+          >
+            총무 연락처
+          </label>
+          <input
+            id="treasurer_phone"
+            type="tel"
+            name="treasurer_phone"
+            required
+            inputMode="numeric"
+            placeholder="예) 010-1234-5678"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          />
+        </div>
+        <p className="col-span-2 text-xs text-gray-400">
+          학생이 차편 안내에서 연락할 담당자입니다. 담당 간사 연락처와 별개입니다.
+        </p>
+      </div>
+
       {/* 메모 */}
       <div className="space-y-1">
         <label className="text-sm font-medium text-gray-700" htmlFor="note">
