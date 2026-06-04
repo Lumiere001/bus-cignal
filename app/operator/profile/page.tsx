@@ -1,6 +1,7 @@
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { one } from "@/lib/supabase/relation";
+import { LocationManager, type RegionLocation } from "./LocationManager";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,18 @@ async function loadProfile(operatorId: string): Promise<Profile | null> {
   return (data as Profile | null) ?? null;
 }
 
+async function loadLocations(regionId: string): Promise<RegionLocation[]> {
+  const db = createAdminClient();
+  const { data } = await db
+    .from("region_locations")
+    .select("id, direction, location_type, address, label")
+    .eq("region_id", regionId)
+    .order("direction", { ascending: true })
+    .order("location_type", { ascending: true })
+    .order("created_at", { ascending: true });
+  return (data as RegionLocation[] | null) ?? [];
+}
+
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 border-b py-3 last:border-0">
@@ -43,6 +56,7 @@ function Field({ label, value }: { label: string; value: string }) {
 export default async function OperatorProfilePage() {
   const session = await requireOperator();
   const p = await loadProfile(session.operatorId);
+  const locations = session.regionId ? await loadLocations(session.regionId) : [];
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 px-4 py-8">
@@ -66,6 +80,8 @@ export default async function OperatorProfilePage() {
       <p className="text-muted-foreground text-xs">
         ※ 이름·연락처는 CCC 계정과 동기화됩니다. 소속 지구 변경은 마스터 재승인이 필요합니다.
       </p>
+
+      {session.regionId && <LocationManager locations={locations} />}
     </main>
   );
 }
