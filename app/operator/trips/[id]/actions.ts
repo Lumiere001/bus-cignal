@@ -148,15 +148,18 @@ export async function approveRequest(
 
   // Match 영속화 — payment_due_at는 DB NOT NULL(소프트 기한)
   const dueAt = new Date(Date.now() + PAYMENT_DUE_HOURS * 60 * 60 * 1000).toISOString();
-  const { error: insertErr } = await db.from("matches").insert(
-    result.matches.map((m) => ({
-      trip_id: m.trip_id,
-      request_id: m.request_id,
-      passenger_id: m.passenger_id,
-      status: "awaiting_payment" as const,
-      payment_due_at: dueAt,
-    })),
-  );
+  const { data: insertedMatches, error: insertErr } = await db
+    .from("matches")
+    .insert(
+      result.matches.map((m) => ({
+        trip_id: m.trip_id,
+        request_id: m.request_id,
+        passenger_id: m.passenger_id,
+        status: "awaiting_payment" as const,
+        payment_due_at: dueAt,
+      })),
+    )
+    .select("id");
   if (insertErr) return { error: "매칭 저장 중 오류가 발생했습니다." };
 
   // 신청의 전원이 매칭됐으면 status='matched' (부분 선택 시 queued 잔류 — 자동 분할 X)
@@ -169,6 +172,20 @@ export async function approveRequest(
 
   if ((matchedCount ?? 0) >= totalPassengers) {
     await db.from("seat_requests").update({ status: "matched" }).eq("id", requestId);
+  }
+
+  // 알림: 매칭 확정 → 신청 지구 간사 (SPEC §S8). 실패해도 본 처리엔 영향 없음.
+  try {
+    const confirmedMatchId = insertedMatches?.[0]?.id;
+    if (confirmedMatchId) {
+      await emit(
+        "match_confirmed",
+        { requestOperatorId: request.operator_id },
+        { matchId: confirmedMatchId, tripId },
+      );
+    }
+  } catch {
+    /* 알림 실패 무시 */
   }
 
   revalidatePath(`/operator/trips/${tripId}`);
@@ -196,7 +213,7 @@ export async function rejectRequest(
 
   const { data: request } = await db
     .from("seat_requests")
-    .select("id, status")
+    .select("id, status, operator_id")
     .eq("id", requestId)
     .eq("trip_id", tripId)
     .single();
@@ -216,6 +233,18 @@ export async function rejectRequest(
     rejected_by: session.operatorId,
     reason: trimmed,
   });
+
+  // 알림: 거절+사유 → 신청 지구 간사 / 거절 발생 → 마스터 (SPEC §S8). 실패해도 본 처리 영향 없음.
+  try {
+    await emit(
+      "match_rejected",
+      { requestOperatorId: request.operator_id },
+      { requestId, reason: trimmed },
+    );
+    await emit("rejection_occurred", { master: true }, { requestId, reason: trimmed });
+  } catch {
+    /* 알림 실패 무시 */
+  }
 
   revalidatePath(`/operator/trips/${tripId}`);
   return { ok: true };
