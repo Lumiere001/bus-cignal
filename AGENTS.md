@@ -36,6 +36,7 @@
 
 ### 2.3 Git (AI 필독 — 전체 `docs/GIT-WORKFLOW.md`)
 - **항상 새 브랜치에서 작업** (`<type>/<영역>-<요약>`). `main` 직접 commit·push 절대 X
+- **분기는 항상 최신 `main`에서.** ❌ 다른 PR 브랜치 위에 쌓지 말 것(스택 PR) — 의존 코드가 미머지여도 `main`에서 분기. (스택은 squash 머지 시 일부가 main에 안 들어가 유실: 2026-06-04 #16/#17/#19)
 - 한 작업 = 한 브랜치 = 한 PR. 머지는 팀장만
 - 팀장 승인 + CI(typecheck·lint·test·build) 통과 필수
 - `--force`(공유 브랜치)·hook 우회 X
