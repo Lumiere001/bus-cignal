@@ -6,6 +6,11 @@ import { redirect } from "next/navigation";
 
 type ActionResult = { error: string } | undefined;
 
+// 전화번호 정규화 — 숫자만 (신청 흐름 actions.ts와 동일 규칙)
+function cleanPhone(raw: string): string {
+  return raw.replace(/[^0-9]/g, "");
+}
+
 // ─── Trip 등록 ────────────────────────────────────────────────────────────────
 
 export async function createTrip(
@@ -25,6 +30,9 @@ export async function createTrip(
   const capacity = Number(formData.get("capacity"));
   const price = Number(formData.get("price_per_seat"));
   const note = (formData.get("note") as string) || null;
+  // 총무(학생 담당) 연락처 — DB는 nullable이나 폼 필수화는 앱레이어 책임 (이슈 #25 마이그 주석)
+  const treasurerName = ((formData.get("treasurer_name") as string) ?? "").trim();
+  const treasurerPhone = cleanPhone((formData.get("treasurer_phone") as string) ?? "");
 
   if (!["up", "down"].includes(direction)) return { error: "방향을 선택해주세요." };
   if (!originId) return { error: "출발지를 선택해주세요." };
@@ -34,6 +42,10 @@ export async function createTrip(
     return { error: "정원은 1~200 사이로 입력해주세요." };
   if (!Number.isInteger(price) || price < 0) return { error: "요금을 올바르게 입력해주세요." };
   if (note && note.length > 500) return { error: "메모는 500자 이하로 입력해주세요." };
+  if (treasurerName.length < 1 || treasurerName.length > 50)
+    return { error: "총무 이름을 1~50자로 입력해주세요." };
+  if (treasurerPhone.length < 10 || treasurerPhone.length > 11)
+    return { error: "총무 연락처를 올바르게 입력해주세요." };
 
   // datetime-local → KST timestamptz
   const departure_at = rawDeparture + ":00+09:00";
@@ -79,6 +91,8 @@ export async function createTrip(
     capacity,
     price_per_seat: price,
     note,
+    treasurer_name: treasurerName,
+    treasurer_phone: treasurerPhone,
     status: "draft",
   });
 
