@@ -45,3 +45,31 @@ export interface SettlementLedger {
   payable: LedgerEntry[];
   totals: SettlementTotals;
 }
+
+// ─────────────────────────────────────────────
+// 전국 매트릭스 (마스터 /admin/settlement, SPEC §S7) — 공급×신청 N×N
+// ─────────────────────────────────────────────
+
+export interface MatrixRegion {
+  id: string;
+  name: string;
+}
+
+/** 한 칸 = 공급 지구 → 신청 지구 (공급이 받을 / 신청이 보낼 금액) */
+export interface MatrixCell {
+  supplyRegionId: string;
+  requestRegionId: string;
+  confirmedCount: number;
+  confirmedAmount: number;
+  pendingCount: number;
+  pendingAmount: number;
+}
+
+export interface SettlementMatrix {
+  /** 매칭에 등장한 지구(공급·신청 합집합), 이름 가나다순 — 행·열 공용 축 */
+  regions: MatrixRegion[];
+  /** 금액이 있는 (공급,신청) 칸만 — 빈칸은 생략 */
+  cells: MatrixCell[];
+  grandConfirmedAmount: number;
+  grandPendingAmount: number;
+}

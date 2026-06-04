@@ -1,4 +1,10 @@
-import type { LedgerEntry, SettlementLedger, SettlementMatch } from "./types";
+import type {
+  LedgerEntry,
+  MatrixCell,
+  SettlementLedger,
+  SettlementMatch,
+  SettlementMatrix,
+} from "./types";
 
 export type {
   SettlementMatch,
@@ -6,6 +12,9 @@ export type {
   LedgerEntry,
   SettlementTotals,
   SettlementLedger,
+  MatrixRegion,
+  MatrixCell,
+  SettlementMatrix,
 } from "./types";
 
 // 정산 집계 대상 상태: paid=확정 입금, awaiting_payment·payment_reported=진행중.
@@ -100,5 +109,62 @@ export function buildSettlement(
       payableConfirmed: sum(payable, "confirmedAmount"),
       payablePending: sum(payable, "pendingAmount"),
     },
+  };
+}
+
+function emptyCell(supplyRegionId: string, requestRegionId: string): MatrixCell {
+  return {
+    supplyRegionId,
+    requestRegionId,
+    confirmedCount: 0,
+    confirmedAmount: 0,
+    pendingCount: 0,
+    pendingAmount: 0,
+  };
+}
+
+/**
+ * 전국 정산 매트릭스 계산 (마스터 /admin/settlement, SPEC §S7).
+ * 행=공급 지구, 열=신청 지구, 칸=공급이 받을(=신청이 보낼) 금액.
+ * buildSettlement과 동일한 집계 규칙(paid=확정, awaiting/reported=진행, expired/cancelled 제외).
+ * 순수 함수 — DB·시각 의존 없음.
+ */
+export function buildSettlementMatrix(matches: SettlementMatch[]): SettlementMatrix {
+  const cellMap = new Map<string, MatrixCell>();
+  const regionNames = new Map<string, string>();
+
+  for (const m of matches) {
+    const confirmed = m.status === "paid";
+    if (!confirmed && !PENDING_STATUSES.has(m.status)) continue; // expired/cancelled 제외
+
+    regionNames.set(m.supplyRegionId, m.supplyRegionName);
+    regionNames.set(m.requestRegionId, m.requestRegionName);
+
+    const key = `${m.supplyRegionId}${m.requestRegionId}`;
+    let cell = cellMap.get(key);
+    if (!cell) {
+      cell = emptyCell(m.supplyRegionId, m.requestRegionId);
+      cellMap.set(key, cell);
+    }
+    if (confirmed) {
+      cell.confirmedCount += 1;
+      cell.confirmedAmount += m.pricePerSeat;
+    } else {
+      cell.pendingCount += 1;
+      cell.pendingAmount += m.pricePerSeat;
+    }
+  }
+
+  const regions = [...regionNames.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+
+  const cells = [...cellMap.values()];
+
+  return {
+    regions,
+    cells,
+    grandConfirmedAmount: cells.reduce((t, c) => t + c.confirmedAmount, 0),
+    grandPendingAmount: cells.reduce((t, c) => t + c.pendingAmount, 0),
   };
 }
