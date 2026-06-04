@@ -31,7 +31,7 @@
 ## 🟢 데이터·운영
 
 - [ ] **`anonymize_after` 설정** — `system_config`에 수련회 종료 + 90일 날짜. 안 넣으면 익명화 cron이 skip (SPEC §10.3).
-- [ ] **PWA 푸시 백엔드** — `push_subscriptions` 마이그 + FCM 실발송 (푸시 알림 쓸 경우). 현재 인앱만, 푸시는 stub.
+- [~] **PWA 푸시 백엔드** — ✅ 코드 완료(Phase B): `push_subscriptions` 마이그 · `deliverPushBatch` FCM 실발송 · `/api/push/subscribe` · retry cron. **남은 출시 조건**: ① Cowork이 마이그 적용 + 타입 regen ② Vercel에 `FIREBASE_ADMIN_PRIVATE_KEY`·`FIREBASE_ADMIN_CLIENT_EMAIL`·`NEXT_PUBLIC_FIREBASE_VAPID_KEY` 입력(없으면 `isPushConfigured()=false`로 발송 skip — 인앱은 정상) ③ Phase C 클라이언트(SW·옵트인 배너, 팀원2) ④ iOS 실기기 푸시 QA.
 
 ---
 

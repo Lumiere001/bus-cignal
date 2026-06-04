@@ -1,11 +1,14 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isPushConfigured } from "@/lib/firebase/admin";
 import type { Database } from "@/lib/supabase/database.types";
 import type {
   NotificationEvent,
   PayloadFor,
   RecipientsFor,
 } from "./events";
+import { formatPush, sendPush } from "./push";
+import { isRetryDue, reducePushAttempt } from "./retry";
 import { resolveTargets } from "./targets";
 
 export { NOTIFICATION_EVENTS } from "./events";
@@ -20,6 +23,7 @@ export { resolveTargets } from "./targets";
 export type { ResolvedTarget } from "./targets";
 export {
   isExhausted,
+  isRetryDue,
   MAX_PUSH_ATTEMPTS,
   nextRetryDelayMs,
   reducePushAttempt,
@@ -41,7 +45,7 @@ export type EmitOptions = {
 /**
  * 알림 발송 — SPEC §8. 이벤트가 요구하는 대상(EVENT_SLOTS)을 풀어:
  *  - 인앱 row 즉시 기록 (delivery_status=sent → Supabase Realtime로 노출)
- *  - push !== false 대상은 push row(pending)도 생성 후 발송 시도(현재 stub)
+ *  - push !== false 대상은 push row(pending)도 생성 후 발송 시도(deliverPushBatch)
  *
  * 타입 안전: 이벤트별 수신자 슬롯을 컴파일 타임에 강제(RecipientsFor)·페이로드도 강제(PayloadFor).
  * 도메인 조회(매칭→양쪽 간사 id 찾기 등)는 호출자(operator·student·cron) 책임 — 엔진은 id만 받음.
@@ -88,14 +92,146 @@ export async function emit<E extends NotificationEvent>(
   }
 }
 
+type PushRow = {
+  id: string;
+  operator_id: string | null;
+  passenger_id: string | null;
+  type: string;
+  payload: Database["public"]["Tables"]["notifications"]["Row"]["payload"];
+  retry_count: number;
+  last_attempt_at: string | null;
+};
+
+type AdminDb = ReturnType<typeof createAdminClient>;
+
+export type DeliverSummary = {
+  attempted: number;
+  sent: number;
+  pending: number;
+  failed: number;
+};
+
 /**
- * TODO(FCM 연동 후): pending push row를 구독 토큰으로 발송.
- *  - 옵트인(홈 화면 추가 + 알림 허용)한 대상만 — **구독 토큰 테이블 아직 없음**
- *    (PWA 등록 단계에서 push_subscriptions 마이그레이션 필요 = core, 별도 작업)
- *  - 실패 시 retry.ts(reducePushAttempt)로 1m→5m→30m 재시도, 소진 시 마스터 알림(system_error)
+ * pending push row 발송/재시도 — SPEC §8 · §9.5.
  *
- * 지금은 no-op — 인앱 알림은 위에서 이미 기록되어 사용자 영향 없음.
+ * emit() 직후(초기 발송) + daily cron(/api/cron/push-retry, payment-reminder piggyback)에서 호출.
+ * 매 호출마다 "발송 시점이 된(isRetryDue)" pending push를 모두 시도하므로, 알림 활동이 있는
+ * 동안에는 cron 없이도 due 재시도가 자가 치유된다.
+ *
+ *  - 수신자(operator/passenger)의 push_subscriptions 토큰으로 FCM multicast 발송
+ *  - 결과 → reducePushAttempt 로 sent | pending(retry_count+1) | failed(소진→마스터 알림)
+ *  - 무효 토큰은 구독에서 제거
+ *  - 구독 토큰이 아예 없으면(옵트아웃) 재시도 의미 없음 → sent 처리(인앱은 이미 전달됨)
+ *
+ * env 미구성(NEXT_PUBLIC_FIREBASE_PROJECT_ID 등 없음)이면 no-op — 인앱 알림은 영향 없음.
  */
-async function deliverPushBatch(): Promise<void> {
-  return;
+export async function deliverPushBatch(limit = 500): Promise<DeliverSummary> {
+  const summary: DeliverSummary = { attempted: 0, sent: 0, pending: 0, failed: 0 };
+  if (!isPushConfigured()) return summary;
+
+  const db = createAdminClient();
+  const { data: pendingRows } = await db
+    .from("notifications")
+    .select("id, operator_id, passenger_id, type, payload, retry_count, last_attempt_at")
+    .eq("channel", "push")
+    .eq("delivery_status", "pending")
+    .limit(limit);
+
+  const now = Date.now();
+  const due = (pendingRows ?? []).filter((r) =>
+    isRetryDue(r.retry_count, r.last_attempt_at, now),
+  );
+
+  for (const row of due) {
+    const status = await deliverOne(db, row);
+    summary.attempted++;
+    summary[status]++;
+  }
+  return summary;
+}
+
+/** push row 한 건 발송 + 상태 전이. 반환 = 전이된 상태. */
+async function deliverOne(
+  db: AdminDb,
+  row: PushRow,
+): Promise<"sent" | "pending" | "failed"> {
+  const attemptedAt = new Date().toISOString();
+  const tokens = await tokensFor(db, row.operator_id, row.passenger_id);
+
+  // 구독 토큰 없음 = 옵트아웃 → 보낼 곳 없음. 재시도 무의미하니 resolve(no-op).
+  if (tokens.length === 0) {
+    await db
+      .from("notifications")
+      .update({ delivery_status: "sent", last_attempt_at: attemptedAt })
+      .eq("id", row.id);
+    return "sent";
+  }
+
+  let ok = false;
+  let invalidTokens: string[] = [];
+  try {
+    const res = await sendPush(tokens, formatPush(row.type, row.payload), {
+      type: row.type,
+      payload: JSON.stringify(row.payload ?? {}),
+    });
+    ok = res.successCount > 0;
+    invalidTokens = res.invalidTokens;
+  } catch {
+    ok = false; // 네트워크·SDK 에러 → 실패로 보고 재시도 경로
+  }
+
+  if (invalidTokens.length > 0) {
+    await db.from("push_subscriptions").delete().in("token", invalidTokens);
+  }
+
+  const result = reducePushAttempt(row.retry_count, ok);
+  if (result.status === "sent") {
+    await db
+      .from("notifications")
+      .update({ delivery_status: "sent", sent_at: attemptedAt, last_attempt_at: attemptedAt })
+      .eq("id", row.id);
+    return "sent";
+  }
+  if (result.status === "pending") {
+    await db
+      .from("notifications")
+      .update({ retry_count: result.retryCount, last_attempt_at: attemptedAt })
+      .eq("id", row.id);
+    return "pending";
+  }
+
+  // failed — 재시도 소진. 마스터에 system_error (인앱만, 푸시 row 안 생김 → 재귀 X).
+  await db
+    .from("notifications")
+    .update({ delivery_status: "failed", retry_count: result.retryCount, last_attempt_at: attemptedAt })
+    .eq("id", row.id);
+  await emit(
+    "system_error",
+    { master: true },
+    { context: "push_delivery_exhausted", detail: row.id },
+  );
+  return "failed";
+}
+
+/** 수신자(operator XOR passenger)의 활성 푸시 토큰. 마스터(둘 다 null)는 항상 빈 배열. */
+async function tokensFor(
+  db: AdminDb,
+  operatorId: string | null,
+  passengerId: string | null,
+): Promise<string[]> {
+  if (operatorId) {
+    const { data } = await db
+      .from("push_subscriptions")
+      .select("token")
+      .eq("operator_id", operatorId);
+    return (data ?? []).map((r) => r.token);
+  }
+  if (passengerId) {
+    const { data } = await db
+      .from("push_subscriptions")
+      .select("token")
+      .eq("passenger_id", passengerId);
+    return (data ?? []).map((r) => r.token);
+  }
+  return [];
 }

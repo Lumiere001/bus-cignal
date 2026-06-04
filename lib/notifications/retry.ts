@@ -23,6 +23,27 @@ export function isExhausted(retryCount: number): boolean {
   return retryCount >= MAX_PUSH_ATTEMPTS;
 }
 
+/**
+ * pending push row가 (재)발송 시점이 됐는지 — 백오프 게이트.
+ * retry_count=N 인 row는 직전 시도(last_attempt_at)에서 RETRY_DELAYS_MS[N-1] 만큼 지나야 다음 시도.
+ *  - last_attempt_at 없음 = 초기 발송 전 → 즉시 due
+ *  - retry_count=0 = 아직 한 번도 시도 안 함 → 즉시 due
+ *  - N이 단계를 넘으면(곧 failed 처리될 상태) due 아님
+ *
+ * @param now Date.now() (ms) — 호출자가 주입(테스트 결정성).
+ */
+export function isRetryDue(
+  retryCount: number,
+  lastAttemptAt: string | null,
+  now: number,
+): boolean {
+  if (!lastAttemptAt) return true;
+  const idx = retryCount - 1;
+  if (idx < 0) return true;
+  if (idx >= RETRY_DELAYS_MS.length) return false;
+  return now - new Date(lastAttemptAt).getTime() >= RETRY_DELAYS_MS[idx];
+}
+
 export type PushAttemptResult =
   | { status: "sent" }
   | { status: "pending"; retryCount: number; nextDelayMs: number }

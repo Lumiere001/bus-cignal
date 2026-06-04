@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { emit } from "@/lib/notifications";
+import { deliverPushBatch, emit } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -51,5 +51,10 @@ export async function GET(req: Request) {
       reminded++;
     }
   }
-  return NextResponse.json({ ok: true, reminded });
+
+  // Vercel Hobby cron 2개 한도 → 푸시 재시도(deliverPushBatch)를 이 daily cron에 piggyback.
+  // due된 pending push 재발송 보장. Pro 승급 시 /api/cron/push-retry를 분리 cron으로 등록.
+  const push = await deliverPushBatch();
+
+  return NextResponse.json({ ok: true, reminded, push });
 }
