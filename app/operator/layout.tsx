@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { logoutOperator } from "@/lib/auth/logout";
+import { isMaintenanceMode } from "@/lib/system-config";
 
 // 간사(operator) 공용 셸 — 상단 네비 + 로그아웃.
-// 접근 보호는 middleware(/operator/* → operator 세션). 여기선 UI만.
+// 접근 보호는 middleware(/operator/* → operator 세션). 여기선 UI + 점검 모드 차단.
 
 const NAV = [
   { href: "/operator", label: "대시보드" },
@@ -14,12 +15,16 @@ const NAV = [
   { href: "/operator/profile", label: "내 정보" },
 ];
 
-export default function OperatorLayout({ children }: { children: React.ReactNode }) {
+export default async function OperatorLayout({ children }: { children: React.ReactNode }) {
   async function logout() {
     "use server";
     await logoutOperator();
     redirect("/login");
   }
+
+  // 점검 모드(마스터 설정) on이면 간사 화면 전체 차단 — 안내만 노출.
+  // (마스터는 별도 /admin 영역으로 접근해 점검 모드를 끌 수 있음)
+  const maintenance = await isMaintenanceMode();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -43,7 +48,19 @@ export default function OperatorLayout({ children }: { children: React.ReactNode
           </form>
         </div>
       </header>
-      <div className="flex-1">{children}</div>
+      <div className="flex-1">
+        {maintenance ? (
+          <div className="mx-auto max-w-md px-4 py-20 text-center">
+            <p className="text-2xl">🛠️</p>
+            <h1 className="mt-3 text-lg font-semibold">시스템 점검 중입니다</h1>
+            <p className="text-muted-foreground mt-2 text-sm">
+              현재 관리자가 시스템을 점검하고 있습니다. 잠시 후 다시 이용해 주세요.
+            </p>
+          </div>
+        ) : (
+          children
+        )}
+      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emit, NOTIFICATION_EVENTS } from "@/lib/notifications";
+import { isMaintenanceMode, isPastRequestDeadline } from "@/lib/system-config";
 import { redirect } from "next/navigation";
 
 type ActionResult = { error: string } | undefined;
@@ -29,6 +30,14 @@ export async function createRequest(
   const session = await requireOperator();
   if (!session.regionId) {
     return { error: "소속 지구 정보가 없습니다. 관리자에게 문의해주세요." };
+  }
+
+  // 점검 모드·신청 마감 차단(마스터 설정) — UI 차단 우회한 직접 호출도 서버에서 방어.
+  if (await isMaintenanceMode()) {
+    return { error: "시스템 점검 중입니다. 잠시 후 다시 시도해주세요." };
+  }
+  if (await isPastRequestDeadline()) {
+    return { error: "신청이 마감되었습니다. (마감일 이후에는 신청할 수 없습니다.)" };
   }
 
   if (!consent) {
