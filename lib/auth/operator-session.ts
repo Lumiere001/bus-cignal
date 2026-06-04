@@ -12,8 +12,14 @@ export type OperatorClaims = {
   regionId: string | null;
 };
 
-function secret() {
-  return new TextEncoder().encode(process.env.OPERATOR_SESSION_SECRET!);
+function secret(): Uint8Array {
+  // 키 미설정 시 조용히 깨지지 말고 즉시 명확히 실패 (운영 오설정 빠르게 감지)
+  // — 미설정이면 jose가 "Zero-length key is not supported"라는 모호한 에러를 던짐.
+  const value = process.env.OPERATOR_SESSION_SECRET;
+  if (!value) {
+    throw new Error("OPERATOR_SESSION_SECRET 환경변수가 설정되지 않았습니다.");
+  }
+  return new TextEncoder().encode(value);
 }
 
 /** 간사 세션 JWT 발급 (12h). 마스터 승인 완료된 operator에 대해서만 호출. */
