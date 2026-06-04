@@ -8,7 +8,7 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **상태 (2026-06-04 CC 세션 — 여기부터 읽으세요)**: **팀원1(운영자) 영역 대거 진척 — operator 핵심 흐름이 등록→공개→신청→매칭→송금/입금확인→예약확정→정산까지 끝까지 연결됨. PR 5개 생성·전부 push, 팀장 머지 대기.**
+- 📍 **상태 (2026-06-04 CC 세션 — 여기부터 읽으세요)**: **팀원1(운영자) 영역 대거 진척 — operator 핵심 흐름이 등록→공개→신청→매칭→송금/입금확인→예약확정→정산까지 끝까지 연결됨. 이어서 #7 마스터 화면(`/admin/*`)도 4/5 착수. operator PR 5개 + admin PR #21, 전부 push·팀장 머지 대기.**
   - ✅ **이번 세션 작업 (PR, 전부 머지 대기)**:
     - **#15** trips 등록·공개 — 셀프리뷰로 `publishTrip` 원자적 공개(좌석 중복 버그)·정원 상한 수정 반영
     - **#16** 매칭 큐 (`/operator/trips/:id`) — 시각순 큐·수동 승인/거절·**승인 안내 모달(K1)**
@@ -17,9 +17,21 @@
     - **#19** 매칭 후반(§S4) — 송금완료·입금확인·**예약번호 BUS-XXXX 발급**·자리풀기·매칭취소 + **`match_passengers` 생성**(학생 `/r` 검증 가능케 하는 누락 고리 보완)
   - 🧪 전부 **4게이트(typecheck·lint·test 81·build) + 로컬 라이브 검증(Playwright)** 통과. dev 로그인·seed 기반 E2E로 신청·매칭·정산·송금 흐름 실동작 확인.
   - 🐛 **버그 수정**: 이미 매칭된 학생이 큐에 재노출(이중 매칭 위험, SPEC §S3 위반) → 큐 제외 + `approveRequest` 서버 가드.
+  - ✅ **후속 세션 — #7 마스터 화면 착수 (PR #21, base main 독립, core 아님)**: `app/admin/*` placeholder 4종 → 실구현.
+    - **대시보드**(§5.9): 활성 Trip·매칭·오늘 거절·대기 간사 head count + 익명화 D-day(`system_config.anonymize_after`, KST 기준).
+    - **operators**(§5.10): 활성 간사 + [비활성화](사유 5자+ 확인 모달 → `revoked` + 본인·동지구 간사 `operator_revoked` 알림, best-effort).
+    - **operators/pending**(§2.2): 승인/거절. 승인 = 신청 지구를 소속으로 확정, `approval_status='pending'` 가드를 UPDATE에 포함해 이중처리 방지.
+    - **rejections**(§5.11): `rejection_log` 기반 거절 목록(시각·공급/신청 지구·인원·사유).
+    - `app/admin/layout.tsx` 공용 셸(네비+로그아웃) + 서버액션 매 호출 `verifyMasterSession` 재검증(다층 방어). 접근 보호는 기존 미들웨어(`/admin/*`).
+    - 🐛 검증 중 발견·수정: `operators→regions` FK 2개(`region_id`·`requested_region_id`) 모호 → 제약명 명시. **개인정보 최소화(§2.4·§5.10)**: operators 활성목록 전화 컬럼 제거(후속 커밋 `23d14a9`).
+    - 🧪 4게이트(typecheck·lint·test 68·build) + **로컬 마스터 세션 라이브 검증** PASS(임시데이터 삽입 → 4화면 렌더·조인 지구명·D-day 확인 → 정리).
+    - ⏭️ **`/admin/settlement` 제외** = `lib/settlement`(PR #18) 의존 → 작성 시점엔 #18 미머지였음. **이후 #18 머지 완료(main 반영)** → 이제 `/admin/settlement`(전국 N×N 매트릭스·§S5) 바로 착수 가능. placeholder 잔존: `/admin/trips·matches·regions·system`.
+    - ⚠️ **핸드오프**: `/admin/rejections`는 `rejection_log` 행을 읽음 → operator 거절 흐름(#16/#19)이 거절 시 `rejection_log`에 기록해야 목록에 노출(현재 기록 여부 미확인). 기록 없으면 빈 목록=정상.
+    - 📋 거버넌스 셀프점검(GIT-WORKFLOW·ROLES·CONTRIBUTING·TEAM-TASKS 대조): **하드룰 위배 0**. ROLES "간사 승인=팀장 운영권한"은 *런타임 행위* 한정 — *UI 구현*은 TEAM-TASKS #7로 팀원1 배정 = 일관(마스터 세션 게이트). 메모: PR 크기(권장 300줄) 초과·PR 본문 템플릿은 다음부터 반영.
   - ⏳ **보류 (팀장 회의 대기)**: **알림(emit) 범위 결정** — 웹 푸시는 옵트인(홈화면추가+권한) 마찰이 커 구현 가치 논의 필요. 인앱=무옵트인·저비용 / 푸시=마찰 큼. 그래서 매칭 큐 **승인·거절 알림(match_confirmed/match_rejected/마스터)은 미연결** 상태(SPEC §S3·§S8 갭). 실용화는 알림과 독립(핵심 흐름 동작).
-  - 🔜 **다음 (팀원1 남은 작업)**: **#7 마스터 화면**(`/admin/*` 8개 — 대시보드·간사 승인·전국 정산 매트릭스) · operator 잔여 placeholder(`/operator` 대시보드·`/profile`·`/requests/[id]`) · 선택: 신청 검색 필터·Trip 수정.
-  - 🔀 **PR 스택/순서**: `#15 → #16 → #19`(체인), `#17`은 #16 후, **`#18` 독립(core)**. 앞 브랜치 머지 시 GitHub가 child base를 main으로 자동 재타겟.
+  - 🔜 **다음 (팀원1 남은 작업)**: **#7 마스터 잔여** — `/admin/settlement`(#18 머지 완료 → 즉시 가능) · `/admin/trips·matches·regions·system` placeholder · operator 잔여(`/operator` 대시보드·`/profile`·`/requests/[id]`) · 선택: 신청 검색 필터·Trip 수정.
+  - 📦 **머지 현황 (2026-06-04 말)**: 팀장이 **operator 흐름 전체(#15·#16·#17·#18·#19) + 워크로그(#20) main 머지** → main 대폭 전진. **열린 PR = #21(admin)뿐.** ⚠️ #21은 옛 main(05ea6c4) 기준 → 머지 전 **현재 main으로 rebase 권장**(클린, 깔끔히 됨 확인). 본 워크로그 후속 기록은 main 기준 별도 docs PR로 분리.
+  - 🔀 **PR 스택/순서(과거)**: `#15 → #16 → #19`(체인), `#17`은 #16 후, **`#18` 독립(core)**, **`#21` 독립(admin, core 아님)**. 앞 브랜치 머지 시 GitHub가 child base를 main으로 자동 재타겟 → 위처럼 전부 머지됨.
   - 📌 **블로커**: 차량 등록 폼의 **총무·담당 간사 연락처 입력란** = `trips` 컬럼 마이그(core) 필요 → PR #15에 마이그 SQL+결정 3건 코멘트로 팀장 요청함.
 - 📍 **상태 (2026-06-03 CC 세션 — 여기부터 읽으세요)**: **학생 세션(JWT)+로그아웃 추가, 익명화 강화, 결정 기록 정리 완료. 인프라는 거의 다 깔림 — 이제 팀원1(운영 흐름)·CCC답(간사 인증) 대기 단계.** (`origin/main` = 56d3630)
   - ✅ **이번 세션 머지 (PR #5~#9)**: 알림엔진+마스터E2E(로컬 해시 `$` 버그 수정) · 익명화 PIPA강화 · WORKLOG동기화 · **학생세션(`lib/auth/passenger*`)+로그아웃3종(`lib/auth/logout.ts`)+온보딩env** · **결정기록**(`docs/decisions/2026-06-03-student-access-and-ccc-integration.md`).
