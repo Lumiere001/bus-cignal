@@ -8,7 +8,12 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **세션 인계 (2026-06-04 종료 — 다음 세션 여기부터 읽으세요)**: **operator 핵심 흐름 + 마스터 화면 + 인앱 알림까지 main 완성. 다음 = 푸시 백엔드 + 총무컬럼 마이그.** (`origin/main` = fa5e191, 열린 PR 0)
+- 📍 **Phase B 푸시 백엔드 구현 완료 (2026-06-04 후속 — 여기부터 읽으세요)**: **인앱에 이어 푸시 채널 실발송 코드 전부 구현. 브랜치 `feat/notifications-push-backend`, 4게이트(typecheck·lint·test 110·build) green. push·PR·머지 = 팀장.** (base = 직전 main, 직전 worklog 커밋 `994f073`은 아직 origin 미반영 → 팀장이 main push 시 함께)
+  - ✅ **구현 (CC, 우리=팀장 역할)**: ① 마이그 `20260605000000_push_subscriptions.sql`(operator XOR passenger, token unique, `num_nonnulls=1`, RLS enable 무정책) ② `lib/firebase/admin.ts`(Admin 싱글톤 + `isPushConfigured`) ③ `lib/notifications/push.ts`(formatPush·sendPush) ④ `deliverPushBatch()` 실발송(토큰 multicast → `reducePushAttempt` 상태전이 → 소진 시 마스터 `system_error`, 무효토큰 정리, 옵트아웃 resolve) ⑤ `isRetryDue()` 백오프 게이트 ⑥ `POST/DELETE /api/push/subscribe`(세션 기준) ⑦ `/api/cron/push-retry` + `payment-reminder` piggyback ⑧ 테스트 +20. `firebase-admin@13.10.0` 추가.
+  - 🧩 **핵심 설계 결정**: (a) **emit()이 호출될 때마다 due된 pending 전부 재시도** → 알림 활동 중엔 cron 없이 자가 치유. (b) **Vercel Hobby cron 2개 한도**(payment-reminder·anonymize로 가득) → push 재시도 daily 구동은 payment-reminder에 **piggyback**, 독립 `/api/cron/push-retry`는 수동/Pro용(분리 cron 미등록). (c) **env 미구성 시 `isPushConfigured()=false`로 no-op** → 인앱 알림·로컬·기존 테스트 무영향(그래서 기존 index.test 6건 그대로 통과). (d) 1m/5m/30m 백오프는 Hobby daily에선 "최소 대기"로만 실현(상태머신은 정확).
+  - ⏭️ **다음 (순서)**: 1) **팀장**: 이 브랜치 push → PR → 머지(아래 PR 본문 준비됨). 2) **Cowork**: 마이그 적용(`supabase db push` 또는 GUI) + **타입 regen**(`supabase gen types` — 현재 `database.types.ts`는 수기 미러) + Vercel prod env 3개(`FIREBASE_ADMIN_PRIVATE_KEY`·`FIREBASE_ADMIN_CLIENT_EMAIL`·`NEXT_PUBLIC_FIREBASE_VAPID_KEY`). 3) **Phase C(팀원2 + 우리 PWA인프라)**: `/me` 옵트인 배너("홈화면추가+알림허용") + `firebase-messaging-sw.js` + getToken→`/api/push/subscribe`. 4) 이슈 #25 trips 총무 연락처 컬럼 마이그. 5) CCC 인증 본구현(⛔ CCC IT 답 대기). 6) 출시 전 RLS 실적용·E2E.
+  - ⚠️ **검증 한계**: 실제 FCM 발송은 실기기 토큰 + Admin 크리덴셜 필요 → **로컬은 mock 단위테스트까지**. 라이브 발송 검증은 Phase C(클라이언트 옵트인) 이후 실기기로 — 기존 알림엔진과 동일 패턴.
+- 📍 **세션 인계 (2026-06-04 종료)**: **operator 핵심 흐름 + 마스터 화면 + 인앱 알림까지 main 완성. 다음 = 푸시 백엔드 + 총무컬럼 마이그.** (`origin/main` = fa5e191, 열린 PR 0)
   - ✅ **이번 세션 누적 머지**: operator 전체(등록·공개·신청·매칭큐·송금·입금확인·예약번호·정산, #15·#18 + #23 복구) · 마스터 화면(admin 대시보드·간사승인/권한해제·거절목록, #21) · **인앱 알림 전 구간 연결**(request_new·match_confirmed·match_rejected·rejection_occurred·payment_reported·paid_code_issued·seat_freed·match_cancelled_p2·operator_revoked) · 스택금지 규칙(#24) · 복구 기록(#26).
   - 🧨 **사고 1건(해결됨)**: #16/#17/#19가 스택 PR이라 squash 머지 시 main 누락 → #23으로 복구. 재발방지 규칙 `docs/GIT-WORKFLOW.md`·`AGENTS.md`에 박음. (바로 아래 항목 참고)
   - 🔜 **다음 세션 우선순위 (순서대로)**:

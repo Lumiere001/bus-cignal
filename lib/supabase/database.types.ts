@@ -290,6 +290,51 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          last_used_at: string
+          operator_id: string | null
+          passenger_id: string | null
+          token: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_used_at?: string
+          operator_id?: string | null
+          passenger_id?: string | null
+          token: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_used_at?: string
+          operator_id?: string | null
+          passenger_id?: string | null
+          token?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "match_passengers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       region_locations: {
         Row: {
           address: string

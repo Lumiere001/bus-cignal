@@ -8,6 +8,17 @@
 
 ## [Unreleased]
 
+### Added — Phase B 푸시 백엔드 (2026-06-04)
+- `push_subscriptions` 마이그(`20260605000000`) — operator XOR passenger FCM 토큰(`num_nonnulls=1` CHECK), token unique, RLS enable+무정책(service_role 전용). 타입 수기 미러(`database.types.ts`) → Cowork 적용 후 정식 regen
+- `lib/firebase/admin.ts` — Firebase Admin 싱글톤(named app 격리) + `isPushConfigured()`(env 미구성 시 발송 skip)
+- `lib/notifications/deliverPushBatch()` 실발송 구현 — pending push 조회 → 수신자 토큰 multicast(`sendEachForMulticast`) → `reducePushAttempt`로 sent/pending(retry++)/failed(소진→마스터 `system_error`) 전이 + 무효 토큰 정리 + 옵트아웃(무토큰) resolve. `lib/notifications/push.ts`(formatPush·sendPush) 분리
+- `isRetryDue()` 백오프 게이트(retry.ts) — 매 emit·cron마다 due된 pending 자가 치유
+- `POST/DELETE /api/push/subscribe` — 세션(간사/학생) 기준 토큰 저장·해제(소유자 위변조 차단, Zod)
+- `/api/cron/push-retry`(CRON_SECRET) + `payment-reminder` cron piggyback 구동 — Vercel Hobby cron 2개 한도 회피(Pro 시 분리)
+- `.env.example`에 `NEXT_PUBLIC_FIREBASE_VAPID_KEY`(Phase C 클라이언트용) 추가
+- 단위테스트 +20 (deliver 8·push 7·retry isRetryDue 5) → 총 110 통과. 의존성 `firebase-admin@13.10.0`
+- ⏭️ 남음(Cowork/팀장): 마이그 적용 + 타입 regen + Vercel에 Firebase Admin/VAPID env. Phase C(클라이언트 SW·옵트인 배너) = 팀원2
+
 ### Changed — v1.1 간사 피드백 반영 (2026-05-30)
 - 간사 인증: Google OAuth → **CCC 로그인** (`operators.google_uid`→`ccc_id` + `campus`·`ccc_role`, 자체 세션)
 - 매칭: FIFO 강제·우선순위 자동 부분매칭·자동 후속매칭·자동 거절 제거 → **간사 수동 선택** (`priority`=힌트)
