@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { emit } from "@/lib/notifications";
 
 const CANCELLABLE = ["awaiting_payment", "payment_reported", "paid"] as const;
 
@@ -126,12 +127,40 @@ export async function cancelMatch(
     })
     .eq("id", matchId)
     .in("status", [...CANCELLABLE])
-    .select("id");
+    .select("id, request_id, trip_id");
 
   if (error) return { ok: false, reason: "db_error" };
   if (!updated?.length) return { ok: false, reason: "wrong_state" };
 
-  // TODO: 양쪽 간사 알림 (lib/notifications 구현 후 연결)
+  // 양쪽 간사 알림 (SPEC §S5a·§S8) — best-effort. 발송 실패가 취소를 막지 않는다.
+  // 공급 간사 = trips.created_by, 신청 간사 = seat_requests.operator_id
+  // (resolution 패턴: app/api/cron/payment-reminder/route.ts 동일).
+  try {
+    const row = updated[0];
+    const [{ data: trip }, { data: req }, { data: mp }] = await Promise.all([
+      db.from("trips").select("created_by").eq("id", row.trip_id).maybeSingle(),
+      db
+        .from("seat_requests")
+        .select("operator_id")
+        .eq("id", row.request_id)
+        .maybeSingle(),
+      db
+        .from("match_passengers")
+        .select("name")
+        .eq("id", passengerId)
+        .maybeSingle(),
+    ]);
+    await emit(
+      "passenger_cancelled",
+      {
+        supplyOperatorId: trip?.created_by ?? null,
+        requestOperatorId: req?.operator_id ?? null,
+      },
+      { matchId, ...(mp?.name ? { passengerName: mp.name } : {}) },
+    );
+  } catch {
+    // 알림 발송 실패는 취소 성공에 영향을 주지 않는다 (인앱·푸시 모두 부가 채널).
+  }
 
   return { ok: true };
 }
