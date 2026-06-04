@@ -69,6 +69,7 @@ function RequestCard({
   const [error, setError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
+  const [confirming, setConfirming] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function toggle(passengerId: string) {
@@ -84,7 +85,16 @@ function RequestCard({
   const selectedCount = selected.size;
   const overCapacity = selectedCount > availableSeats;
 
+  // [N명 승인] → 안내 모달 (SPEC §S3.2: 입금 확정 후 공급측 취소 불가=K1 경고)
+  function openConfirm() {
+    setError(null);
+    if (selectedCount === 0 || overCapacity) return;
+    setConfirming(true);
+  }
+
+  // 모달의 [승인 확정] → 실제 매칭 생성
   function handleApprove() {
+    setConfirming(false);
     setError(null);
     startTransition(async () => {
       const result = await approveRequest(tripId, req.id, [...selected]);
@@ -203,7 +213,7 @@ function RequestCard({
             </Button>
             <Button
               size="sm"
-              onClick={handleApprove}
+              onClick={openConfirm}
               disabled={isPending || selectedCount === 0 || overCapacity}
             >
               {isPending
@@ -215,6 +225,43 @@ function RequestCard({
           </>
         )}
       </div>
+
+      {/* 승인 안내 모달 — SPEC §S3.2·§5.5 (K1: 입금 확정 후 공급측 취소 불가) */}
+      {confirming && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setConfirming(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-gray-900">
+              {selectedCount}명을 승인하시겠어요?
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              입금 확정 후에는 공급 지구 본인 사정으로 매칭 취소가 불가능합니다.
+              학생 자의 취소 또는 송금 미완료 시에만 자리가 풀립니다. 신중히 진행해
+              주세요.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirming(false)}
+                disabled={isPending}
+              >
+                취소
+              </Button>
+              <Button size="sm" onClick={handleApprove} disabled={isPending}>
+                승인 확정
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </li>
   );
 }
