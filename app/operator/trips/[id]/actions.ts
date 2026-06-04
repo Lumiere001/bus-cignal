@@ -6,6 +6,7 @@ import { available, approve } from "@/lib/matching";
 import type { Match, MatchStatus, SeatRequest } from "@/lib/matching/types";
 import { MatchingException, MatchingError } from "@/lib/matching/types";
 import { generateReservationCode } from "@/lib/reservation/code";
+import { emit } from "@/lib/notifications";
 import { revalidatePath } from "next/cache";
 
 type ActionResult = { error: string } | { ok: true };
@@ -233,6 +234,7 @@ async function loadOwnedMatch(
     .select(
       `id, status, trip_id, passenger_id,
        trip:trips!trip_id(operator_region_id),
+       request:seat_requests!request_id(operator_id),
        passenger:request_passengers!passenger_id(name, phone, school_or_role)`,
     )
     .eq("id", matchId)
@@ -261,7 +263,7 @@ export async function confirmPayment(matchId: string): Promise<ActionResult> {
   if (!pax) return { error: "학생 정보를 찾을 수 없습니다." };
 
   // 예약번호 발급 + paid 전이 — unique 충돌 시 재생성, 0행이면 이미 처리됨
-  let issued = false;
+  let issuedCode: string | null = null;
   for (let i = 0; i < MAX_CODE_RETRIES; i += 1) {
     const code = generateReservationCode();
     const { data, error } = await db
@@ -280,24 +282,42 @@ export async function confirmPayment(matchId: string): Promise<ActionResult> {
       return { error: "입금 확인 중 오류가 발생했습니다." };
     }
     if (!data) return { error: "이미 처리된 매칭입니다." };
-    issued = true;
+    issuedCode = code;
     break;
   }
-  if (!issued) return { error: "예약번호 발급에 실패했습니다. 다시 시도해주세요." };
+  if (!issuedCode) return { error: "예약번호 발급에 실패했습니다. 다시 시도해주세요." };
 
   // 학생 검증 레코드(이름+전화 끝4자리로 /r 진입). 실패 시 paid 롤백.
-  const { error: mpErr } = await db.from("match_passengers").insert({
-    match_id: matchId,
-    name: pax.name,
-    phone: pax.phone,
-    school_or_role: pax.school_or_role,
-  });
-  if (mpErr) {
+  const { data: mpRow, error: mpErr } = await db
+    .from("match_passengers")
+    .insert({
+      match_id: matchId,
+      name: pax.name,
+      phone: pax.phone,
+      school_or_role: pax.school_or_role,
+    })
+    .select("id")
+    .single();
+  if (mpErr || !mpRow) {
     await db
       .from("matches")
       .update({ status: match.status, paid_at: null, reservation_code: null })
       .eq("id", matchId);
     return { error: "학생 정보 저장 중 오류가 발생했습니다." };
+  }
+
+  // 알림: 입금 확인 + 예약번호 → 신청 지구 간사 + 학생 (SPEC §S8). 실패해도 본 처리엔 영향 없음.
+  try {
+    await emit(
+      "paid_code_issued",
+      {
+        requestOperatorId: firstOf(match.request)?.operator_id ?? null,
+        passengerId: mpRow.id,
+      },
+      { matchId, reservationCode: issuedCode },
+    );
+  } catch {
+    /* 알림 실패 무시 */
   }
 
   revalidatePath(`/operator/trips/${match.trip_id}`);
@@ -326,6 +346,20 @@ export async function releaseSeat(matchId: string): Promise<ActionResult> {
     .maybeSingle();
   if (error) return { error: "자리 풀기 중 오류가 발생했습니다." };
   if (!data) return { error: "이미 처리된 매칭입니다." };
+
+  // 알림: 자리 풀림 → 신청 지구 (paid 전이라 학생 검증 레코드 없음 → passenger null). SPEC §S8.
+  try {
+    await emit(
+      "seat_freed",
+      {
+        requestOperatorId: firstOf(match.request)?.operator_id ?? null,
+        passengerId: null,
+      },
+      { tripId: match.trip_id },
+    );
+  } catch {
+    /* 알림 실패 무시 */
+  }
 
   revalidatePath(`/operator/trips/${match.trip_id}`);
   return { ok: true };
@@ -361,6 +395,17 @@ export async function cancelMatch(matchId: string, reason: string): Promise<Acti
   if (error) return { error: "매칭 취소 중 오류가 발생했습니다." };
   if (!data) {
     return { error: "송금 보고된 매칭만 취소할 수 있습니다 (입금 완료분은 취소 불가)." };
+  }
+
+  // 알림: 매칭 취소(Phase 2) → 신청 지구. SPEC §S8.
+  try {
+    await emit(
+      "match_cancelled_p2",
+      { requestOperatorId: firstOf(match.request)?.operator_id ?? null },
+      { matchId, reason: trimmed },
+    );
+  } catch {
+    /* 알림 실패 무시 */
   }
 
   revalidatePath(`/operator/trips/${match.trip_id}`);

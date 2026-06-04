@@ -2,6 +2,7 @@
 
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { emit } from "@/lib/notifications";
 import { revalidatePath } from "next/cache";
 
 type ActionResult = { error: string } | { ok: true };
@@ -23,7 +24,9 @@ export async function reportPayment(matchId: string): Promise<ActionResult> {
   // 본인 지구가 신청 주체인 매칭인지 확인
   const { data: match } = await db
     .from("matches")
-    .select("id, status, request:seat_requests!request_id(region_id)")
+    .select(
+      "id, status, request:seat_requests!request_id(region_id), trip:trips!trip_id(created_by)",
+    )
     .eq("id", matchId)
     .single();
 
@@ -44,6 +47,17 @@ export async function reportPayment(matchId: string): Promise<ActionResult> {
     .maybeSingle();
   if (error) return { error: "송금 완료 보고 중 오류가 발생했습니다." };
   if (!data) return { error: "이미 처리된 매칭입니다." };
+
+  // 알림: 송금 완료 보고 → 공급 지구 간사 (SPEC §S8). 실패해도 본 처리엔 영향 없음.
+  try {
+    await emit(
+      "payment_reported",
+      { supplyOperatorId: firstOf(match.trip)?.created_by ?? null },
+      { matchId },
+    );
+  } catch {
+    /* 알림 실패 무시 */
+  }
 
   revalidatePath("/operator/matches");
   return { ok: true };
