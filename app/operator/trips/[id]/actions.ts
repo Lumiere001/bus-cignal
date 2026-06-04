@@ -5,12 +5,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { available, approve } from "@/lib/matching";
 import type { Match, MatchStatus, SeatRequest } from "@/lib/matching/types";
 import { MatchingException, MatchingError } from "@/lib/matching/types";
+import { generateReservationCode } from "@/lib/reservation/code";
 import { revalidatePath } from "next/cache";
 
 type ActionResult = { error: string } | { ok: true };
 
 // 송금 기한 = 매칭 후 24h (v1.1 소프트 — 자동 만료 아님, 리마인더 기준일 뿐. SPEC §7)
 const PAYMENT_DUE_HOURS = 24;
+// 예약번호 unique 충돌 시 재생성 횟수
+const MAX_CODE_RETRIES = 5;
+
+function firstOf<T>(rel: T | T[] | null | undefined): T | null {
+  return Array.isArray(rel) ? (rel[0] ?? null) : (rel ?? null);
+}
 
 const MATCHING_ERROR_MESSAGE: Record<string, string> = {
   [MatchingError.EMPTY_SELECTION]: "최소 1명을 선택해주세요.",
@@ -96,6 +103,17 @@ export async function approveRequest(
   if (request.status !== "queued") return { error: "이미 처리된 신청입니다." };
 
   const availableSeats = await computeAvailable(db, tripId);
+
+  // 이중 매칭 방어: 선택 학생 중 이미 활성 매칭이 있는 사람 거부 (stale UI 대비)
+  const { data: existing } = await db
+    .from("matches")
+    .select("passenger_id")
+    .eq("request_id", requestId)
+    .in("status", ["awaiting_payment", "payment_reported", "paid"]);
+  const alreadyMatched = new Set((existing ?? []).map((m) => m.passenger_id));
+  if (selectedPassengerIds.some((id) => alreadyMatched.has(id))) {
+    return { error: "이미 매칭된 학생이 포함되어 있습니다. 새로고침 후 다시 시도해주세요." };
+  }
 
   // 매칭 엔진(core)으로 검증 + 좌석 계산 — Match 생성 로직은 엔진이 담당
   const engineRequest: SeatRequest = {
@@ -199,5 +217,152 @@ export async function rejectRequest(
   });
 
   revalidatePath(`/operator/trips/${tripId}`);
+  return { ok: true };
+}
+
+// ─── 매칭 후반 (공급 간사 — SPEC §S4·§7) ─────────────────────────────────────
+
+/** matchId가 본인 지구 공급 trip 소속인지 확인. 통과 시 match(+passenger) 반환. */
+async function loadOwnedMatch(
+  db: ReturnType<typeof createAdminClient>,
+  matchId: string,
+  regionId: string,
+) {
+  const { data: match } = await db
+    .from("matches")
+    .select(
+      `id, status, trip_id, passenger_id,
+       trip:trips!trip_id(operator_region_id),
+       passenger:request_passengers!passenger_id(name, phone, school_or_role)`,
+    )
+    .eq("id", matchId)
+    .single();
+  if (!match) return null;
+  const trip = firstOf(match.trip);
+  if (!trip || trip.operator_region_id !== regionId) return null;
+  return match;
+}
+
+/**
+ * 입금 확인 → paid + 예약번호 발급 + 학생 검증 레코드(match_passengers) 생성 (SPEC §S4 step3).
+ * awaiting_payment·payment_reported에서만. 상태 가드 UPDATE로 원자적(중복 발급 방지).
+ */
+export async function confirmPayment(matchId: string): Promise<ActionResult> {
+  const session = await requireOperator();
+  if (!session.regionId) return { error: "소속 지구 정보가 없습니다." };
+
+  const db = createAdminClient();
+  const match = await loadOwnedMatch(db, matchId, session.regionId);
+  if (!match) return { error: "매칭을 찾을 수 없습니다." };
+  if (match.status !== "awaiting_payment" && match.status !== "payment_reported") {
+    return { error: "입금 확인할 수 있는 상태가 아닙니다." };
+  }
+  const pax = firstOf(match.passenger);
+  if (!pax) return { error: "학생 정보를 찾을 수 없습니다." };
+
+  // 예약번호 발급 + paid 전이 — unique 충돌 시 재생성, 0행이면 이미 처리됨
+  let issued = false;
+  for (let i = 0; i < MAX_CODE_RETRIES; i += 1) {
+    const code = generateReservationCode();
+    const { data, error } = await db
+      .from("matches")
+      .update({
+        status: "paid",
+        paid_at: new Date().toISOString(),
+        reservation_code: code,
+      })
+      .eq("id", matchId)
+      .in("status", ["awaiting_payment", "payment_reported"])
+      .select("id")
+      .maybeSingle();
+    if (error) {
+      if (error.code === "23505") continue; // reservation_code 충돌 → 재생성
+      return { error: "입금 확인 중 오류가 발생했습니다." };
+    }
+    if (!data) return { error: "이미 처리된 매칭입니다." };
+    issued = true;
+    break;
+  }
+  if (!issued) return { error: "예약번호 발급에 실패했습니다. 다시 시도해주세요." };
+
+  // 학생 검증 레코드(이름+전화 끝4자리로 /r 진입). 실패 시 paid 롤백.
+  const { error: mpErr } = await db.from("match_passengers").insert({
+    match_id: matchId,
+    name: pax.name,
+    phone: pax.phone,
+    school_or_role: pax.school_or_role,
+  });
+  if (mpErr) {
+    await db
+      .from("matches")
+      .update({ status: match.status, paid_at: null, reservation_code: null })
+      .eq("id", matchId);
+    return { error: "학생 정보 저장 중 오류가 발생했습니다." };
+  }
+
+  revalidatePath(`/operator/trips/${match.trip_id}`);
+  revalidatePath("/operator/matches");
+  return { ok: true };
+}
+
+/**
+ * [자리 풀기] — 송금 지연 등 간사 수동 해제 (SPEC §7 release_seat).
+ * awaiting_payment·payment_reported만 → expired. 자동 cron 아님. 자리 회수는 상태변경으로 자동.
+ */
+export async function releaseSeat(matchId: string): Promise<ActionResult> {
+  const session = await requireOperator();
+  if (!session.regionId) return { error: "소속 지구 정보가 없습니다." };
+
+  const db = createAdminClient();
+  const match = await loadOwnedMatch(db, matchId, session.regionId);
+  if (!match) return { error: "매칭을 찾을 수 없습니다." };
+
+  const { data, error } = await db
+    .from("matches")
+    .update({ status: "expired", cancellation_source: "operator" })
+    .eq("id", matchId)
+    .in("status", ["awaiting_payment", "payment_reported"])
+    .select("id")
+    .maybeSingle();
+  if (error) return { error: "자리 풀기 중 오류가 발생했습니다." };
+  if (!data) return { error: "이미 처리된 매칭입니다." };
+
+  revalidatePath(`/operator/trips/${match.trip_id}`);
+  return { ok: true };
+}
+
+/**
+ * [매칭 취소] — Phase 2 (송금 보고 후 미입금). SPEC §7 cancel_match(operator).
+ * payment_reported에서만 (★ K1: paid는 공급측 취소 불가). 사유 필수.
+ */
+export async function cancelMatch(matchId: string, reason: string): Promise<ActionResult> {
+  const session = await requireOperator();
+  if (!session.regionId) return { error: "소속 지구 정보가 없습니다." };
+
+  const trimmed = reason.trim();
+  if (trimmed.length < 5) return { error: "취소 사유를 5자 이상 입력해주세요." };
+  if (trimmed.length > 500) return { error: "취소 사유는 500자 이하로 입력해주세요." };
+
+  const db = createAdminClient();
+  const match = await loadOwnedMatch(db, matchId, session.regionId);
+  if (!match) return { error: "매칭을 찾을 수 없습니다." };
+
+  const { data, error } = await db
+    .from("matches")
+    .update({
+      status: "cancelled",
+      cancellation_source: "operator",
+      cancellation_reason: trimmed,
+    })
+    .eq("id", matchId)
+    .eq("status", "payment_reported") // 송금 보고 상태에서만 (paid 불가 = K1)
+    .select("id")
+    .maybeSingle();
+  if (error) return { error: "매칭 취소 중 오류가 발생했습니다." };
+  if (!data) {
+    return { error: "송금 보고된 매칭만 취소할 수 있습니다 (입금 완료분은 취소 불가)." };
+  }
+
+  revalidatePath(`/operator/trips/${match.trip_id}`);
   return { ok: true };
 }

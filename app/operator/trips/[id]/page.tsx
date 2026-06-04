@@ -9,6 +9,7 @@ import {
   MATCH_STATUS_LABEL,
 } from "@/lib/labels";
 import { MatchingQueue } from "./MatchingQueue";
+import { MatchActions } from "./MatchActions";
 
 // 매칭으로 자리를 점유하는 상태 (잔여 계산 시 차감)
 const ACTIVE_MATCH_STATUSES = ["awaiting_payment", "payment_reported", "paid"] as const;
@@ -42,7 +43,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       destination:region_locations!destination_location_id(label, address),
       seat_offers(seat_count, status),
       matches(
-        id, status, payment_due_at, matched_at,
+        id, status, payment_due_at, matched_at, reservation_code, passenger_id,
         passenger:request_passengers!passenger_id(name, school_or_role),
         request:seat_requests!request_id(region:regions!region_id(name))
       )
@@ -81,23 +82,30 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   );
   const availableSeats = Math.max(0, openSeats - activeMatches.length);
 
+  // 이미 매칭된(활성) 학생은 큐에서 제외 — 재선택·이중 매칭 방지 (SPEC §S3: 매칭 안 된 학생만 잔류)
+  const matchedPassengerIds = new Set(
+    activeMatches.map((m) => m.passenger_id).filter(Boolean),
+  );
+
   // 신청 큐 → 클라이언트 컴포넌트용 직렬화 (전화번호는 뒤 4자리만 — 개인정보 최소, §2.4)
-  const queue = (requests ?? []).map((r) => ({
-    id: r.id,
-    requestedAt: r.requested_at,
-    regionName: one(r.region)?.name ?? "타지구",
-    passengers: (r.request_passengers ?? [])
-      .slice()
-      .sort((a, b) => a.priority - b.priority)
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        phoneTail: p.phone.slice(-4),
-        schoolOrRole: p.school_or_role,
-        priority: p.priority,
-        note: p.note,
-      })),
-  }));
+  const queue = (requests ?? [])
+    .map((r) => ({
+      id: r.id,
+      requestedAt: r.requested_at,
+      regionName: one(r.region)?.name ?? "타지구",
+      passengers: (r.request_passengers ?? [])
+        .filter((p) => !matchedPassengerIds.has(p.id))
+        .sort((a, b) => a.priority - b.priority)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          phoneTail: p.phone.slice(-4),
+          schoolOrRole: p.school_or_role,
+          priority: p.priority,
+          note: p.note,
+        })),
+    }))
+    .filter((r) => r.passengers.length > 0); // 남은 학생 없는 신청 카드는 숨김
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -195,9 +203,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                         </span>
                       )}
                     </div>
-                    <span className="shrink-0 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                      {MATCH_STATUS_LABEL[m.status ?? ""] ?? m.status}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                        {MATCH_STATUS_LABEL[m.status ?? ""] ?? m.status}
+                      </span>
+                      <MatchActions
+                        matchId={m.id}
+                        status={m.status ?? ""}
+                        reservationCode={m.reservation_code ?? null}
+                      />
+                    </div>
                   </li>
                 );
               })}
