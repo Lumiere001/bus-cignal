@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "./database.types";
 
@@ -26,5 +27,13 @@ export async function createClient() {
         },
       },
     }
+  );
+}
+
+/** RLS 없는 테이블(trips, seat_offers 등) 접근용 service_role 클라이언트. */
+export function createAdminClient() {
+  return createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 }
