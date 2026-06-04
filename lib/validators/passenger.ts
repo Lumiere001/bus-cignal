@@ -10,3 +10,9 @@ export const ReservationEntrySchema = z.object({
 });
 
 export type ReservationEntryInput = z.infer<typeof ReservationEntrySchema>;
+
+export const CancelReasonSchema = z.object({
+  reason: z.string().max(200).optional(),
+});
+
+export type CancelReasonInput = z.infer<typeof CancelReasonSchema>;
