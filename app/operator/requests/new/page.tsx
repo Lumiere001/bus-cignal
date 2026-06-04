@@ -2,23 +2,11 @@ import Link from "next/link";
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DIRECTION_SHORT } from "@/lib/labels";
+import { one } from "@/lib/supabase/relation";
+import { formatKstDateTime } from "@/lib/datetime";
 import { NewRequestForm } from "./NewRequestForm";
 
 const ACTIVE_MATCH_STATUSES = ["awaiting_payment", "payment_reported", "paid"] as const;
-
-function one<T>(rel: T | T[] | null): T | null {
-  return Array.isArray(rel) ? (rel[0] ?? null) : rel;
-}
-
-function formatKST(iso: string) {
-  return new Date(iso).toLocaleString("ko-KR", {
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Seoul",
-  });
-}
 
 export default async function Page() {
   const session = await requireOperator();
@@ -67,7 +55,7 @@ export default async function Page() {
         origin?.label ?? origin?.address ?? "출발지"
       } → ${dest?.label ?? dest?.address ?? "도착지"}`,
       regionName: one(t.region)?.name ?? "타지구",
-      departure: formatKST(t.departure_at),
+      departure: formatKstDateTime(t.departure_at),
       price: t.price_per_seat,
       availableSeats: Math.max(0, openSeats - activeMatches),
     };

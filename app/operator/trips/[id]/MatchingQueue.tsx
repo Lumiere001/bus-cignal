@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { formatKstDateTime } from "@/lib/datetime";
 import { approveRequest, rejectRequest } from "./actions";
 
 type QueuePassenger = {
@@ -19,16 +20,6 @@ type QueueRequest = {
   regionName: string;
   passengers: QueuePassenger[];
 };
-
-function formatKST(iso: string) {
-  return new Date(iso).toLocaleString("ko-KR", {
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Seoul",
-  });
-}
 
 export function MatchingQueue({
   tripId,
@@ -115,7 +106,7 @@ function RequestCard({
     <li className="rounded-xl border bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium text-gray-900">{req.regionName}</span>
-        <span className="text-xs text-gray-400">{formatKST(req.requestedAt)} 신청</span>
+        <span className="text-xs text-gray-400">{formatKstDateTime(req.requestedAt)} 신청</span>
       </div>
 
       {/* 학생 선택 — priority는 힌트(순서)일 뿐, 강제 선택 아님 */}

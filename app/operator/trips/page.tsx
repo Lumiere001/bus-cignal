@@ -8,20 +8,10 @@ import {
   TRIP_STATUS_LABEL,
   TRIP_STATUS_COLOR,
 } from "@/lib/labels";
+import { formatKstDateTime } from "@/lib/datetime";
 import { PublishTripButton } from "./PublishTripButton";
 
 const ACTIVE_MATCH_STATUSES = ["awaiting_payment", "payment_reported", "paid"] as const;
-
-function formatKST(iso: string) {
-  return new Date(iso).toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Seoul",
-  });
-}
 
 export default async function Page() {
   const session = await requireOperator();
@@ -86,7 +76,7 @@ export default async function Page() {
                     </span>
                   </div>
                   <span className="text-sm text-gray-500">
-                    {formatKST(trip.departure_at)}
+                    {formatKstDateTime(trip.departure_at, { year: true })}
                   </span>
                 </div>
 

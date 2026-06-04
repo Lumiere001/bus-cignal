@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatKstShort } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -29,11 +30,6 @@ async function loadRejections(): Promise<Row[]> {
 }
 
 /** UTC ISO → "MM/DD HH:mm" (KST). */
-function fmtKst(iso: string): string {
-  const k = new Date(new Date(iso).getTime() + 9 * 3_600_000).toISOString();
-  return `${k.slice(5, 7)}/${k.slice(8, 10)} ${k.slice(11, 16)}`;
-}
-
 export default async function AdminRejectionsPage() {
   const rows = await loadRejections();
 
@@ -64,7 +60,7 @@ export default async function AdminRejectionsPage() {
               {rows.map((r) => (
                 <tr key={r.id} className="border-t align-top">
                   <td className="px-4 py-2 whitespace-nowrap tabular-nums">
-                    {fmtKst(r.created_at)}
+                    {formatKstShort(r.created_at)}
                   </td>
                   <td className="px-4 py-2">{r.seat_requests?.trips?.regions?.name ?? "—"}</td>
                   <td className="px-4 py-2">{r.seat_requests?.regions?.name ?? "—"}</td>
