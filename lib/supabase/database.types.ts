@@ -617,6 +617,8 @@ export type Database = {
           origin_location_id: string
           price_per_seat: number
           status: string
+          treasurer_name: string | null
+          treasurer_phone: string | null
         }
         Insert: {
           capacity: number
@@ -631,6 +633,8 @@ export type Database = {
           origin_location_id: string
           price_per_seat: number
           status?: string
+          treasurer_name?: string | null
+          treasurer_phone?: string | null
         }
         Update: {
           capacity?: number
@@ -645,6 +649,8 @@ export type Database = {
           origin_location_id?: string
           price_per_seat?: number
           status?: string
+          treasurer_name?: string | null
+          treasurer_phone?: string | null
         }
         Relationships: [
           {
