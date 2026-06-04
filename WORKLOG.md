@@ -8,6 +8,18 @@
 
 ## 🔄 현재 작업 (Active)
 
+- 📍 **세션 종료 (2026-06-05 밤 — ⭐ 다음 세션 여기부터 + Cowork부터 시작)**: **오늘 푸시 풀스택 머지 + 운영 DB 라이브 + 로컬 전체흐름 QA 실증 + 버그 1건 잡음. 열린 PR = #28(정산)뿐.**
+  - ✅ **오늘 main 머지**: #33 푸시 백엔드 · #34 Phase C 클라이언트(SW·옵트인배너) · #36 .gitattributes(CRLF 방지) · #35 총무 컬럼 마이그(이슈 #25 closed) · #37 학생취소→양쪽 간사 알림 · #38 타입 정식화(prod regen, `matches.payment_due_at` nullable 교정) · #39 총무 연락처 입력폼(팀원1) · #40 세션 시크릿 가드.
+  - ✅ **운영 DB 라이브**: prod Supabase(`zovrgrbrzxpzmgpkxmns`)가 paused였음 → resume + `supabase db push`로 **전체 마이그 5개 일괄 적용**(빈 DB였음 = 마이그 0). 히스토리 채워짐, Vercel 자동 재배포.
+  - ✅ **로컬 전체흐름 QA 실증** (Docker+로컬 supabase+seed+dev서버+브라우저 preview): 마스터/admin · 간사 전체(등록→**매칭큐 수동승인 K1**→입금확인→**예약번호 발급**→정산 ledger) · 학생(예약조회→취소) **전부 실제 동작**. #37 취소알림 DB에 4건(양쪽 간사×인앱+푸시) 발송 실증.
+  - 🐛 **버그 잡음**: `OPERATOR_SESSION_SECRET`이 `.env.local`에 누락 → 간사 로그인 "Zero-length key" 에러. **로컬 .env.local에 추가 완료**(랜덤). 코드 명확-실패 가드 = #40. ⚠️ **Vercel prod엔 아직 — 다음 세션 Cowork에서 추가 필수**.
+  - ⭐ **다음 세션 우선순위 (순서대로)**:
+    1. **⭐ Cowork 먼저** — (a) Vercel `OPERATOR_SESSION_SECRET` 추가/확인 (Production+Preview, Sensitive; 값 = 터미널 `openssl rand -base64 32`) + Redeploy. (b) 라이브 스모크(모바일 375px, bus-cignal.vercel.app): 랜딩 · 마스터로그인→/admin 전체 메뉴 렌더 · 정적페이지(/signup·/login·/privacy·/terms·/offline) · /r/BUS-TEST. ※ 간사 실로그인은 CCC 미구현이라 라이브 범위 밖(마스터+렌더까지). 전체 프롬프트는 2026-06-05 CC 세션 채팅 참조.
+    2. **#28 정산 매트릭스 머지** — CRLF/NUL 해소됨(작성자 `6b9bc35`), 에이전트 코드리뷰 positive(매트릭스 계산 정확·학생 PII 미노출·CSV 견고). 팀장 core 승인 → 머지.
+    3. 후속: **CCC 인증**(⛔ CCC IT 신원전달방식 답 대기 — 유일 외부 블로커) · **RLS 실적용**(출시 전) · **Phase C 배너 `/me` 마운트**(팀원2, `<PushOptInBanner audience="passenger"/>`) · 실기기 푸시 QA · `anonymize_after` 설정 · 모바일 admin 표 가독성 폴리시.
+  - 🧩 **로컬 QA 환경 (gitignored, 보존됨)**: `.env.development.local`(로컬 supabase URL/keys 오버라이드) · `.claude/launch.json`(preview dev 서버). 로컬 supabase 컨테이너 켜진 상태일 수 있음(`supabase stop`). **재개**: `supabase start && supabase db reset`(seed 재로드) → `/dev/login` (seed: 간사 김광주·박부산 / 마스터 / 학생 BUS-7K9M·이지은·끝4 4444).
+  - 📌 **팀 진도**: 팀원1 ~92%(operator/admin 실증, #28만 남음) · 팀원2 ~50%(passenger 실증, 채팅·지도·가입폼 = CCC 후) · 팀장/CC ~92%(인증·알림·cron·PWA·마이그 완성, CCC·RLS 남음). **유일 블로커 = CCC IT 협의.**
+
 - 📍 **Phase B 푸시 백엔드 구현 완료 (2026-06-04 후속 — 여기부터 읽으세요)**: **인앱에 이어 푸시 채널 실발송 코드 전부 구현. 브랜치 `feat/notifications-push-backend`, 4게이트(typecheck·lint·test 110·build) green. push·PR·머지 = 팀장.** (base = 직전 main, 직전 worklog 커밋 `994f073`은 아직 origin 미반영 → 팀장이 main push 시 함께)
   - ✅ **구현 (CC, 우리=팀장 역할)**: ① 마이그 `20260605000000_push_subscriptions.sql`(operator XOR passenger, token unique, `num_nonnulls=1`, RLS enable 무정책) ② `lib/firebase/admin.ts`(Admin 싱글톤 + `isPushConfigured`) ③ `lib/notifications/push.ts`(formatPush·sendPush) ④ `deliverPushBatch()` 실발송(토큰 multicast → `reducePushAttempt` 상태전이 → 소진 시 마스터 `system_error`, 무효토큰 정리, 옵트아웃 resolve) ⑤ `isRetryDue()` 백오프 게이트 ⑥ `POST/DELETE /api/push/subscribe`(세션 기준) ⑦ `/api/cron/push-retry` + `payment-reminder` piggyback ⑧ 테스트 +20. `firebase-admin@13.10.0` 추가.
   - 🧩 **핵심 설계 결정**: (a) **emit()이 호출될 때마다 due된 pending 전부 재시도** → 알림 활동 중엔 cron 없이 자가 치유. (b) **Vercel Hobby cron 2개 한도**(payment-reminder·anonymize로 가득) → push 재시도 daily 구동은 payment-reminder에 **piggyback**, 독립 `/api/cron/push-retry`는 수동/Pro용(분리 cron 미등록). (c) **env 미구성 시 `isPushConfigured()=false`로 no-op** → 인앱 알림·로컬·기존 테스트 무영향(그래서 기존 index.test 6건 그대로 통과). (d) 1m/5m/30m 백오프는 Hobby daily에선 "최소 대기"로만 실현(상태머신은 정확).
