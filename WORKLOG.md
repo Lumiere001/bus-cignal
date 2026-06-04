@@ -8,7 +8,19 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **상태 (2026-06-04 저녁 — 스택 머지 사고 복구 완료, 여기부터 읽으세요)**: **operator 전체 흐름이 main에 완전체로 들어옴. 단, #16/#17/#19가 스택 PR로 꼬여 한 번 누락됐다가 복구됨 — 아래 경위 꼭 확인.**
+- 📍 **세션 인계 (2026-06-04 종료 — 다음 세션 여기부터 읽으세요)**: **operator 핵심 흐름 + 마스터 화면 + 인앱 알림까지 main 완성. 다음 = 푸시 백엔드 + 총무컬럼 마이그.** (`origin/main` = fa5e191, 열린 PR 0)
+  - ✅ **이번 세션 누적 머지**: operator 전체(등록·공개·신청·매칭큐·송금·입금확인·예약번호·정산, #15·#18 + #23 복구) · 마스터 화면(admin 대시보드·간사승인/권한해제·거절목록, #21) · **인앱 알림 전 구간 연결**(request_new·match_confirmed·match_rejected·rejection_occurred·payment_reported·paid_code_issued·seat_freed·match_cancelled_p2·operator_revoked) · 스택금지 규칙(#24) · 복구 기록(#26).
+  - 🧨 **사고 1건(해결됨)**: #16/#17/#19가 스택 PR이라 squash 머지 시 main 누락 → #23으로 복구. 재발방지 규칙 `docs/GIT-WORKFLOW.md`·`AGENTS.md`에 박음. (바로 아래 항목 참고)
+  - 🔜 **다음 세션 우선순위 (순서대로)**:
+    1. **⭐ Phase B 푸시 백엔드** (착수 직전 중단, 우리=팀장/CC, core 마이그): `push_subscriptions` 테이블 마이그(operator/passenger별 FCM 토큰) + 타입 재생성 + `/api/push/subscribe`(세션 기준 저장/해제) + `lib/notifications`의 `deliverPushBatch`를 Firebase Admin 실발송으로 구현(재시도 `reducePushAttempt` 이미 있음) + 단위테스트. **결정: 인앱·푸시 "다 붙이기"** (인앱은 이미 완료, 푸시만 남음).
+    2. **이슈 #25 [core] trips 총무 연락처 컬럼 마이그** → 그 후 팀원1이 등록 폼에 입력란 확장. (우리가 마이그 먼저)
+    3. Phase C 푸시 클라이언트(`/me` 옵트인 배너 "홈화면추가+알림허용") = 팀원2 + 우리 PWA인프라(SW/manifest). B 끝나면.
+    4. **CCC 인증 본구현**(`verifyCccToken`→`/login`→미들웨어 가드) — ⛔ CCC IT 전달방식 답 대기.
+    5. 팀원2 작업: 학생 취소(`/me/cancel`)·카카오맵·채팅.
+    6. **출시 전**(PRE-LAUNCH-CHECKLIST.md): RLS 실적용(현재 admin client로 우회 — matches/정산 목록 전국조회 후 JS필터 = PII 서버유입) · Vercel prod `PASSENGER_SESSION_SECRET` 추가 · `anonymize_after` 날짜 설정 · 실데이터 E2E(S1·S4·S5).
+    7. **전체 흐름 점검(기획안=docs/SPEC.md 대로)** + **Cowork 협업**: operator 흐름 브라우저 클릭 검증(dev로그인+seed) · 모바일 가독성 · Vercel 라이브 확인.
+  - 🧩 **핵심 컨텍스트**: 역할경계 = 팀원1(operator/admin/matching/settlement)·팀원2(passenger/me/chat/kakao)·우리(인증·세션·알림엔진·cron·PWA인프라·마이그·통합·리뷰). 알림 엔진 = `lib/notifications`(emit, 18이벤트). 학생세션 정본 = `lib/auth/passenger*`(결정 §4). **operator_revoked** = 마스터가 간사 권한 해제(`approval_status='revoked'`) → 해당+동지구 간사 알림(인수인계용). 로컬 supabase 중지됨(재개 `supabase start && supabase db reset`). `.env.local` 마스터해시는 `\$` 이스케이프됨.
+- 📍 **상태 (2026-06-04 저녁 — 스택 머지 사고 복구 완료)**: **operator 전체 흐름이 main에 완전체로 들어옴. 단, #16/#17/#19가 스택 PR로 꼬여 한 번 누락됐다가 복구됨 — 아래 경위 꼭 확인.**
   - ⚠️ **무슨 일이 있었나**: 팀원1 operator PR들이 **스택**(서로의 브랜치 위에 쌓임: #16←#15, #17·#19←#16)이었음. squash 머지하니 **#16=CLOSED, #17·#19는 main이 아니라 `feat/operator-matching-queue`로 머지**돼 매칭큐·신청·송금/예약번호 코드가 **main에 누락**됨. (#15·#18·#20만 정상 도달) 코드 손실은 없었음(그 브랜치에 보존).
   - ✅ **복구**: 누락 코드를 main 위로 재구성 → **PR #23 머지**. 검증: `trips/[id]`가 placeholder→실제 매칭큐로 교체 확인, 게이트 typecheck·lint·**test 90**·build 통과. `feat/operator-matching-queue` 삭제.
   - ✅ **재발 방지**: **"스택 PR 금지(항상 main에서 분기)" 규칙을 `docs/GIT-WORKFLOW.md`·`AGENTS.md`에 추가**(PR #24) → 팀원 AI가 자동 준수.
