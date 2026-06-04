@@ -6,9 +6,10 @@
 
 1. **`main`에 직접 commit·push 절대 금지.** 항상 새 브랜치.
 2. **한 작업 = 한 브랜치 = 한 PR.** 여러 기능을 한 브랜치에 섞지 않음.
-3. **머지는 팀장만** (PR approve). 팀원은 PR까지.
-4. 본인 브랜치만 push. 남의 브랜치·`main` force-push 금지.
-5. `.env.local`·시크릿·`.team-role` commit 금지 (gitignored).
+3. **분기는 항상 최신 `main`에서. ❌ 다른 PR 브랜치 위에 쌓지 말 것(스택 PR 금지).** 의존 코드가 아직 머지 안 됐어도 `main`에서 분기. (스택 PR은 squash 머지 시 일부가 main에 안 들어가 유실 — 2026-06-04 #16/#17/#19 사고)
+4. **머지는 팀장만** (PR approve). 팀원은 PR까지.
+5. 본인 브랜치만 push. 남의 브랜치·`main` force-push 금지.
+6. `.env.local`·시크릿·`.team-role` commit 금지 (gitignored).
 
 ---
 
@@ -16,7 +17,7 @@
 
 ```bash
 git checkout main
-git pull origin main           # 항상 최신 main에서 시작
+git pull origin main           # 항상 최신 main에서 시작 (⚠️ 다른 작업/PR 브랜치에서 분기 금지 = 스택)
 git checkout -b <type>/<영역>-<요약>
 ```
 
@@ -82,12 +83,13 @@ git push --force-with-lease           # --force 아님 (안전)
 - `git push --force` (공유 브랜치 파괴) — `--force-with-lease`만
 - `.env.local`·service_role·카카오 REST 키 등 시크릿 commit
 - 매칭 엔진·RLS·정산·마이그 = `core` 라벨 + 팀장 사전 합의 없이 변경
+- **다른 PR 브랜치 위에 새 브랜치 쌓기(스택 PR)** — squash 머지 때 일부 코드가 main에 안 들어가 유실. 항상 `main`에서 분기.
 
 ---
 
 ## 🤖 AI 도구에게 (CC·Codex·Cursor)
 
-- 작업 시작 시 **반드시 새 브랜치 생성 후** 코드 수정. main 작업 금지.
+- 작업 시작 시 **반드시 최신 `main`에서 새 브랜치 생성 후** 코드 수정. main 작업 금지. **다른 PR/작업 브랜치 위에 쌓지 말 것(스택 금지)** — 의존 코드가 미머지여도 `main`에서 분기.
 - 브랜치 이름은 위 규칙(`<type>/<영역>-<요약>`)을 따를 것.
 - push는 **본인 브랜치만**. PR 생성까지. 머지는 사람(팀장)이 함.
 - 불확실하면 멈추고 사용자에게 확인.
