@@ -1,0 +1,15 @@
+# 텍스트 파일을 저장소에 LF로 정규화 — CRLF 저장으로 git이 파일을 binary로 보고
+# diff가 안 보이는 사고 방지 (2026-06 #28 lib/settlement/index.ts 사례).
+# Windows 등 CRLF 환경에서 커밋해도 저장소엔 LF로 통일된다.
+* text=auto eol=lf
+
+# 명시적 바이너리 (자동 감지 보강 — 줄바꿈 정규화 제외)
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.woff  binary
+*.woff2 binary
+*.pdf   binary
