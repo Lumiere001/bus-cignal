@@ -1,7 +1,7 @@
 "use server";
 
 import { requireOperator } from "@/lib/auth/operator";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 
 type ActionResult = { error: string } | undefined;
