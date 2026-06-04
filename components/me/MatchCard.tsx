@@ -82,12 +82,14 @@ export function MatchCard({ match }: Props) {
           지도
         </Button>
 
-        {/* 채팅 — /chat/:tripId 플레이스홀더 진입 (Firebase 구현은 별도 작업) */}
-        <Link href={`/chat/${match.tripId}`}>
-          <Button variant="outline" size="sm" aria-label="채팅">
-            채팅
-          </Button>
-        </Link>
+        {/* 채팅 — 취소/만료된 매칭은 더 이상 유효 탑승자가 아니므로 숨김 */}
+        {!isInactive && (
+          <Link href={`/chat/${match.tripId}`}>
+            <Button variant="outline" size="sm" aria-label="채팅">
+              채팅
+            </Button>
+          </Link>
+        )}
 
         {/* 취소 진입 — 비활성 상태면 숨김 */}
         {!isInactive && (
