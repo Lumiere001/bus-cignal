@@ -2,6 +2,7 @@
 
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { emit, NOTIFICATION_EVENTS } from "@/lib/notifications";
 import { redirect } from "next/navigation";
 
 type ActionResult = { error: string } | undefined;
@@ -70,7 +71,7 @@ export async function createRequest(
   // 타지구 공개 trip만 신청 가능 — 본인 지구 trip엔 신청 불가, draft/closed 불가
   const { data: trip } = await db
     .from("trips")
-    .select("id, status, operator_region_id")
+    .select("id, status, operator_region_id, created_by")
     .eq("id", tripId)
     .single();
 
@@ -114,6 +115,18 @@ export async function createRequest(
   if (paxErr) {
     await db.from("seat_requests").delete().eq("id", request.id);
     return { error: "학생 명단 저장 중 오류가 발생했습니다." };
+  }
+
+  // 공급 지구 간사에게 "신규 신청" 알림 (SPEC §S2.6). 베스트에포트 — 알림 실패가
+  // 신청 저장을 되돌리지 않음. supplyOperatorId는 호출자가 해석(엔진은 id만 받음).
+  try {
+    await emit(
+      NOTIFICATION_EVENTS.REQUEST_NEW,
+      { supplyOperatorId: trip.created_by },
+      { requestId: request.id, tripId, seatCount: normalized.length },
+    );
+  } catch {
+    // 알림 발송 실패는 무시 (신청은 이미 저장됨)
   }
 
   redirect("/operator/requests");
