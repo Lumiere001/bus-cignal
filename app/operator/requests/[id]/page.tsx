@@ -3,25 +3,13 @@ import { notFound } from "next/navigation";
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DIRECTION_SHORT, REQUEST_STATUS_LABEL } from "@/lib/labels";
+import { one } from "@/lib/supabase/relation";
+import { formatKstDateTime } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
 // 간사 신청 상세 (SPEC §4.3·§S2) — 본인 지구가 보낸 신청 1건: trip 정보·학생 명단·상태.
 // 본인 지구 신청만 접근(다른 지구 신청은 404). 개인정보=본인 명단이라 전체 표시 OK.
-
-function one<T>(rel: T | T[] | null): T | null {
-  return Array.isArray(rel) ? (rel[0] ?? null) : rel;
-}
-
-function formatKST(iso: string): string {
-  return new Date(iso).toLocaleString("ko-KR", {
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Seoul",
-  });
-}
 
 type Passenger = { id: string; name: string; phone: string; school_or_role: string | null; priority: number };
 type Request = {
@@ -93,13 +81,13 @@ export default async function RequestDetailPage({
           </div>
           <div className="flex justify-between">
             <dt className="text-muted-foreground">신청 시각</dt>
-            <dd className="font-medium tabular-nums">{formatKST(req.requested_at)}</dd>
+            <dd className="font-medium tabular-nums">{formatKstDateTime(req.requested_at)}</dd>
           </div>
           {trip && (
             <>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">출발</dt>
-                <dd className="font-medium tabular-nums">{formatKST(trip.departure_at)}</dd>
+                <dd className="font-medium tabular-nums">{formatKstDateTime(trip.departure_at)}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">좌석 요금</dt>

@@ -8,25 +8,13 @@ import {
   TRIP_STATUS_COLOR,
   MATCH_STATUS_LABEL,
 } from "@/lib/labels";
+import { one } from "@/lib/supabase/relation";
+import { formatKstDateTime } from "@/lib/datetime";
 import { MatchingQueue } from "./MatchingQueue";
 import { MatchActions } from "./MatchActions";
 
 // 매칭으로 자리를 점유하는 상태 (잔여 계산 시 차감)
 const ACTIVE_MATCH_STATUSES = ["awaiting_payment", "payment_reported", "paid"] as const;
-
-function formatKST(iso: string) {
-  return new Date(iso).toLocaleString("ko-KR", {
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Seoul",
-  });
-}
-
-function one<T>(rel: T | T[] | null): T | null {
-  return Array.isArray(rel) ? (rel[0] ?? null) : rel;
-}
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -129,7 +117,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             {TRIP_STATUS_LABEL[status]}
           </span>
           <span className="ml-auto text-sm text-gray-500">
-            {formatKST(trip.departure_at)} 출발
+            {formatKstDateTime(trip.departure_at)} 출발
           </span>
         </div>
 

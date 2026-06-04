@@ -1,5 +1,6 @@
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { one } from "@/lib/supabase/relation";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +12,6 @@ const APPROVAL_LABEL: Record<string, string> = {
   rejected: "거절됨",
   revoked: "권한 해제됨",
 };
-
-function one<T>(rel: T | T[] | null): T | null {
-  return Array.isArray(rel) ? (rel[0] ?? null) : rel;
-}
 
 type Profile = {
   name: string | null;

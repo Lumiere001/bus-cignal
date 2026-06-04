@@ -1,21 +1,9 @@
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DIRECTION_SHORT, MATCH_STATUS_LABEL } from "@/lib/labels";
+import { one } from "@/lib/supabase/relation";
+import { formatKstDateTime } from "@/lib/datetime";
 import { MatchPaymentCell } from "./MatchPaymentCell";
-
-function one<T>(rel: T | T[] | null): T | null {
-  return Array.isArray(rel) ? (rel[0] ?? null) : rel;
-}
-
-function formatKST(iso: string) {
-  return new Date(iso).toLocaleString("ko-KR", {
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Seoul",
-  });
-}
 
 export default async function Page() {
   const session = await requireOperator();
@@ -79,7 +67,7 @@ export default async function Page() {
             const route = `${origin?.label ?? origin?.address ?? "출발지"} → ${
               dest?.label ?? dest?.address ?? "도착지"
             }`;
-            const departure = trip ? formatKST(trip.departure_at) : "";
+            const departure = trip ? formatKstDateTime(trip.departure_at) : "";
 
             return (
               <li key={m.id} className="rounded-xl border bg-white p-4 shadow-sm">

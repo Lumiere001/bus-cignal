@@ -1,14 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MATCH_STATUS_LABEL } from "@/lib/labels";
+import { one } from "@/lib/supabase/relation";
+import { formatKstShort } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
 // SPEC §4.4 — 마스터 전국 매칭 목록(읽기 모니터링). 최근 매칭순.
 // 개인정보 최소: 학생 이름·전화 노출 안 함(지구·상태·금액·시각만).
-
-function one<T>(rel: T | T[] | null): T | null {
-  return Array.isArray(rel) ? (rel[0] ?? null) : rel;
-}
 
 type Row = {
   id: string;
@@ -32,11 +30,6 @@ async function loadMatches() {
     .order("matched_at", { ascending: false })
     .limit(200);
   return (data as Row[] | null) ?? [];
-}
-
-function fmtKst(iso: string): string {
-  const k = new Date(new Date(iso).getTime() + 9 * 3_600_000).toISOString();
-  return `${k.slice(5, 7)}/${k.slice(8, 10)} ${k.slice(11, 16)}`;
 }
 
 export default async function AdminMatchesPage() {
@@ -77,7 +70,7 @@ export default async function AdminMatchesPage() {
                       {trip ? `${trip.price_per_seat.toLocaleString("ko-KR")}원` : "—"}
                     </td>
                     <td className="px-4 py-2">{MATCH_STATUS_LABEL[m.status] ?? m.status}</td>
-                    <td className="px-4 py-2 whitespace-nowrap tabular-nums">{fmtKst(m.matched_at)}</td>
+                    <td className="px-4 py-2 whitespace-nowrap tabular-nums">{formatKstShort(m.matched_at)}</td>
                   </tr>
                 );
               })}

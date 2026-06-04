@@ -2,11 +2,8 @@ import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildSettlement } from "@/lib/settlement";
 import type { SettlementMatch, LedgerEntry } from "@/lib/settlement";
+import { one } from "@/lib/supabase/relation";
 import { SettlementCsvButton } from "./SettlementCsvButton";
-
-function one<T>(rel: T | T[] | null): T | null {
-  return Array.isArray(rel) ? (rel[0] ?? null) : rel;
-}
 
 function won(n: number): string {
   return `${n.toLocaleString()}원`;

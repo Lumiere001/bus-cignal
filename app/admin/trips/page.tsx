@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DIRECTION_SHORT, TRIP_STATUS_COLOR, TRIP_STATUS_LABEL } from "@/lib/labels";
+import { formatKstShort } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +28,6 @@ async function loadTrips(): Promise<Row[]> {
 }
 
 /** UTC ISO → 'MM/DD HH:mm' (KST). */
-function fmtKst(iso: string): string {
-  const k = new Date(new Date(iso).getTime() + 9 * 3_600_000).toISOString();
-  return `${k.slice(5, 7)}/${k.slice(8, 10)} ${k.slice(11, 16)}`;
-}
-
 export default async function AdminTripsPage() {
   const trips = await loadTrips();
 
@@ -62,7 +58,7 @@ export default async function AdminTripsPage() {
                 <tr key={t.id} className="border-t">
                   <td className="px-4 py-2 font-medium">{t.supply?.name ?? "—"}</td>
                   <td className="px-4 py-2">{DIRECTION_SHORT[t.direction]}</td>
-                  <td className="px-4 py-2 whitespace-nowrap tabular-nums">{fmtKst(t.departure_at)}</td>
+                  <td className="px-4 py-2 whitespace-nowrap tabular-nums">{formatKstShort(t.departure_at)}</td>
                   <td className="px-4 py-2 tabular-nums">{t.capacity}석</td>
                   <td className="px-4 py-2 tabular-nums">{t.price_per_seat.toLocaleString("ko-KR")}원</td>
                   <td className="px-4 py-2">

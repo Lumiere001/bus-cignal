@@ -7,6 +7,8 @@ import {
   DIRECTION_SHORT,
   REQUEST_STATUS_LABEL,
 } from "@/lib/labels";
+import { one } from "@/lib/supabase/relation";
+import { formatKstDateTime } from "@/lib/datetime";
 
 const REQUEST_STATUS_COLOR: Record<string, string> = {
   queued: "bg-blue-100 text-blue-700",
@@ -14,20 +16,6 @@ const REQUEST_STATUS_COLOR: Record<string, string> = {
   rejected: "bg-red-100 text-red-600",
   cancelled: "bg-gray-100 text-gray-500",
 };
-
-function one<T>(rel: T | T[] | null): T | null {
-  return Array.isArray(rel) ? (rel[0] ?? null) : rel;
-}
-
-function formatKST(iso: string) {
-  return new Date(iso).toLocaleString("ko-KR", {
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Seoul",
-  });
-}
 
 export default async function Page() {
   const session = await requireOperator();
@@ -94,7 +82,7 @@ export default async function Page() {
                     </span>
                   </div>
                   <span className="text-xs text-gray-400">
-                    {formatKST(r.requested_at)} 신청
+                    {formatKstDateTime(r.requested_at)} 신청
                   </span>
                 </div>
 
