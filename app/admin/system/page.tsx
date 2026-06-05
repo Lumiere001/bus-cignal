@@ -84,7 +84,7 @@ export default async function AdminSystemPage() {
           </form>
         </div>
         <p className="text-muted-foreground mt-3 text-xs">
-          ※ 설정값은 저장됩니다. 점검 페이지 노출·신청 차단 적용(미들웨어/액션 wiring)은 후속 작업입니다.
+          ※ 켜면 간사 화면(/operator/*) 전체가 점검 안내로 차단되고, 신청 등 쓰기 동작도 막힙니다. 마스터는 계속 접근할 수 있습니다.
         </p>
       </section>
 
@@ -110,7 +110,7 @@ export default async function AdminSystemPage() {
           <span className="text-muted-foreground text-xs">날짜를 비우고 저장하면 마감 해제</span>
         </form>
         <p className="text-muted-foreground mt-3 text-xs">
-          ※ 마감 후 신청 차단 적용(operator 신청·등록 액션 wiring)은 후속 작업입니다.
+          ※ 마감일(그날 23:59 KST)이 지나면 새 신청이 차단됩니다. 학생 화면 차단은 팀원2 영역.
         </p>
       </section>
 

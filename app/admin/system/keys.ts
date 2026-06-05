@@ -1,6 +1,8 @@
-// system_config 키 상수 — "use server"(actions.ts)·서버 컴포넌트(page.tsx) 공용.
-// ("use server" 파일은 async 함수만 export 가능해 상수는 여기 분리.)
+// system_config 키 상수 — 단일 출처는 lib/system-config.ts (읽기 헬퍼와 공용).
+// ("use server"(actions.ts)·서버 컴포넌트(page.tsx)에서 import.)
 
-export const MAINTENANCE_KEY = "maintenance_mode";
-export const REQUEST_DEADLINE_KEY = "request_deadline";
-export const ANONYMIZE_KEY = "anonymize_after";
+export {
+  MAINTENANCE_KEY,
+  REQUEST_DEADLINE_KEY,
+  ANONYMIZE_KEY,
+} from "@/lib/system-config";
