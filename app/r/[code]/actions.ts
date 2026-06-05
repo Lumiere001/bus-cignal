@@ -3,6 +3,11 @@
 import { redirect } from "next/navigation";
 import { ReservationEntrySchema } from "@/lib/validators/passenger";
 import { verifyReservationEntry } from "@/lib/passenger/verify";
+import {
+  isVerifyLocked,
+  recordVerifyFailure,
+  clearVerifyAttempts,
+} from "@/lib/passenger/rate-limit";
 import { issuePassengerSession } from "@/lib/auth/passenger";
 
 // 예약번호 형식: 대문자 영숫자 1~10자 + 하이픈 + 대문자 영숫자 1~10자 (예: BUS-7K9M)
@@ -25,6 +30,11 @@ export async function verifyEntry(code: string, formData: FormData): Promise<voi
     redirect(`/r/${encodeURIComponent(code)}?error=invalid`);
   }
 
+  // 무차별 대입 방어 — 잠금 중이면 검증 자체를 막음
+  if (await isVerifyLocked(code)) {
+    redirect(`/r/${encodeURIComponent(code)}?error=locked`);
+  }
+
   const claims = await verifyReservationEntry(
     code,
     parsed.data.name,
@@ -32,9 +42,11 @@ export async function verifyEntry(code: string, formData: FormData): Promise<voi
   );
 
   if (!claims) {
+    await recordVerifyFailure(code); // 실패 누적 → 임계 초과 시 잠금
     redirect(`/r/${encodeURIComponent(code)}?error=notfound`);
   }
 
+  await clearVerifyAttempts(code); // 성공 → 시도 기록 제거
   await issuePassengerSession(claims.passengerId);
 
   redirect("/me");
