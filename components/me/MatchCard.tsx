@@ -69,8 +69,14 @@ export function MatchCard({ match }: Props) {
           </Link>
         )}
 
-        {/* 채팅 — /chat 라우트 미구현(CCC 이후)이라 깨진 링크 방지 위해 숨김.
-            구현 시 아래 블록 복구: <Link href={`/chat/${match.tripId}`}>…채팅…</Link> */}
+        {/* 채팅 — paid(예약 완료)에서만 입장. awaiting/reported/취소/만료는 숨김 (SPEC §S6) */}
+        {match.status === "paid" && (
+          <Link href={`/chat/${match.tripId}`}>
+            <Button variant="outline" size="sm" aria-label="채팅">
+              채팅
+            </Button>
+          </Link>
+        )}
 
         {/* 취소 진입 — 비활성 상태면 숨김 */}
         {!isInactive && (

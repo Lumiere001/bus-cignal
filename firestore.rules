@@ -1,0 +1,54 @@
+rules_version = '2';
+
+// Bus Cignal — Trip 채팅 Firestore 보안 규칙 (초안)
+//
+// 인증 모델: Next 서버가 세션+Supabase로 권한 검증 후 Custom Token을 발급한다.
+//   token claim = { role: 'passenger'|'operator', tripId, subjectId }
+//   브라우저는 signInWithCustomToken으로 체크인 → 아래 규칙이 claim을 검증한다.
+//
+// ⚠️ 이 파일은 에뮬레이터 검증용 초안이다. 실제 배포는 팀장 승인 후 별도 진행한다.
+//   (CLAUDE.md §2.1 — Firebase Security Rules = 코어, 팀장 명시 승인 필요)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 채팅 메시지: channels/{tripId}/messages/{messageId}
+    match /channels/{tripId}/messages/{messageId} {
+
+      // 읽기: 이 trip claim을 가진 인증 사용자만
+      allow read: if request.auth != null
+        && request.auth.token.tripId == tripId;
+
+      // 생성: token claim과 문서 필드가 일치하고 본문/시각이 유효해야 함
+      allow create: if request.auth != null
+        && request.auth.token.tripId == tripId
+        // 보낸 사람 신원은 토큰에서만 결정 (클라이언트 위조 차단)
+        && request.resource.data.senderId == request.auth.token.subjectId
+        && request.resource.data.senderRole == request.auth.token.role
+        && (request.resource.data.senderRole == 'passenger'
+            || request.resource.data.senderRole == 'operator')
+        // 본문 1~500자
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 1
+        && request.resource.data.text.size() <= 500
+        // 표시명 문자열, 과도한 길이 차단
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() >= 1
+        && request.resource.data.displayName.size() <= 100
+        // 생성 시각은 서버 시간(serverTimestamp)만 허용 — 클라이언트 시간 위조 차단
+        && request.resource.data.createdAt == request.time
+        // 위 6개 필드 외 추가 필드 금지
+        && request.resource.data.keys().hasOnly(
+          ['text', 'senderRole', 'senderId', 'displayName', 'createdAt']
+        );
+
+      // 메시지는 수정·삭제 불가
+      allow update, delete: if false;
+    }
+
+    // 그 외 모든 경로 차단 (deny-default)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
