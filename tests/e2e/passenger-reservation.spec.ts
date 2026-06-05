@@ -38,7 +38,8 @@ test.describe("학생 예약 흐름", () => {
       await page.getByRole("button", { name: "본인 확인" }).click();
       await expect(page).toHaveURL(/\/me$/);
 
-      await page.getByRole("button", { name: "취소", exact: true }).first().click();
+      // "취소"/"예약 취소" 등 카피 변화에 견고하게 (MatchCard 취소 진입 버튼).
+      await page.getByRole("button", { name: /취소/ }).first().click();
       await expect(page).toHaveURL(/\/me\/cancel\//);
       await page.getByLabel(/위 내용을 확인/).check();
       await page.getByRole("button", { name: "취소 확정" }).click();
