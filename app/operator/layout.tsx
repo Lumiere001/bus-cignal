@@ -6,6 +6,11 @@ import { isMaintenanceMode } from "@/lib/system-config";
 // 간사(operator) 공용 셸 — 상단 네비 + 로그아웃.
 // 접근 보호는 middleware(/operator/* → operator 세션). 여기선 UI + 점검 모드 차단.
 
+// 점검 모드 체크(isMaintenanceMode)가 admin client(DB)를 호출하므로, 빌드 타임 prerender에서
+// 빈 env로 createAdminClient가 throw됨(supabaseUrl is required). operator 셸은 항상 인증·동적이라
+// force-dynamic으로 prerender를 막는다.
+export const dynamic = "force-dynamic";
+
 const NAV = [
   { href: "/operator", label: "대시보드" },
   { href: "/operator/trips", label: "내 차량" },
