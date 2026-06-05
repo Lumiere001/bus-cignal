@@ -2,9 +2,6 @@
 
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { available, approve } from "@/lib/matching";
-import type { Match, MatchStatus, SeatRequest } from "@/lib/matching/types";
-import { MatchingException, MatchingError } from "@/lib/matching/types";
 import { generateReservationCode } from "@/lib/reservation/code";
 import { emit } from "@/lib/notifications";
 import { revalidatePath } from "next/cache";
@@ -20,11 +17,20 @@ function firstOf<T>(rel: T | T[] | null | undefined): T | null {
   return Array.isArray(rel) ? (rel[0] ?? null) : (rel ?? null);
 }
 
-const MATCHING_ERROR_MESSAGE: Record<string, string> = {
-  [MatchingError.EMPTY_SELECTION]: "최소 1명을 선택해주세요.",
-  [MatchingError.INVALID_PASSENGER]: "잘못된 학생 선택입니다. 새로고침 후 다시 시도해주세요.",
-  [MatchingError.NOT_ENOUGH_SEATS]: "남은 자리보다 많이 선택했습니다. 다시 확인해주세요.",
+// approve_request_atomic() RPC가 RAISE EXCEPTION 한 코드 → 사용자 메시지.
+const APPROVE_ERROR_FALLBACK = "매칭에 실패했습니다. 새로고침 후 다시 시도해주세요.";
+const APPROVE_ERROR_MESSAGE: Record<string, string> = {
+  NO_PASSENGERS: "승인할 학생을 선택해주세요.",
+  TRIP_NOT_PUBLISHED: "공개 상태의 Trip만 매칭할 수 있습니다.",
+  REQUEST_NOT_QUEUED: "이미 처리된 신청입니다. 새로고침 후 다시 확인해주세요.",
+  PASSENGER_MISMATCH: "신청에 없는 학생이 포함됐습니다. 새로고침 후 다시 시도해주세요.",
+  ALREADY_MATCHED: "이미 매칭된 학생이 포함되어 있습니다. 새로고침 후 다시 시도해주세요.",
+  OVER_CAPACITY: "잔여 좌석이 부족합니다. 새로고침 후 잔여 좌석을 다시 확인해주세요.",
 };
+function approveErrorMessage(msg: string): string {
+  const code = Object.keys(APPROVE_ERROR_MESSAGE).find((c) => msg.includes(c));
+  return code ? APPROVE_ERROR_MESSAGE[code] : APPROVE_ERROR_FALLBACK;
+}
 
 /** trip 소유권 확인 (본인 지구 공급 trip인지). 통과 시 trip 반환. */
 async function loadOwnedTrip(
@@ -41,39 +47,7 @@ async function loadOwnedTrip(
   return trip;
 }
 
-/** 공급 trip의 현재 잔여 자리 = sum(open offers) - active matches. */
-async function computeAvailable(
-  db: ReturnType<typeof createAdminClient>,
-  tripId: string,
-): Promise<number> {
-  const [{ data: offers }, { data: matchRows }] = await Promise.all([
-    db.from("seat_offers").select("seat_count, status").eq("trip_id", tripId),
-    db.from("matches").select("id, status").eq("trip_id", tripId),
-  ]);
-
-  const openSeatCount = (offers ?? [])
-    .filter((o) => o.status === "open")
-    .reduce((sum, o) => sum + o.seat_count, 0);
-
-  // available()은 .status만 읽음 — 나머지 필드는 형식 충족용
-  const existingMatches: Match[] = (matchRows ?? []).map((m) => ({
-    id: m.id,
-    trip_id: tripId,
-    request_id: "",
-    passenger_id: "",
-    status: m.status as MatchStatus,
-    matched_at: "",
-    paid_at: null,
-    payment_reported_at: null,
-    cancellation_source: null,
-    cancellation_reason: null,
-    reservation_code: null,
-  }));
-
-  return available(openSeatCount, existingMatches);
-}
-
-// ─── 승인 (선택 학생 → Match 생성) ──────────────────────────────────────────
+// ─── 승인 (선택 학생 → Match 생성, 원자적 RPC) ──────────────────────────────
 
 export async function approveRequest(
   tripId: string,
@@ -89,94 +63,34 @@ export async function approveRequest(
   if (!trip) return { error: "Trip을 찾을 수 없습니다." };
   if (trip.status !== "published") return { error: "공개 상태의 Trip만 매칭할 수 있습니다." };
 
-  // 신청 + 학생 로드 (이 trip의 queued 신청만)
+  // 신청 메타 (queued 확인 + 알림 수신 지구). 좌석 검증·매칭 삽입은 아래 원자 RPC가 담당.
   const { data: request } = await db
     .from("seat_requests")
-    .select(
-      `id, trip_id, operator_id, region_id, requested_at, status, seat_count,
-       request_passengers(id, name, phone, priority, school_or_role, note)`,
-    )
+    .select("id, operator_id, status")
     .eq("id", requestId)
     .eq("trip_id", tripId)
     .single();
 
   if (!request) return { error: "신청을 찾을 수 없습니다." };
   if (request.status !== "queued") return { error: "이미 처리된 신청입니다." };
-
-  const availableSeats = await computeAvailable(db, tripId);
-
-  // 이중 매칭 방어: 선택 학생 중 이미 활성 매칭이 있는 사람 거부 (stale UI 대비)
-  const { data: existing } = await db
-    .from("matches")
-    .select("passenger_id")
-    .eq("request_id", requestId)
-    .in("status", ["awaiting_payment", "payment_reported", "paid"]);
-  const alreadyMatched = new Set((existing ?? []).map((m) => m.passenger_id));
-  if (selectedPassengerIds.some((id) => alreadyMatched.has(id))) {
-    return { error: "이미 매칭된 학생이 포함되어 있습니다. 새로고침 후 다시 시도해주세요." };
+  if (selectedPassengerIds.length === 0) {
+    return { error: "승인할 학생을 선택해주세요." };
   }
 
-  // 매칭 엔진(core)으로 검증 + 좌석 계산 — Match 생성 로직은 엔진이 담당
-  const engineRequest: SeatRequest = {
-    id: request.id,
-    trip_id: request.trip_id,
-    operator_id: request.operator_id,
-    region_id: request.region_id,
-    requested_at: request.requested_at,
-    status: "queued",
-    seat_count: request.seat_count,
-    passengers: (request.request_passengers ?? []).map((p) => ({
-      id: p.id,
-      request_id: request.id,
-      name: p.name,
-      phone: p.phone,
-      priority: p.priority,
-      school_or_role: p.school_or_role,
-      note: p.note,
-    })),
-  };
-
-  let result;
-  try {
-    result = approve(engineRequest, selectedPassengerIds, availableSeats);
-  } catch (e) {
-    if (e instanceof MatchingException) {
-      return { error: MATCHING_ERROR_MESSAGE[e.code] ?? "매칭에 실패했습니다." };
-    }
-    throw e;
-  }
-
-  // Match 영속화 — payment_due_at는 DB NOT NULL(소프트 기한)
+  // 원자적 승인 — seat_offers 행 잠금 + 잔여 재검증 + 매칭 삽입.
+  // 동시 승인(over-booking)·이중 매칭을 DB 트랜잭션/제약으로 차단 (SPEC §S3, race 방지).
   const dueAt = new Date(Date.now() + PAYMENT_DUE_HOURS * 60 * 60 * 1000).toISOString();
-  const { data: insertedMatches, error: insertErr } = await db
-    .from("matches")
-    .insert(
-      result.matches.map((m) => ({
-        trip_id: m.trip_id,
-        request_id: m.request_id,
-        passenger_id: m.passenger_id,
-        status: "awaiting_payment" as const,
-        payment_due_at: dueAt,
-      })),
-    )
-    .select("id");
-  if (insertErr) return { error: "매칭 저장 중 오류가 발생했습니다." };
-
-  // 신청의 전원이 매칭됐으면 status='matched' (부분 선택 시 queued 잔류 — 자동 분할 X)
-  const totalPassengers = engineRequest.passengers.length;
-  const { count: matchedCount } = await db
-    .from("matches")
-    .select("id", { count: "exact", head: true })
-    .eq("request_id", requestId)
-    .in("status", ["awaiting_payment", "payment_reported", "paid"]);
-
-  if ((matchedCount ?? 0) >= totalPassengers) {
-    await db.from("seat_requests").update({ status: "matched" }).eq("id", requestId);
-  }
+  const { data: matchIds, error: rpcErr } = await db.rpc("approve_request_atomic", {
+    p_trip_id: tripId,
+    p_request_id: requestId,
+    p_passenger_ids: selectedPassengerIds,
+    p_payment_due_at: dueAt,
+  });
+  if (rpcErr) return { error: approveErrorMessage(rpcErr.message) };
 
   // 알림: 매칭 확정 → 신청 지구 간사 (SPEC §S8). 실패해도 본 처리엔 영향 없음.
   try {
-    const confirmedMatchId = insertedMatches?.[0]?.id;
+    const confirmedMatchId = matchIds?.[0];
     if (confirmedMatchId) {
       await emit(
         "match_confirmed",

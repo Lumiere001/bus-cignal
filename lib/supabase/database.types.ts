@@ -736,7 +736,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      approve_request_atomic: {
+        Args: {
+          p_passenger_ids: string[]
+          p_payment_due_at: string
+          p_request_id: string
+          p_trip_id: string
+        }
+        Returns: string[]
+      }
     }
     Enums: {
       [_ in never]: never
