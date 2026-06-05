@@ -1,0 +1,35 @@
+name: depart-reminder
+
+# 출발 리마인더 외부 스케줄러.
+# Vercel Hobby는 cron 2개 한도(payment-reminder·anonymize로 가득)라, 출발 알림은
+# GitHub Actions cron이 우리 엔드포인트를 호출해 처리한다(무료·Vercel 한도 무관).
+#
+# ⚠️ 사전 설정(1회): 저장소 Settings → Secrets and variables → Actions →
+#    New repository secret 에 CRON_SECRET 추가 (Vercel의 CRON_SECRET과 동일 값).
+
+on:
+  schedule:
+    # 매시 정각(UTC). 출발 24h 윈도우 + 매칭별 1회(멱등)라 시간 단위면 충분.
+    - cron: "0 * * * *"
+  workflow_dispatch: {}
+
+# 동시 실행 방지(겹쳐도 멱등하지만 불필요한 중복 호출 차단).
+concurrency:
+  group: depart-reminder
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call depart-reminder endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET 저장소 시크릿이 없습니다. Settings→Secrets에 추가하세요."
+            exit 1
+          fi
+          curl -fsS --max-time 60 -X GET \
+            "https://bus-cignal.vercel.app/api/cron/depart-reminder" \
+            -H "Authorization: Bearer ${CRON_SECRET}"

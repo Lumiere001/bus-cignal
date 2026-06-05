@@ -83,6 +83,7 @@ export type Database = {
           cancellation_reason: string | null
           cancellation_source: string | null
           created_at: string
+          depart_reminded_at: string | null
           id: string
           matched_at: string
           paid_at: string | null
@@ -98,6 +99,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancellation_source?: string | null
           created_at?: string
+          depart_reminded_at?: string | null
           id?: string
           matched_at?: string
           paid_at?: string | null
@@ -113,6 +115,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancellation_source?: string | null
           created_at?: string
+          depart_reminded_at?: string | null
           id?: string
           matched_at?: string
           paid_at?: string | null
