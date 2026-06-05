@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatKstDateTime } from "@/lib/datetime";
 import { approveRequest, rejectRequest } from "./actions";
@@ -56,6 +57,7 @@ function RequestCard({
   availableSeats: number;
   req: QueueRequest;
 }) {
+  const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
@@ -75,6 +77,15 @@ function RequestCard({
 
   const selectedCount = selected.size;
   const overCapacity = selectedCount > availableSeats;
+  const allSelected =
+    req.passengers.length > 0 && req.passengers.every((p) => selected.has(p.id));
+
+  function toggleAll() {
+    setError(null);
+    setSelected(
+      allSelected ? new Set() : new Set(req.passengers.map((p) => p.id)),
+    );
+  }
 
   // [N명 승인] → 안내 모달 (SPEC §S3.2: 입금 확정 후 공급측 취소 불가=K1 경고)
   function openConfirm() {
@@ -89,8 +100,13 @@ function RequestCard({
     setError(null);
     startTransition(async () => {
       const result = await approveRequest(tripId, req.id, [...selected]);
-      if ("error" in result) setError(result.error);
-      // 성공 시 revalidatePath로 서버 컴포넌트가 새 큐를 다시 렌더 → 이 카드는 사라짐
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      // 성공: 선택 상태를 비우고(유령 체크·"N명 승인" 잔존 방지) 서버 큐를 즉시 재조회.
+      setSelected(new Set());
+      router.refresh();
     });
   }
 
@@ -98,7 +114,13 @@ function RequestCard({
     setError(null);
     startTransition(async () => {
       const result = await rejectRequest(tripId, req.id, reason);
-      if ("error" in result) setError(result.error);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      setRejecting(false);
+      setReason("");
+      router.refresh();
     });
   }
 
@@ -109,7 +131,21 @@ function RequestCard({
         <span className="text-xs text-gray-400">{formatKstDateTime(req.requestedAt)} 신청</span>
       </div>
 
-      {/* 학생 선택 — priority는 힌트(순서)일 뿐, 강제 선택 아님 */}
+      {/* 선택 도구 — 승인은 선택한 학생만 매칭(부분 승인 가능). priority는 힌트(순서)일 뿐. */}
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-xs text-gray-400">
+          학생 {req.passengers.length}명 · {selectedCount}명 선택
+        </span>
+        <button
+          type="button"
+          onClick={toggleAll}
+          disabled={isPending || rejecting}
+          className="text-xs font-medium text-blue-600 hover:underline disabled:text-gray-300"
+        >
+          {allSelected ? "모두 해제" : "모두 선택"}
+        </button>
+      </div>
+
       <ul className="space-y-1.5">
         {req.passengers.map((p) => {
           const checked = selected.has(p.id);
@@ -154,9 +190,14 @@ function RequestCard({
         </p>
       )}
 
-      {/* 거절 사유 입력 */}
+      {/* 거절 사유 입력 — 거절은 개별 학생이 아니라 "이 신청 전체"가 대상 */}
       {rejecting && (
-        <div className="mt-3 space-y-1">
+        <div className="mt-3 space-y-2">
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            ⚠️ 이 신청 <b>전체({req.passengers.length}명)</b>가 거절됩니다. 체크박스 선택과
+            무관하게 신청 한 건이 통째로 거절되고, 사유가 신청 지구에 전달됩니다. (특정
+            학생만 빼려면 거절 대신 <b>원하는 학생만 승인</b>하세요.)
+          </p>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
