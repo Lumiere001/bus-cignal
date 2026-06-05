@@ -69,14 +69,8 @@ export function MatchCard({ match }: Props) {
           </Link>
         )}
 
-        {/* 채팅 — 취소/만료된 매칭은 더 이상 유효 탑승자가 아니므로 숨김 */}
-        {!isInactive && (
-          <Link href={`/chat/${match.tripId}`}>
-            <Button variant="outline" size="sm" aria-label="채팅">
-              채팅
-            </Button>
-          </Link>
-        )}
+        {/* 채팅 — /chat 라우트 미구현(CCC 이후)이라 깨진 링크 방지 위해 숨김.
+            구현 시 아래 블록 복구: <Link href={`/chat/${match.tripId}`}>…채팅…</Link> */}
 
         {/* 취소 진입 — 비활성 상태면 숨김 */}
         {!isInactive && (

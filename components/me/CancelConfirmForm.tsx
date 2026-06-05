@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { formatKstDateShort } from "@/lib/datetime";
 import type { MatchForCancel } from "@/lib/passenger/cancel";
 
 type Props = {
@@ -18,15 +19,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   confirm_required: "취소 확인 체크박스를 선택해 주세요.",
 };
 
-function formatDeparture(iso: string): string {
-  const d = new Date(iso);
-  const month = d.getMonth() + 1;
-  const date = d.getDate();
-  const h = d.getHours().toString().padStart(2, "0");
-  const m = d.getMinutes().toString().padStart(2, "0");
-  return `${month}월 ${date}일 ${h}:${m}`;
-}
-
 export function CancelConfirmForm({ match, action, error }: Props) {
   const [confirmed, setConfirmed] = useState(false);
 
@@ -39,7 +31,7 @@ export function CancelConfirmForm({ match, action, error }: Props) {
           {match.originLabel} → {match.destinationLabel}
         </h1>
         <p className="text-muted-foreground text-sm">
-          {formatDeparture(match.departureAt)}
+          {formatKstDateShort(match.departureAt)}
           {match.reservationCode ? ` · ${match.reservationCode}` : ""}
         </p>
       </div>
