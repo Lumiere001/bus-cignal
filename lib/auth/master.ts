@@ -41,6 +41,13 @@ export async function attemptMasterLogin(password: string): Promise<LoginResult>
     return { ok: false, reason: "locked", until: lockUntil };
   }
 
+  // 잠금 만료 후 첫 진입: 시도 카운터·잠금을 리셋해 새 윈도우 시작.
+  // (없으면 attempts=5가 잔존 → 만료 후 1회만 틀려도 즉시 재잠금 = 자기-DoS)
+  if (lockUntil > 0) {
+    await setConfig("master_login_attempts", "0");
+    await setConfig("master_lock_until", "0");
+  }
+
   const hash = process.env.MASTER_PASSWORD_HASH!;
   const ok = await bcrypt.compare(password, hash);
 

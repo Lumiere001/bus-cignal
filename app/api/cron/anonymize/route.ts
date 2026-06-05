@@ -38,10 +38,13 @@ export async function GET(req: Request) {
   let anonymized = 0;
   let failed = 0;
 
+  // SPEC §15: 보관 마감(cutoff=종료+90일) '이전 생성' row만 스크럽.
+  // cutoff(cfg.value) 이후 생성된 신규 PII는 아직 보관 기간 → 보존.
   const { data: rps } = await db
     .from("request_passengers")
     .select("id, phone")
-    .eq("anonymized", false);
+    .eq("anonymized", false)
+    .lt("created_at", cfg.value);
   for (const r of rps ?? []) {
     const { error } = await db
       .from("request_passengers")
@@ -54,7 +57,8 @@ export async function GET(req: Request) {
   const { data: mps } = await db
     .from("match_passengers")
     .select("id, phone")
-    .eq("anonymized", false);
+    .eq("anonymized", false)
+    .lt("created_at", cfg.value);
   for (const m of mps ?? []) {
     const { error } = await db
       .from("match_passengers")
@@ -67,7 +71,8 @@ export async function GET(req: Request) {
   const { data: ops } = await db
     .from("operators")
     .select("id, phone, email")
-    .eq("anonymized", false);
+    .eq("anonymized", false)
+    .lt("created_at", cfg.value);
   for (const o of ops ?? []) {
     const { error } = await db
       .from("operators")
