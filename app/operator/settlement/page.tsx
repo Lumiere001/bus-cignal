@@ -98,10 +98,30 @@ export default async function Page() {
   // 정산 대상 매칭 — trip(공급 지구·요금) + 신청 지구 조인.
   // buildSettlement이 본인 지구 기준으로 받을/보낼만 추려내므로 출력은 본인 지구로 한정됨.
   // (출시 전 RLS로 DB 레벨 스코핑 필요 — PRE-LAUNCH-CHECKLIST 참고)
-  const { data: rows } = await supabase
-    .from("matches")
-    .select(
-      `
+  // 본인 지구가 공급(받을) 또는 신청(보낼) 측인 매칭만 — DB 스코핑(전국 over-fetch 방지).
+  const [{ data: myTrips }, { data: myReqs }] = await Promise.all([
+    supabase
+      .from("trips")
+      .select("id")
+      .eq("operator_region_id", session.regionId),
+    supabase
+      .from("seat_requests")
+      .select("id")
+      .eq("region_id", session.regionId),
+  ]);
+  const tripIds = (myTrips ?? []).map((t) => t.id);
+  const reqIds = (myReqs ?? []).map((r) => r.id);
+
+  const orParts: string[] = [];
+  if (tripIds.length) orParts.push(`trip_id.in.(${tripIds.join(",")})`);
+  if (reqIds.length) orParts.push(`request_id.in.(${reqIds.join(",")})`);
+
+  const rows = orParts.length
+    ? (
+        await supabase
+          .from("matches")
+          .select(
+            `
       id, status,
       trip:trips!trip_id(
         price_per_seat, operator_region_id,
@@ -112,7 +132,10 @@ export default async function Page() {
         region:regions!region_id(name)
       )
     `,
-    );
+          )
+          .or(orParts.join(","))
+      ).data
+    : null;
 
   const matches: SettlementMatch[] = (rows ?? [])
     .map((r): SettlementMatch | null => {

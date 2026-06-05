@@ -20,12 +20,19 @@ export default async function Page() {
 
   const supabase = createAdminClient();
 
-  // 본인 지구가 신청한 매칭 (송금 주체). build/필터는 JS에서 region 스코핑.
-  // (출시 전 RLS로 DB 레벨 스코핑 필요 — PRE-LAUNCH-CHECKLIST)
-  const { data: rows } = await supabase
-    .from("matches")
-    .select(
-      `
+  // 본인 지구가 신청 주체인 매칭만 — DB 레벨 스코핑(전국 over-fetch·타지구 PII 유입 방지).
+  const { data: myReqs } = await supabase
+    .from("seat_requests")
+    .select("id")
+    .eq("region_id", session.regionId);
+  const reqIds = (myReqs ?? []).map((r) => r.id);
+
+  const rows = reqIds.length
+    ? (
+        await supabase
+          .from("matches")
+          .select(
+            `
       id, status, reservation_code, matched_at,
       passenger:request_passengers!passenger_id(name, school_or_role),
       request:seat_requests!request_id(region_id),
@@ -36,12 +43,13 @@ export default async function Page() {
         supply:regions!operator_region_id(name, bank_name, bank_account, account_holder)
       )
     `,
-    )
-    .order("matched_at", { ascending: false });
+          )
+          .in("request_id", reqIds)
+          .order("matched_at", { ascending: false })
+      ).data
+    : null;
 
-  const matches = (rows ?? []).filter(
-    (r) => one(r.request)?.region_id === session.regionId,
-  );
+  const matches = rows ?? [];
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
