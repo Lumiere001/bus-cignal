@@ -8,7 +8,14 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **CC 처리 완료 (2026-06-05 — ⭐ 여기부터 읽으세요)**: **Cowork 핸드오프 #1(운영 DB 셋업)은 stale — CC 검증 결과 prod 마이그 이미 다 적용됨(완료). + 이번 CC 세션 PR 6건 머지. 열린 PR 0·열린 이슈 0.**
+- 📍 **CC 세션 (2026-06-05 오후 — ⭐ 여기부터 읽으세요)**: **팀장 영역 — RLS 하드닝(PR #56) + 출시전 픽스 3건(PR #57) + 전체 코드베이스 감사(6도메인) + Docker DB 검증. 열린 PR 2(#56 RLS·#57 픽스, 둘 다 팀장 머지대기).**
+  - ✅ **1. RLS = 옵션 A 채택·완료 (PR #56 `feat/rls-hardening-revoke`)**: 접근모델 분석 = 앱 전량 service_role(46곳) 우회 + 커스텀 JWT(`auth.uid()`=null)라 **DB RLS 실효 = anon키 직격 차단뿐 → 이미 deny-default로 성립.** 하드닝 마이그 `20260605000002`(PII 11테이블 anon·authenticated GRANT revoke) + 결정문 `docs/decisions/2026-06-05-rls-deny-default-boundary.md` + 코드점검 통과. **Docker `db reset` 풀 검증 PASS**(anon→match_passengers=false·authenticated→operators=false·anon→regions=true). 옵션 B(DB레벨 지구별)=출시후 / C(Supabase Auth)=비채택. ⚠️ **prod 적용은 #56 머지 후 새 마이그 1개만**(기존 5/5 그대로).
+  - ✅ **2. anonymize_after — 종료일 7/1 확정 → 값 2026-09-29(종료+90) prod 세팅 완료**(사용자 1회승인, service_role REST upsert `2026-09-28T15:00Z`, read-back 확인, `updated_by=cc-team-lead`). cron 🔴버그(`created_at<cutoff` 필터 누락→전체 PII 무차별 스크럽)는 **PR #57에서 수정** — 단 #57 배포 전엔 prod cron이 옛 동작이나 9/29 미도래라 `"보관 기간 중"` skip = **무해**(배포 시 적용).
+  - ✅ **3. PWA 아이콘 192/512 구현 (PR #57)**: `qlmanage`+`sips`로 SVG→PNG 생성 + manifest 연결. offline PWA(next-pwa)=출시후 권장(2-SW 공존·캐시 리스크).
+  - 🔬 **4. 전체 코드베이스 감사 (6도메인 병렬 + 4게이트 + Docker)** → **`docs/AUDIT-2026-06-05-production-readiness.md`** (PR #57). **판정: 조건부 GO — 코어 견고하나 출시 블로커 잔존.** 게이트 전부 PASS(test 165). 🔴블로커: **B1 CCC 간사인증(외부대기, prod 간사 로그인경로 0)** · ~~B2 anonymize created_at~~(✅#57) · **B3 좌석 over-booking race(승인경로 락없음·돈직결)** · **B4 /privacy·/terms 빈 placeholder(PIPA)** · ~~B5 마스터잠금 자기-DoS~~(✅#57) · B6 Vercel PASSENGER_SESSION_SECRET · B7 #56 마이그 적용. 🟠: 학생 rate-limit·이중매칭 index·매칭/정산 region JS필터·revoke후 세션잔존·출발리마인더(Hobby 2cron 포화→Pro결정)·부분매칭통지·/chat 깨진링크·취소 TZ버그.
+  - 🔜 **다음(우선순위)**: 팀장 = #56·#57 머지 + #56 마이그 prod 적용 + anonymize_after 세팅방법 결정 + **B3 좌석 race(core)·B4 약관·Pro 승급여부** 판단. 외부 = CCC 인증(B1). 팀원1 = 부분매칭통지·region RLS. 팀원2 = /chat 링크 숨김·취소 TZ버그.
+
+- 📍 **CC 처리 완료 (2026-06-05 오전)**: **Cowork 핸드오프 #1(운영 DB 셋업)은 stale — CC 검증 결과 prod 마이그 이미 다 적용됨(완료). + 이번 CC 세션 PR 6건 머지. 열린 PR 0·열린 이슈 0.**
   - ✅ **#1 운영 DB = 이미 완료 (CC 검증)**: `supabase migration list` Local==Remote(5/5) · `db push --dry-run` = "up to date". **prod 테이블 13개 · RLS 13 enable · 타입 정식 생성본(#38)**. Cowork "0 tables/db push 필요"는 stale(일시정지 직후·오확인 추정) → **추가 push·types regen 불필요(no-op)**. Vercel Firebase env 3개 = GUI 확인만 남음(Cowork).
   - ✅ **이번 CC 세션 머지 6건**: #45 출발/도착지 CRUD · #46 점검모드·마감일(빌드결함 force-dynamic 픽스) · #47 학생 카카오맵 상세 · #48 지오코딩(실제 핀) · #50 포맷터 DRY+**학생 시각 TZ버그 교정** · #51 /me/trip 간사·총무 연락처 카드. 이슈 #49(카카오도메인=팀원 등록·팀장 확인)·#50·#51 closed.
   - 🔍 **P1(Service Worker) 검토 결과**: FCM SW(`/firebase-messaging-sw.js`)는 **옵트인 시 `lib/push/client.ts`가 등록** → opt-in 사용자에겐 정상 동작(Cowork "FCM 수신 불가"는 부정확). `/sw.js`(offline PWA·next-pwa)는 없음=별개·선택. **푸시 실수신 갭 = ① Phase C 배너 `/me` 마운트(팀원2) ② Vercel Firebase Admin·VAPID env** → **P1 별도 PR 불필요**, 배너 마운트가 진짜 액션.
