@@ -3,23 +3,11 @@ import Link from "next/link";
 import { requirePassenger } from "@/lib/auth/passenger";
 import { getTripForPassenger } from "@/lib/passenger/trip-detail";
 import { KakaoMap } from "@/components/kakao/KakaoMap";
+import { formatKstDateShort, formatWon } from "@/lib/datetime";
 
 type Props = {
   params: Promise<{ id: string }>;
 };
-
-function formatDeparture(iso: string): string {
-  const d = new Date(iso);
-  const month = d.getMonth() + 1;
-  const date = d.getDate();
-  const h = d.getHours().toString().padStart(2, "0");
-  const m = d.getMinutes().toString().padStart(2, "0");
-  return `${month}월 ${date}일 ${h}:${m}`;
-}
-
-function formatPrice(n: number): string {
-  return n.toLocaleString("ko-KR") + "원";
-}
 
 export default async function TripDetailPage({ params }: Props) {
   const { id: tripId } = await params;
@@ -51,11 +39,11 @@ export default async function TripDetailPage({ params }: Props) {
         <dl className="flex flex-col gap-1 text-muted-foreground">
           <div className="flex gap-2">
             <dt className="w-16 shrink-0">출발</dt>
-            <dd>{formatDeparture(trip.departureAt)}</dd>
+            <dd>{formatKstDateShort(trip.departureAt)}</dd>
           </div>
           <div className="flex gap-2">
             <dt className="w-16 shrink-0">요금</dt>
-            <dd>{formatPrice(trip.pricePerSeat)}</dd>
+            <dd>{formatWon(trip.pricePerSeat)}</dd>
           </div>
         </dl>
       </section>

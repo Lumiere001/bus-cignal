@@ -59,6 +59,13 @@ export async function deleteLocation(id: string): Promise<ActionResult> {
     return { error: "소속 지구 정보가 없습니다." };
   }
 
+  // id는 아래 .or() 필터에 문자열 보간되므로 UUID 형식만 허용 (필터 구문 주입 방어).
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+  ) {
+    return { error: "잘못된 요청입니다." };
+  }
+
   const db = createAdminClient();
 
   // 소유권 가드 — 본인 지구 장소만 삭제 가능

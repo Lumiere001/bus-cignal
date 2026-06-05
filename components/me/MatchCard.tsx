@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { formatKstDateShort, formatWon } from "@/lib/datetime";
 import type { MatchForDashboard } from "@/lib/passenger/queries";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -9,19 +10,6 @@ const STATUS_LABELS: Record<string, string> = {
   expired: "만료됨",
   cancelled: "취소됨",
 };
-
-function formatDeparture(iso: string): string {
-  const d = new Date(iso);
-  const month = d.getMonth() + 1;
-  const date = d.getDate();
-  const h = d.getHours().toString().padStart(2, "0");
-  const m = d.getMinutes().toString().padStart(2, "0");
-  return `${month}월 ${date}일 ${h}:${m}`;
-}
-
-function formatPrice(n: number): string {
-  return n.toLocaleString("ko-KR") + "원";
-}
 
 type Props = {
   match: MatchForDashboard;
@@ -58,11 +46,11 @@ export function MatchCard({ match }: Props) {
       <dl className="flex flex-col gap-1 text-sm text-muted-foreground">
         <div className="flex gap-2">
           <dt className="w-16 shrink-0">출발</dt>
-          <dd>{formatDeparture(match.departureAt)}</dd>
+          <dd>{formatKstDateShort(match.departureAt)}</dd>
         </div>
         <div className="flex gap-2">
           <dt className="w-16 shrink-0">요금</dt>
-          <dd>{formatPrice(match.pricePerSeat)}</dd>
+          <dd>{formatWon(match.pricePerSeat)}</dd>
         </div>
         <div className="flex gap-2">
           <dt className="w-16 shrink-0">예약번호</dt>
