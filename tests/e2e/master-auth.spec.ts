@@ -15,7 +15,9 @@ test.describe.serial("마스터 로그인", () => {
   test("틀린 비번 → 오류 + 남은 횟수 표시", async ({ page }) => {
     await page.goto("/admin/login");
     await page.fill('input[name="password"]', "definitely-wrong-password");
-    await page.click('button[type="submit"]');
+    // 로그인 페이지는 admin 레이아웃(상단 nav)에 중첩돼 '로그아웃' 버튼도 존재 →
+    // 버튼명으로 로그인 폼 제출만 정확히 클릭(submit 셀렉터는 모호).
+    await page.getByRole("button", { name: "로그인", exact: true }).click();
     await expect(page).toHaveURL(/error=invalid/);
     await expect(page.locator("body")).toContainText(
       "비밀번호가 올바르지 않습니다",
@@ -26,7 +28,9 @@ test.describe.serial("마스터 로그인", () => {
   test("올바른 비번 → /admin 진입 (세션 발급 + 가드 통과)", async ({ page }) => {
     await page.goto("/admin/login");
     await page.fill('input[name="password"]', E2E_MASTER_PASSWORD);
-    await page.click('button[type="submit"]');
+    // 로그인 페이지는 admin 레이아웃(상단 nav)에 중첩돼 '로그아웃' 버튼도 존재 →
+    // 버튼명으로 로그인 폼 제출만 정확히 클릭(submit 셀렉터는 모호).
+    await page.getByRole("button", { name: "로그인", exact: true }).click();
     // 미들웨어 가드를 통과해 /admin 도달 = 세션 쿠키 정상 발급·검증
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.locator("body")).toContainText("전국 대시보드");

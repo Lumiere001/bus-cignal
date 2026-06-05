@@ -82,6 +82,7 @@ service_role*
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+tests/e2e/.auth/
 
 # Sentry
 .sentryclirc
