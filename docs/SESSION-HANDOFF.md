@@ -8,16 +8,42 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: CC 세션 (2026-06-05 오후 — 팀장 영역: RLS 하드닝 + anonymize 판단 + PWA 검토)
-To: 팀장 / Cowork
-목적: ① feat/rls-hardening-revoke push·PR·머지 + prod 마이그 적용 ② 수련회 종료일 확정 시 anonymize 세팅
+From: CC 세션 (2026-06-05 심야 — 전 영역 인수·출시 블로커/감사 소진)
+To: CC 다음 세션 (⭐ 여기부터)
+목적: ① 운영 TODO ② E2E 테스트 환경 구축(신규) ③ 디자인 개선 검토(신규)
 ```
 
-### ✅ CC 결과 (2026-06-05 오후)
+### ✅ 직전 세션 결과 (요약)
+- **PR #56~#70 머지(15건)**, **prod 마이그 000002~000006 전부 적용**, 열린 PR 0.
+- 라이브: 매직링크 간사 로그인 · 좌석 race 원자 RPC(B3) · 약관/방침(PIPA) · 푸시 배너 v2 · 출발 리마인더(GitHub Actions) · 학생 rate-limit · partial_match · region 스코핑 · operator UX 픽스.
+- CCC 인증 = **B1 해제**(일회용 코드+검증 API, 그쪽 API 주말 도착) · **마스터 승인 제거** 결정. 채팅 = Firebase 커스텀 토큰 브리지 **설계 결정(빌드 보류, 에뮬레이터 개발)**.
+- 상세: WORKLOG "심야" 엔트리 · `docs/AUDIT-2026-06-05-production-readiness.md` · `docs/decisions/`(8건, README 인덱스).
 
-- **RLS = 옵션 A(방어선 명문화·강화) 채택.** 분석: 앱 전량 service_role 우회 + 커스텀 JWT(`auth.uid()`=null)라 DB RLS 실효 = anon키 직격 차단뿐 → 이미 deny-default로 성립. 브랜치 **`feat/rls-hardening-revoke`**(로컬 `525e93c`): 하드닝 마이그(PII 11테이블 anon·authenticated GRANT revoke) + 결정문(`docs/decisions/2026-06-05-rls-deny-default-boundary.md`) + 코드점검 통과. **팀장 액션: push→PR→머지 + prod에 이 신규 마이그 1개 적용**(기존 5/5는 그대로 — 새 마이그만). 앱 동작 무영향(service_role 불변).
-- **anonymize_after = 보류**(수련회 종료일 미확정 — SPEC 2026-08-10은 mockup placeholder). 확정 시 `/admin/system` 마스터 폼에서 *종료일+90일* 입력하면 끝(코드 0, prod 마스터세션 = Cowork/팀장). cron은 미설정 시 무해(skip).
-- **PWA = 검토만(미구현).** 아이콘 192/512(maskable PNG 에셋 받으면 출시전 ~10분) · offline PWA(next-pwa, 출시후 권장). 둘 다 출시 차단 아님.
+### 🔜 다음 세션 할 일
+
+**A. 운영 TODO (코드 밖 — 사용자/Cowork)**
+1. 저장소 Settings→Secrets→Actions에 **`CRON_SECRET` 등록**(Vercel과 동일 값) — 출발 리마인더 워크플로 작동 필수.
+2. 약관/방침 **「확정 필요」 4개**(운영주체 법적명칭·보호책임자·연락처·시행일) → 받으면 CC가 `/privacy`·`/terms` 반영.
+3. **CCC 코드검증 API 도착 시(주말)** → CCC consumer 구현 (`docs/decisions/2026-06-05-ccc-operator-auth-confirmed.md`).
+
+**B. ⭐ E2E 테스트 환경 구축 (사용자 신규 요청)**
+- 참고 영상: https://www.youtube.com/watch?v=feognUBShqI
+- 요구: 영상 내용을 참고해 **우리 프로젝트에 맞는 E2E 환경을 세부까지** 구축. **더 발전시킬 부분 고민 + 실제 E2E 테스트 진행.**
+- 현황: Playwright 스캐폴드 존재(`tests/e2e/`, `playwright.config.ts`, master-auth 3케이스, `global-setup`). **핵심 사슬 E2E는 없음**(간사 등록→매칭→송금→예약→정산, 학생 예약→취소).
+- 방향(제안): seed + `/dev/login`(또는 매직링크 토큰) 기반으로 ① 마스터 간사 추가→입장링크 ② 간사 등록→공개→신청→**원자 승인(B3)**→입금확인→예약번호→정산 ③ 학생 `/r` 본인확인(**rate-limit 포함**)→/me→취소 ④ 푸시 옵트인 배너 분기. CI(GitHub Actions) 연동·트레이스·실패 아티팩트까지.
+
+**C. ⭐ 디자인 개선 검토 (사용자 신규 요청)**
+- 참고 영상: https://youtu.be/RnJkhxFMWDY
+- 요구: 영상 보고 서비스 디자인 개선안 탐색. **큰 변경 전 "느낌"만 먼저 사용자와 공유 + 예시 목업(본)까지 만들어** 합의 후 실제 적용.
+- 현황: shadcn/ui + Pretendard + 브랜드색 4종, 모바일 우선. 미해결 P3 = `/admin` 모바일 nav 가로스크롤.
+
+### ▶️ 다음 세션 시작 방법
+1. 터미널: `cd /Users/east_star/Projects/bus-cignal && claude`
+2. 첫 메시지: **"Bus Cignal 이어가자 — WORKLOG·SESSION-HANDOFF 읽고 B(E2E)·C(디자인)부터 시작"**
+3. CC가 WORKLOG·이 핸드오프 자동 로드 → 컨텍스트 복원.
+
+### 블로커
+- CCC consumer = 외부 API 대기(주말). 그 외엔 매직링크로 운영 가능.
 
 ---
 
