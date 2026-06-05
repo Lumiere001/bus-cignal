@@ -12,6 +12,10 @@ export type TripDetail = {
   originLng: number | null;
   destinationLabel: string;
   destinationAddress: string;
+  operatorName: string | null;
+  operatorPhone: string | null;
+  treasurerName: string | null;
+  treasurerPhone: string | null;
 };
 
 /** passengerId가 소유한 tripId의 탑승 장소 상세 정보를 반환. 소유권 없으면 null. */
@@ -54,7 +58,7 @@ export async function getTripForPassenger(
   const { data: trip } = await db
     .from("trips")
     .select(
-      "id, departure_at, price_per_seat, direction, origin_location_id, destination_location_id",
+      "id, departure_at, price_per_seat, direction, origin_location_id, destination_location_id, created_by, treasurer_name, treasurer_phone",
     )
     .eq("id", tripId)
     .maybeSingle();
@@ -71,6 +75,17 @@ export async function getTripForPassenger(
   const origin = locMap.get(trip.origin_location_id);
   const dest = locMap.get(trip.destination_location_id);
 
+  // 6. 담당(공급) 간사 연락처 — trip.created_by. 학생 탑승 안내 목적(§S5·§10.2).
+  let operator: { name: string | null; phone: string | null } | null = null;
+  if (trip.created_by) {
+    const { data } = await db
+      .from("operators")
+      .select("name, phone")
+      .eq("id", trip.created_by)
+      .maybeSingle();
+    operator = data;
+  }
+
   return {
     tripId: trip.id,
     direction: trip.direction,
@@ -82,5 +97,9 @@ export async function getTripForPassenger(
     originLng: origin?.lng ?? null,
     destinationLabel: dest?.label ?? dest?.address ?? "도착지",
     destinationAddress: dest?.address ?? "",
+    operatorName: operator?.name ?? null,
+    operatorPhone: operator?.phone ?? null,
+    treasurerName: trip.treasurer_name ?? null,
+    treasurerPhone: trip.treasurer_phone ?? null,
   };
 }

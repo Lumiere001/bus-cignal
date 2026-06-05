@@ -13,6 +13,8 @@ const matchesMaybeSingle = vi.fn();
 const tripMaybeSingle = vi.fn();
 // region_locations: .in()
 const locsIn = vi.fn();
+// operators: .eq().maybeSingle() (담당 간사 연락처)
+const operatorMaybeSingle = vi.fn();
 
 let mpFromIdx = 0;
 
@@ -44,6 +46,12 @@ vi.mock("@/lib/supabase/admin", () => ({
       if (table === "region_locations") {
         // .select("...").in(locIds)  ← 터미널이 .in()
         return { select: () => ({ in: locsIn }) };
+      }
+      if (table === "operators") {
+        // .select("name, phone").eq("id", created_by).maybeSingle()
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: operatorMaybeSingle }) }),
+        };
       }
       return { select: () => ({ eq: () => {}, in: () => {} }) };
     },
@@ -77,6 +85,9 @@ describe("getTripForPassenger", () => {
     matchesMaybeSingle.mockResolvedValue({ data: { id: "m-1" } });
     tripMaybeSingle.mockResolvedValue({ data: BASE_TRIP });
     locsIn.mockResolvedValue({ data: BASE_LOCS });
+    operatorMaybeSingle.mockResolvedValue({
+      data: { name: "김광주", phone: "010-9999-0000" },
+    });
   });
 
   it("passengerId 없음 → null, 이후 조회 미호출", async () => {
@@ -146,5 +157,30 @@ describe("getTripForPassenger", () => {
     await getTripForPassenger("mp-1", "t-1");
     expect(mpMultiEq1).toHaveBeenCalledWith("phone", "010-1234-5678");
     expect(mpMultiEq2).toHaveBeenCalledWith("name", "이지은");
+  });
+
+  it("created_by 있음 → 담당 간사·총무 연락처 반환 (§S5)", async () => {
+    tripMaybeSingle.mockResolvedValue({
+      data: {
+        ...BASE_TRIP,
+        created_by: "op-1",
+        treasurer_name: "박총무",
+        treasurer_phone: "010-1111-2222",
+      },
+    });
+    const result = await getTripForPassenger("mp-1", "t-1");
+    expect(result!.operatorName).toBe("김광주");
+    expect(result!.operatorPhone).toBe("010-9999-0000");
+    expect(result!.treasurerName).toBe("박총무");
+    expect(result!.treasurerPhone).toBe("010-1111-2222");
+  });
+
+  it("created_by 없음 → 간사·총무 null (연락처 카드 미노출)", async () => {
+    // BASE_TRIP은 created_by/treasurer 없음 → 조회 skip, null
+    const result = await getTripForPassenger("mp-1", "t-1");
+    expect(result!.operatorName).toBeNull();
+    expect(result!.operatorPhone).toBeNull();
+    expect(result!.treasurerName).toBeNull();
+    expect(result!.treasurerPhone).toBeNull();
   });
 });
