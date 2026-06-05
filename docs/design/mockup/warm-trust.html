@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bus Cignal — Warm-Trust 목업</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  :root{
+    /* Warm-Trust 디자인 토큰 */
+    --blue-600:#2563eb; --blue-700:#1d4ed8; --blue-50:#eff6ff;
+    --ink:#0f172a; --ink-2:#475569; --ink-3:#94a3b8;
+    --line:#e9e6e1;                    /* 따뜻한 회선 */
+    --bg:#faf8f5;                      /* warm off-white (사역 온기) */
+    --card:#ffffff;
+    --amber:#d97706; --amber-bg:#fef3c7;   /* 대기 */
+    --green:#15803d; --green-bg:#dcfce7;   /* 입금완료/예약완료 */
+    --red:#dc2626;  --red-bg:#fee2e2;      /* 주의 */
+    --coral:#f97362;                       /* 따뜻한 포인트 */
+    --r:18px; --r-lg:24px;
+    --shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 24px -12px rgba(15,23,42,.12);
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{font-family:"Pretendard Variable",Pretendard,-apple-system,system-ui,sans-serif;
+       background:linear-gradient(160deg,#f1ede7,#e8eef7); color:var(--ink); padding:40px; -webkit-font-smoothing:antialiased}
+  h2.caption{font-size:13px; color:#64748b; font-weight:600; margin:0 0 10px 4px; letter-spacing:.02em}
+  .row{display:flex; gap:36px; flex-wrap:wrap; align-items:flex-start}
+  /* 폰 프레임 */
+  .phone{width:390px; height:844px; background:var(--bg); border-radius:44px;
+         box-shadow:0 30px 70px -20px rgba(15,23,42,.45), inset 0 0 0 11px #0b1220, inset 0 0 0 13px #1e293b;
+         padding:14px; position:relative; overflow:hidden}
+  .screen{width:100%; height:100%; border-radius:32px; overflow:hidden; position:relative; background:var(--bg)}
+  .notch{position:absolute; top:14px; left:50%; transform:translateX(-50%); width:120px; height:26px; background:#0b1220; border-radius:0 0 16px 16px; z-index:30}
+  .statusbar{height:40px; display:flex; align-items:flex-end; justify-content:space-between; padding:0 22px 4px; font-size:12px; font-weight:700; color:var(--ink)}
+  .pad{padding:0 18px}
+
+  /* 공통 컴포넌트 */
+  .brand{display:flex; align-items:center; gap:8px; font-weight:800; font-size:17px; letter-spacing:-.01em}
+  .brand .bus{width:30px;height:30px;border-radius:9px;background:var(--blue-600);display:grid;place-items:center;font-size:16px;box-shadow:0 4px 10px -2px rgba(37,99,235,.5)}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:6px; height:50px; border-radius:14px; font-weight:700; font-size:15px; width:100%; border:0; cursor:pointer}
+  .btn-primary{background:var(--blue-600); color:#fff; box-shadow:0 8px 18px -6px rgba(37,99,235,.55)}
+  .btn-outline{background:#fff; color:var(--ink); border:1.5px solid var(--line)}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;font-size:12px;font-weight:700}
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+
+  /* ── 1. 랜딩 ── */
+  .lp-top{padding:8px 18px 0; display:flex; justify-content:space-between; align-items:center}
+  .lp-hero{padding:54px 22px 0; text-align:center}
+  .lp-emblem{width:88px;height:88px;margin:0 auto 22px;border-radius:26px;background:linear-gradient(150deg,var(--blue-600),var(--blue-700));display:grid;place-items:center;font-size:42px;box-shadow:0 18px 36px -12px rgba(37,99,235,.6)}
+  .lp-route{height:2px;background:repeating-linear-gradient(90deg,var(--blue-600) 0 8px,transparent 8px 16px);opacity:.35;margin:0 50px 26px}
+  .lp-hero h1{font-size:34px;font-weight:800;letter-spacing:-.03em}
+  .lp-hero p{margin-top:12px;color:var(--ink-2);font-size:15px;line-height:1.55}
+  .lp-values{display:flex;gap:8px;justify-content:center;margin-top:22px;flex-wrap:wrap}
+  .lp-actions{padding:30px 22px 0;display:flex;flex-direction:column;gap:11px}
+  .lp-foot{position:absolute;bottom:24px;left:0;right:0;text-align:center;color:var(--ink-3);font-size:12px}
+
+  /* ── 공통 앱바 ── */
+  .appbar{padding:8px 18px 12px;display:flex;justify-content:space-between;align-items:center}
+  .appbar .title{font-size:20px;font-weight:800;letter-spacing:-.02em}
+  .appbar .sub{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .avatar{width:34px;height:34px;border-radius:10px;background:var(--blue-50);display:grid;place-items:center;font-size:14px;font-weight:800;color:var(--blue-700)}
+
+  /* ── 2. 간사 대시보드 ── */
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;padding:4px 18px 0}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .stat .ico{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:15px;margin-bottom:9px}
+  .stat .lab{font-size:12.5px;color:var(--ink-2);font-weight:600}
+  .stat .num{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-top:2px}
+  .stat .hint{font-size:11px;font-weight:700;margin-top:3px}
+  .actions2{display:flex;gap:10px;padding:16px 18px 4px}
+  .sec-title{padding:18px 18px 8px;font-size:14px;font-weight:800;color:var(--ink);display:flex;justify-content:space-between;align-items:center}
+  .sec-title a{font-size:12px;color:var(--blue-600);font-weight:700;text-decoration:none}
+  .mlist{padding:0 18px;display:flex;flex-direction:column;gap:9px}
+  .mrow{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 13px;display:flex;align-items:center;gap:11px;box-shadow:var(--shadow)}
+  .mrow .who{font-weight:700;font-size:14px}
+  .mrow .meta{font-size:12px;color:var(--ink-3);margin-top:1px}
+
+  /* 하단 탭바 (nav 픽스) */
+  .tabbar{position:absolute;bottom:0;left:0;right:0;height:74px;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:flex-start;padding-top:9px}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:var(--ink-3);font-weight:600}
+  .tab .ti{font-size:19px}
+  .tab.on{color:var(--blue-600)}
+
+  /* ── 3. 학생 /me ── */
+  .mcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);margin:4px 18px 0;overflow:hidden}
+  .mcard .head{padding:16px 16px 12px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-bottom:1px dashed var(--line)}
+  .mcard .route{font-size:17px;font-weight:800;letter-spacing:-.02em}
+  .mcard .route small{display:block;color:var(--ink-3);font-weight:600;font-size:12px;margin-top:3px}
+  .mcard .body{padding:13px 16px;display:flex;flex-direction:column;gap:9px}
+  .kv{display:flex;justify-content:space-between;font-size:13.5px}
+  .kv .k{color:var(--ink-3)} .kv .v{font-weight:700}
+  .kv .code{font-family:ui-monospace,Menlo,monospace;background:var(--blue-50);color:var(--blue-700);padding:2px 8px;border-radius:7px;font-weight:800;letter-spacing:.04em}
+  .mcard .foot{padding:12px 16px;display:flex;gap:8px}
+  .btn-sm{height:42px;border-radius:12px;font-size:13.5px;font-weight:700;flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;cursor:pointer}
+  .pushbanner{margin:14px 18px 0;background:linear-gradient(135deg,#fff,var(--blue-50));border:1px solid #dbeafe;border-radius:var(--r);padding:14px;display:flex;gap:11px}
+  .pushbanner .b{font-size:22px}
+  .pushbanner p{font-size:12.5px;color:var(--ink-2);line-height:1.5}
+  .pushbanner .cta{margin-top:9px;display:flex;gap:8px}
+  .mini{height:34px;padding:0 13px;border-radius:9px;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;cursor:pointer}
+</style>
+</head>
+<body>
+  <div class="row">
+
+    <!-- 1. 랜딩 -->
+    <div>
+      <h2 class="caption">① 랜딩 (모바일)</h2>
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ● ● 􀙇</span></div>
+        <div class="lp-top">
+          <div class="brand"><span class="bus">🚌</span> Bus Cignal</div>
+          <span class="chip" style="background:var(--green-bg);color:var(--green)">● 매칭 오픈</span>
+        </div>
+        <div class="lp-hero">
+          <div class="lp-emblem">🚌</div>
+          <div class="lp-route"></div>
+          <h1>한 자리도<br/>공정하게, 투명하게</h1>
+          <p>CCC 전국 여름 수련회<br/>지구 간 차량 매칭·정산·소통을 한 곳에서.</p>
+          <div class="lp-values">
+            <span class="chip" style="background:var(--blue-50);color:var(--blue-700)">⚖️ 공정한 매칭</span>
+            <span class="chip" style="background:var(--green-bg);color:var(--green)">🧾 투명한 정산</span>
+            <span class="chip" style="background:var(--amber-bg);color:var(--amber)">🔔 실시간 알림</span>
+          </div>
+        </div>
+        <div class="lp-actions">
+          <button class="btn btn-primary">간사 로그인 →</button>
+          <button class="btn btn-outline">예약 조회</button>
+        </div>
+        <div class="lp-foot">CCC IT 사역부 · 2026 여름 수련회</div>
+      </div></div>
+    </div>
+
+    <!-- 2. 간사 대시보드 -->
+    <div>
+      <h2 class="caption">② 간사 대시보드 (모바일 · nav 픽스)</h2>
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ● ● 􀙇</span></div>
+        <div class="appbar">
+          <div>
+            <div class="title">간사 대시보드</div>
+            <div class="sub">광주지구 · 김광주 간사</div>
+          </div>
+          <div class="avatar">광</div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="ico" style="background:var(--blue-50)">🚌</div>
+            <div class="lab">공개중 차량</div><div class="num">4</div>
+          </div>
+          <div class="stat" style="border-color:#fde68a;background:linear-gradient(180deg,#fffbeb,#fff)">
+            <div class="ico" style="background:var(--amber-bg)">⏳</div>
+            <div class="lab">대기중 신청</div><div class="num" style="color:var(--amber)">1</div>
+            <div class="hint" style="color:var(--amber)">승인 대기 →</div>
+          </div>
+          <div class="stat">
+            <div class="ico" style="background:#f1f5f9">📤</div>
+            <div class="lab">보낸 신청</div><div class="num" style="color:var(--ink-3)">0</div>
+          </div>
+          <div class="stat" style="border-color:#bbf7d0;background:linear-gradient(180deg,#f0fdf4,#fff)">
+            <div class="ico" style="background:var(--green-bg)">✅</div>
+            <div class="lab">진행중 매칭</div><div class="num" style="color:var(--green)">7</div>
+            <div class="hint" style="color:var(--green)">정산까지 순항</div>
+          </div>
+        </div>
+        <div class="actions2">
+          <button class="btn btn-primary" style="height:46px">＋ 차량 등록</button>
+          <button class="btn btn-outline" style="height:46px">＋ 타지구 신청</button>
+        </div>
+        <div class="sec-title">대기중 신청 <a href="#">전체 →</a></div>
+        <div class="mlist">
+          <div class="mrow">
+            <span class="pill" style="background:var(--amber-bg);color:var(--amber)">대기</span>
+            <div style="flex:1"><div class="who">부산지구 · 2명</div><div class="meta">평창 → 광주 · 2시간 전 신청</div></div>
+            <span style="color:var(--blue-600);font-weight:800;font-size:13px">승인 →</span>
+          </div>
+          <div class="mrow">
+            <span class="pill" style="background:var(--green-bg);color:var(--green)">입금완료</span>
+            <div style="flex:1"><div class="who">대전지구 · 이지은</div><div class="meta">예약번호 BUS-7K9M 발급됨</div></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab on"><span class="ti">🏠</span>대시보드</div>
+          <div class="tab"><span class="ti">🚌</span>내 차량</div>
+          <div class="tab"><span class="ti">📨</span>신청</div>
+          <div class="tab"><span class="ti">🔗</span>매칭</div>
+          <div class="tab"><span class="ti">🧾</span>정산</div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- 3. 학생 /me -->
+    <div>
+      <h2 class="caption">③ 학생 · 내 예약 (/me)</h2>
+      <div class="phone"><div class="notch"></div><div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ● ● 􀙇</span></div>
+        <div class="appbar">
+          <div><div class="title">내 예약</div><div class="sub">이지은 님</div></div>
+          <div class="brand"><span class="bus" style="width:26px;height:26px;font-size:13px">🚌</span></div>
+        </div>
+        <div class="mcard">
+          <div class="head">
+            <div class="route">평창 대관령 → 광주 충장로<small>7월 6일 (월) 오전 6:00 출발</small></div>
+            <span class="pill" style="background:var(--green-bg);color:var(--green)">예약 완료</span>
+          </div>
+          <div class="body">
+            <div class="kv"><span class="k">요금</span><span class="v">35,000원</span></div>
+            <div class="kv"><span class="k">예약번호</span><span class="code">BUS-7K9M</span></div>
+            <div class="kv"><span class="k">담당 간사</span><span class="v">김광주 · 010-1000-0001</span></div>
+          </div>
+          <div class="foot">
+            <button class="btn-sm btn-outline">🗺️ 지도</button>
+            <button class="btn-sm" style="background:var(--red-bg);color:var(--red)">예약 취소</button>
+          </div>
+        </div>
+        <div class="pushbanner">
+          <span class="b">🔔</span>
+          <div>
+            <p><b>출발·장소 변경을 알림으로 받기.</b><br/>홈 화면에 추가하면 앱처럼 편하게 쓸 수 있어요.</p>
+            <div class="cta">
+              <button class="mini btn-primary" style="color:#fff">알림 설정</button>
+              <button class="mini" style="background:transparent;color:var(--ink-3)">나중에</button>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:18px;color:var(--ink-3);font-size:12px">안전한 길 되세요 🙏</div>
+      </div></div>
+    </div>
+
+  </div>
+</body>
+</html>

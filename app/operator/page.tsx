@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { buttonVariants } from "@/components/ui/button";
+import { StatCard } from "@/components/ui/stat-card";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -48,16 +51,6 @@ async function loadSummary(regionId: string) {
   };
 }
 
-function Card({ label, value, href, hint }: { label: string; value: number; href: string; hint?: string }) {
-  return (
-    <Link href={href} className="hover:border-primary block rounded-xl border p-4 transition-colors">
-      <div className="text-muted-foreground text-sm">{label}</div>
-      <div className="mt-1 text-2xl font-bold tabular-nums">{value}</div>
-      {hint && <div className="text-muted-foreground mt-0.5 text-xs">{hint}</div>}
-    </Link>
-  );
-}
-
 export default async function OperatorDashboardPage() {
   const session = await requireOperator();
 
@@ -82,24 +75,50 @@ export default async function OperatorDashboardPage() {
       </div>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card label="공개중 차량" value={s.publishedTrips} href="/operator/trips" />
-        <Card label="대기중 신청" value={s.incomingQueued} href="/operator/trips" hint="우리 차량 승인 대기" />
-        <Card label="보낸 신청" value={s.myRequests} href="/operator/requests" />
-        <Card label="진행중 매칭" value={s.activeMatches} href="/operator/matches" />
+        <StatCard
+          label="공개중 차량"
+          value={s.publishedTrips}
+          href="/operator/trips"
+          icon="🚌"
+          tone="info"
+        />
+        <StatCard
+          label="대기중 신청"
+          value={s.incomingQueued}
+          href="/operator/trips"
+          icon="⏳"
+          tone={s.incomingQueued > 0 ? "warning" : "neutral"}
+          hint={s.incomingQueued > 0 ? "승인 대기 →" : undefined}
+        />
+        <StatCard
+          label="보낸 신청"
+          value={s.myRequests}
+          href="/operator/requests"
+          icon="📤"
+          tone="neutral"
+        />
+        <StatCard
+          label="진행중 매칭"
+          value={s.activeMatches}
+          href="/operator/matches"
+          icon="✅"
+          tone={s.activeMatches > 0 ? "success" : "neutral"}
+          hint={s.activeMatches > 0 ? "정산까지 순항" : undefined}
+        />
       </section>
 
       <section className="flex flex-wrap gap-2">
         <Link
           href="/operator/trips/new"
-          className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+          className={cn(buttonVariants({ size: "lg" }), "h-11 px-5")}
         >
-          + 차량 등록
+          ＋ 차량 등록
         </Link>
         <Link
           href="/operator/requests/new"
-          className="hover:bg-muted rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
+          className={cn(buttonVariants({ variant: "outline", size: "lg" }), "bg-card h-11 px-5")}
         >
-          + 타지구 차량 신청
+          ＋ 타지구 차량 신청
         </Link>
       </section>
     </main>
