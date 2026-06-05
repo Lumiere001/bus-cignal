@@ -8,51 +8,63 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: CC 세션 (2026-05-30, v1.1 기획 개정 + 팀원 온보딩 준비)
-To: 다음 CC 세션 / Cowork / 팀원
-목적: 팀원 2명 합류 → feature 병렬 개발 시작
+From: Cowork 세션 (2026-06-05 새벽, vault 프롬프트 실행 후 — Vercel env 확인 + 라이브 스모크)
+To: CC 다음 세션 (팀장 머신)
+목적: 운영 DB 마이그 적용 (#61~67) + Cowork 발견 PWA 이슈 픽스
 ```
 
-### 상황 요약 (2026-05-30 기준)
+### ✅ CC 처리 결과 (2026-06-05 — 위 핸드오프에 대한 응답·정정)
 
-- **Foundation Phase 1 ✅** (main 머지, PR #1)
-- **Foundation Phase 2 진행 중** (`feat/foundation-phase-2`):
-  - P2-1 로컬 Supabase ✅ / P2-2 DB 12테이블+RLS골격+지구 seed+타입 ✅
-  - P2-3 SSR 클라이언트 4종+미들웨어 ✅ / P2-4 마스터 비번 인증 ✅ (`/admin/login`)
-- **🆕 v1.1 기획 개정 (간사 피드백)** — `docs/SPEC.md`·`docs/OVERVIEW.md` v1.1:
-  - 간사 = **CCC 로그인** (Google OAuth 폐기) / 매칭 = 시각순 정렬 + 간사 **수동 선택** (FIFO 강제·자동 매칭 제거) / 송금 = **자동 만료 폐지** → 소프트 리마인더 + 수동 [자리 풀기] / 학생·간사 PWA = **옵트인** / 이메일·성별 미수집 / 지구 내 차량관리 = V1.5
-  - 코드 반영: 마이그(`20260530000000_ccc_login_operators.sql`)·`lib/auth/operator-session.ts`·`lib/auth/ccc.ts`(스텁)·types·`/login` placeholder
-  - 게이트: typecheck 0 · lint 0 · test 2 · build OK
-- **🆕 Phase 3 인프라 (2026-05-30)** — 테스트 인프라(seed-dev·`/dev/login`·operator 세션) + PWA manifest + 알림 엔진(`lib/notifications`) + cron(리마인더·익명화) + Playwright·Sentry 스캐폴드 + `docs/GIT-WORKFLOW.md`. 로컬 `supabase db reset` 실 검증 통과.
+- **#1 운영 DB = 이미 완료(정정).** CC 검증: `supabase migration list` Local==Remote(5/5) · `db push --dry-run`="Remote database is up to date". prod **테이블 13 · RLS 13 enable · 타입 정식 생성본(#38)**. → Cowork "prod 비어있음/db push 필요/타입 수기미러"는 **stale**(일시정지 직후·오확인 추정). **추가 db push·types regen 불필요(no-op).** (Vercel Firebase env 3개만 GUI 확인 남음 — 다음 Cowork)
+- **P1(Service Worker) = 별도 PR 불필요(정정).** FCM SW(`/firebase-messaging-sw.js`)는 **옵트인 시 `lib/push/client.ts`가 등록** → opt-in 사용자 정상(“FCM 수신 불가”는 부정확). `/sw.js`(offline·next-pwa)는 별개·선택. **푸시 실수신 갭 = Phase C 배너 `/me` 마운트(팀원2) + Vercel Firebase env.**
+- **이번 CC 세션 머지**: #45·#46(force-dynamic 픽스)·#47·#48(지오코딩)·#50(포맷터DRY+TZ버그)·#51(연락처카드). 이슈 #49·#50·#51 closed. 열린 PR 0.
+- **남은 본작업**: CCC 인증(⛔ 외부) · RLS policies 실적용 · Phase C 배너 마운트(팀원2) · P2 아이콘 · P3 admin 모바일 nav(팀원1) · offline PWA(선택).
 
-### 다음 (우선순위)
+### 상황 요약 (2026-06-05 기준)
 
-1. **팀원 2명 온보딩** ← 지금 단계
-   - 팀장: GitHub collaborator 추가 (Cowork/gh) + 1Password "Team Dev" vault 공유 (dev 키만)
-   - 팀원: `ONBOARDING.md` 따라 셋업 → `docs/TEAM-TASKS.md`의 본인 첫 작업
-   - 분담: 팀원1 = 운영자·마스터 UI / 팀원2 = 학생·채팅
-2. **간사 인증 (CCC 로그인)** — ⛔ **CCC IT 답 대기** (신원 전달 방식 A/B/C). 스키마·세션 골격·스텁까지 완료, 방식 확정 후 `verifyCccToken` 구현 + `/login` 연동 + `/operator` 가드 + RLS(앱레이어)
-3. **Firebase 채팅·FCM 클라이언트 통합** (팀원2 영역, 외부 프로젝트는 생성됨)
-4. **PWA (manifest·sw·옵트인 흐름)**
+- **✅ Vercel env**: `OPERATOR_SESSION_SECRET` 이미 존재 (Production·Sensitive·5/31 추가) → 추가 없이 유지. main `04e8eac` Production Redeploy 트리거·성공.
+- **✅ 라이브 스모크 PASS** (https://bus-cignal.vercel.app, 뷰포트 ~606px·sm 미만, Chrome 윈도우 min-width 한계로 실 375px 못 줄임):
+  - 공개 7개(`/`·`/signup`·`/login`·`/privacy`·`/terms`·`/offline`·`/r/BUS-TEST`) + 마스터 로그인 후 `/admin` 8개(대시보드·간사·승인대기·Trip·매칭·정산·거절·시스템) **전부 정상 렌더**.
+  - prod DB 비어있음 → 모든 빈 상태 카피·정책 안내문 graceful.
+  - **`/admin/settlement` = 실제 N×N 매트릭스 컴포넌트 렌더 확인** (v1.1 SPEC §S5 부합, "공급 지구(행)→신청 지구(열)·칸=공급이 받을 금액·셀 클릭 시 상세" + 정책 푸터 포함, 데이터 없어 "정산 대상 매칭이 아직 없습니다" 카드).
+- **🐛 발견 이슈 3건 (출시 차단 아님)**:
+  - **P1 [PWA]** Service Worker **미등록** (`navigator.serviceWorker.controller=null`, `getRegistrations().length=0`) → 오프라인 캐싱 X·**FCM 푸시 수신 불가**. **출시 전 필수**. 추정: app/layout `register('/sw.js')` 누락 또는 next-pwa·next 16 App Router 호환 이슈.
+  - **P2 [PWA]** manifest 아이콘 1개만 → 192·512 권장 (Lighthouse·iOS 홈화면 품질).
+  - **P3 [UI]** `/admin` 헤더 nav scrollWidth=430px → 실 375px 폰에서 가로 스크롤. sm 미만 햄버거/아이콘only/2줄 wrap 검토 (팀원1 영역).
 
-### 블로커
+### CC 다음 작업 (우선순위)
 
-- **간사 인증**: CCC IT의 신원 전달 방식 확정 대기 (간사님께 질문 발송 예정)
-- **카카오맵 추가 기능**: 비즈 심사 + 교수님 합의 대기 (기본 JS 지도는 사용 가능)
+1. **#61~67 운영 DB 셋업** (팀장 머신 전용, core):
+   - `supabase db push`로 전체 마이그 5개 일괄 적용 (현재 prod public 스키마 빈 상태 — `select tablename from pg_tables where schemaname='public'` = 0행 확인 완료)
+   - `pnpm gen:types` → `database.types.ts` 갱신·커밋 (현재 수기 미러 상태)
+   - Vercel Production env 3개 확인 (`FIREBASE_ADMIN_PRIVATE_KEY`·`FIREBASE_ADMIN_CLIENT_EMAIL`·`NEXT_PUBLIC_FIREBASE_VAPID_KEY`) → 필요 시 추가 → Redeploy
+   - 결과 보고: 테이블 개수·RLS 활성·env 적용 여부
+2. **P1 Service Worker 등록** (PWA·푸시 출시 차단, 별도 PR 후보):
+   - app/layout 또는 클라이언트 컴포넌트에서 `register('/sw.js')` 호출
+   - next-pwa 설정 검증 (next 16 App Router 호환)
+   - 라이브 검증: `navigator.serviceWorker.getRegistrations()` non-empty
+3. **#43** vercel.json cron 2개 인식 + Hobby/Pro 체크 (Cowork 다음 세션도 가능 — Vercel Cron 탭 GUI)
+4. **P2** PWA 아이콘 (192·512) 추가 — 디자인 협업
+5. **P3** `/admin` mobile nav 픽스 — 팀원1 영역으로 핸드오프
 
 ### 자원 상태
 
-- 로컬 Supabase: `supabase start`로 재개 (데이터 유지)
-- `feat/foundation-phase-2`: origin push됨 (단, v1.1 변경분은 **로컬 커밋 후 push 필요**)
-- 외부 프로젝트(Supabase·Firebase·카카오·Vercel): 생성 완료
+- prod Supabase `bus-cignal-prod` (Seoul): paused 아님, **public 스키마 빈 상태** (마이그 미적용)
+- Vercel: main `04e8eac` Production 정상, env 18개 + OPERATOR_SESSION_SECRET 모두 in place
+- 마스터 로그인: 라이브 작동 확인 (`$2b$12$BMUox5...`, bcrypt 검증 PASS)
+- Kakao 키: 팀원2 앱 키 사용 중 (`NEXT_PUBLIC_KAKAO_MAP_API_KEY=8f6c5e02...`, `KAKAO_REST_API_KEY=ea44fc7a...`)
+- main 게이트: green (열린 PR 0)
+
+### 블로커
+
+- 없음 (외부 블로커 CCC IT 답은 별개·여전히 대기)
 
 ### 시크릿 (참고)
 
 > ⚠️ **모든 키 값은 1Password에만.** git·채팅·문서에 평문 금지.
-> (과거 커밋에 카카오 REST API Key가 평문 노출 → **rotation 권장**, 아래 자동화 규칙 참조)
 
-- 운영 시크릿(service_role·Firebase Admin·MASTER_PASSWORD): 팀장 1Password
-- 팀원 dev 키(dev Firebase 웹 config): 공유. **카카오 JS/REST 키는 팀원2가 본인 앱 등록해 제공** (팀장 비즈 주체 충돌 예외)
+- 운영 시크릿(service_role·Firebase Admin·MASTER_PASSWORD·세션 시크릿): 팀장 1Password 운영 vault
+- 팀원 dev 키(dev Firebase 웹 config): 공유 vault
 
 ---
 
@@ -60,6 +72,7 @@ To: 다음 CC 세션 / Cowork / 팀원
 
 (완료된 인계 시간 역순)
 
+- **2026-05-30** — CC → 팀원 온보딩 인계 (v1.1 + Phase 3 인프라 + Foundation Phase 2 완료, 팀원 2명 합류 대기).
 - **2026-05-28** — Foundation Phase 2 P2-1~P2-4 (마스터 비번) 완료. 임시 랜딩(카카오 심사용) 완료.
 - 2026-05-27 — 첫 도구 전환 인계 (외부 셋업)
 
