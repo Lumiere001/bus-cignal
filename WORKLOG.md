@@ -8,6 +8,21 @@
 
 ## 🔄 현재 작업 (Active)
 
+- 📍 **CC 처리 완료 (2026-06-05 — ⭐ 여기부터 읽으세요)**: **Cowork 핸드오프 #1(운영 DB 셋업)은 stale — CC 검증 결과 prod 마이그 이미 다 적용됨(완료). + 이번 CC 세션 PR 6건 머지. 열린 PR 0·열린 이슈 0.**
+  - ✅ **#1 운영 DB = 이미 완료 (CC 검증)**: `supabase migration list` Local==Remote(5/5) · `db push --dry-run` = "up to date". **prod 테이블 13개 · RLS 13 enable · 타입 정식 생성본(#38)**. Cowork "0 tables/db push 필요"는 stale(일시정지 직후·오확인 추정) → **추가 push·types regen 불필요(no-op)**. Vercel Firebase env 3개 = GUI 확인만 남음(Cowork).
+  - ✅ **이번 CC 세션 머지 6건**: #45 출발/도착지 CRUD · #46 점검모드·마감일(빌드결함 force-dynamic 픽스) · #47 학생 카카오맵 상세 · #48 지오코딩(실제 핀) · #50 포맷터 DRY+**학생 시각 TZ버그 교정** · #51 /me/trip 간사·총무 연락처 카드. 이슈 #49(카카오도메인=팀원 등록·팀장 확인)·#50·#51 closed.
+  - 🔍 **P1(Service Worker) 검토 결과**: FCM SW(`/firebase-messaging-sw.js`)는 **옵트인 시 `lib/push/client.ts`가 등록** → opt-in 사용자에겐 정상 동작(Cowork "FCM 수신 불가"는 부정확). `/sw.js`(offline PWA·next-pwa)는 없음=별개·선택. **푸시 실수신 갭 = ① Phase C 배너 `/me` 마운트(팀원2) ② Vercel Firebase Admin·VAPID env** → **P1 별도 PR 불필요**, 배너 마운트가 진짜 액션.
+  - 🔜 **다음**: CCC 인증(⛔ 외부 대기) · **RLS policies 실적용**(현재 enable만·deny-default+service_role) · **Phase C 배너 마운트**(팀원2) · P2 PWA 아이콘 192/512 · P3 `/admin` 모바일 nav(팀원1) · offline PWA(next-pwa·선택).
+
+- 📍 **Cowork 후속 (2026-06-05 새벽 — ※위 CC 검증으로 #1·타입·P1 정정됨)**: **vault 프롬프트 따라 Vercel env 확인·라이브 스모크 PASS. 정산 매트릭스 v1.1 실작동 확인. PWA·UI 이슈 3건 발견(차단 아님) → CC에 인계.**
+  - ✅ **Vercel env**: `OPERATOR_SESSION_SECRET` 이미 존재 (Production·Sensitive·5/31 추가) → 추가 없이 그대로 둠. main `04e8eac` Production Redeploy 트리거·성공.
+  - ✅ **라이브 스모크** (https://bus-cignal.vercel.app, 뷰포트 ~606px·sm 미만, Chrome 윈도우 min-width 한계로 실 375px 못 줄임): 공개 7개(`/`·`/signup`·`/login`·`/privacy`·`/terms`·`/offline`·`/r/BUS-TEST`) + 마스터 로그인 후 `/admin` 8개(대시보드·간사·승인대기·Trip·매칭·정산·거절·시스템) **전부 정상 렌더**. prod DB 비어있음 → 모든 빈 상태 카피·정책 안내문 graceful. **`/admin/settlement` = 실제 N×N 매트릭스 컴포넌트 렌더 확인** (v1.1 SPEC §S5 부합, "공급 지구(행)→신청 지구(열)·칸=공급이 받을 금액·셀 클릭 시 상세" + 정책 푸터 포함, 데이터 없어 "정산 대상 매칭이 아직 없습니다" 카드 표시).
+  - 🐛 **발견 이슈 3건 (출시 차단 아님)**:
+    - **P1 [PWA]** Service Worker **미등록** (`navigator.serviceWorker.controller=null`, `getRegistrations().length=0`) → 오프라인 캐싱 X·**FCM 푸시 수신 불가**. **출시 전 필수**. 추정: app/layout에서 `register('/sw.js')` 호출 누락 또는 next-pwa·next 16 App Router 호환.
+    - **P2 [PWA]** manifest 아이콘 1개만 → 192·512 권장 (Lighthouse·iOS 홈화면 품질).
+    - **P3 [UI]** `/admin` 헤더 nav scrollWidth=430px → 실 375px 폰에서 가로 스크롤. sm 미만 햄버거/아이콘only/2줄 wrap 검토 (팀원1 영역).
+  - 🔜 **CC 작업 인계**: ① **#61-67** `supabase db push`로 전체 마이그 5개 적용(빈 prod DB) + 타입 regen + Vercel env 3개 확인 + Redeploy. ② **P1 SW 등록**(별도 PR 후보·PWA 출시 차단). ③ **#43** vercel.json cron 2개 인식 + Hobby/Pro 체크. **상세 인계 = `docs/SESSION-HANDOFF.md` 🔄 현재 인계.**
+
 - 📍 **세션 종료 (2026-06-05 밤 — ⭐ 다음 세션 여기부터 + Cowork부터 시작)**: **오늘 푸시 풀스택 + 정산 매트릭스 + 총무 + 취소알림까지 머지, 운영 DB 라이브, 로컬 전체흐름 QA 실증, 버그 1건 잡음. 🎉 열린 PR = 0개, main green.**
   - ✅ **오늘 main 머지**: #33 푸시 백엔드 · #34 Phase C 클라이언트(SW·옵트인배너) · #36 .gitattributes(CRLF 방지) · #35 총무 컬럼 마이그(이슈 #25 closed) · #37 학생취소→양쪽 간사 알림 · #38 타입 정식화(prod regen, `matches.payment_due_at` nullable 교정) · #39 총무 연락처 입력폼(팀원1) · #40 세션 시크릿 가드 · **#28 정산 매트릭스(`/admin/settlement` 실구현)** · #41 DRY 헬퍼 추출(`lib/datetime`·`lib/supabase/relation`) · #42 worklog 인계. (오늘 총 15건 머지, 열린 PR 0)
   - ✅ **운영 DB 라이브**: prod Supabase(`zovrgrbrzxpzmgpkxmns`)가 paused였음 → resume + `supabase db push`로 **전체 마이그 5개 일괄 적용**(빈 DB였음 = 마이그 0). 히스토리 채워짐, Vercel 자동 재배포.
