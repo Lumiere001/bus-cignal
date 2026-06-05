@@ -2,6 +2,7 @@
 
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { geocodeAddress } from "@/lib/kakao/geocode";
 import { revalidatePath } from "next/cache";
 
 type ActionResult = { error: string } | undefined;
@@ -31,6 +32,9 @@ export async function addLocation(
     return { error: "주소를 2~200자로 입력해주세요." };
   if (label && label.length > 50) return { error: "이름표는 50자 이하로 입력해주세요." };
 
+  // 주소 → 좌표(지오코딩). 실패 시 null로 저장(학생 지도는 주소 fallback). 차단하지 않음.
+  const coords = await geocodeAddress(address);
+
   const db = createAdminClient();
   const { error } = await db.from("region_locations").insert({
     region_id: session.regionId,
@@ -38,6 +42,8 @@ export async function addLocation(
     location_type: locationType,
     address,
     label,
+    lat: coords?.lat ?? null,
+    lng: coords?.lng ?? null,
     created_by: session.operatorId,
   });
   if (error) return { error: "저장 중 오류가 발생했습니다." };
