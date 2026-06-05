@@ -77,6 +77,46 @@ export default async function TripDetailPage({ params }: Props) {
           </div>
         )}
       </section>
+
+      {/* 문의 연락처 — 담당(공급) 간사·총무 (§S5). 안내 목적 노출. */}
+      {(trip.operatorPhone || trip.treasurerPhone) && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-base font-semibold">문의 연락처</h2>
+          <dl className="flex flex-col gap-2 text-sm">
+            {trip.operatorPhone && (
+              <div className="flex gap-2">
+                <dt className="text-muted-foreground w-16 shrink-0">담당 간사</dt>
+                <dd>
+                  {trip.operatorName ? `${trip.operatorName} · ` : ""}
+                  <a
+                    href={`tel:${trip.operatorPhone}`}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    {trip.operatorPhone}
+                  </a>
+                </dd>
+              </div>
+            )}
+            {trip.treasurerPhone && (
+              <div className="flex gap-2">
+                <dt className="text-muted-foreground w-16 shrink-0">총무</dt>
+                <dd>
+                  {trip.treasurerName ? `${trip.treasurerName} · ` : ""}
+                  <a
+                    href={`tel:${trip.treasurerPhone}`}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    {trip.treasurerPhone}
+                  </a>
+                </dd>
+              </div>
+            )}
+          </dl>
+          <p className="text-muted-foreground text-xs">
+            탑승·픽업 관련 문의는 위 연락처로 해주세요.
+          </p>
+        </section>
+      )}
     </main>
   );
 }
