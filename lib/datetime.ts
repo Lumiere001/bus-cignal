@@ -31,3 +31,24 @@ export function formatKstShort(iso: string): string {
   const k = new Date(new Date(iso).getTime() + 9 * 3_600_000).toISOString();
   return `${k.slice(5, 7)}/${k.slice(8, 10)} ${k.slice(11, 16)}`;
 }
+
+/**
+ * 학생 화면용 — 예) "7월 5일 14:30" (M월 D일 HH:MM, 24시간, KST 명시).
+ * ⚠️ 기존 passenger 화면(MatchCard·me/trip)은 `new Date().getHours()`(서버 로컬 TZ)를 써서
+ *    Vercel(UTC)에선 9시간 어긋난 시각을 표시하는 버그가 있었음 → 여기로 단일화하며 KST로 교정.
+ */
+export function formatKstDateShort(iso: string): string {
+  return new Date(iso).toLocaleString("ko-KR", {
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Seoul",
+  });
+}
+
+/** 금액 표시 — 예) 35000 → "35,000원". (여러 화면 중복 단일화) */
+export function formatWon(n: number): string {
+  return n.toLocaleString("ko-KR") + "원";
+}
