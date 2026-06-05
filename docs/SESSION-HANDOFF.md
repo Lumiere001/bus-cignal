@@ -8,6 +8,22 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
+From: CC 세션 (2026-06-05 오후 — 팀장 영역: RLS 하드닝 + anonymize 판단 + PWA 검토)
+To: 팀장 / Cowork
+목적: ① feat/rls-hardening-revoke push·PR·머지 + prod 마이그 적용 ② 수련회 종료일 확정 시 anonymize 세팅
+```
+
+### ✅ CC 결과 (2026-06-05 오후)
+
+- **RLS = 옵션 A(방어선 명문화·강화) 채택.** 분석: 앱 전량 service_role 우회 + 커스텀 JWT(`auth.uid()`=null)라 DB RLS 실효 = anon키 직격 차단뿐 → 이미 deny-default로 성립. 브랜치 **`feat/rls-hardening-revoke`**(로컬 `525e93c`): 하드닝 마이그(PII 11테이블 anon·authenticated GRANT revoke) + 결정문(`docs/decisions/2026-06-05-rls-deny-default-boundary.md`) + 코드점검 통과. **팀장 액션: push→PR→머지 + prod에 이 신규 마이그 1개 적용**(기존 5/5는 그대로 — 새 마이그만). 앱 동작 무영향(service_role 불변).
+- **anonymize_after = 보류**(수련회 종료일 미확정 — SPEC 2026-08-10은 mockup placeholder). 확정 시 `/admin/system` 마스터 폼에서 *종료일+90일* 입력하면 끝(코드 0, prod 마스터세션 = Cowork/팀장). cron은 미설정 시 무해(skip).
+- **PWA = 검토만(미구현).** 아이콘 192/512(maskable PNG 에셋 받으면 출시전 ~10분) · offline PWA(next-pwa, 출시후 권장). 둘 다 출시 차단 아님.
+
+---
+
+(아래는 직전 Cowork→CC 인계 — 처리 완료)
+
+```
 From: Cowork 세션 (2026-06-05 새벽, vault 프롬프트 실행 후 — Vercel env 확인 + 라이브 스모크)
 To: CC 다음 세션 (팀장 머신)
 목적: 운영 DB 마이그 적용 (#61~67) + Cowork 발견 PWA 이슈 픽스
