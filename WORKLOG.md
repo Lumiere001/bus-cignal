@@ -8,7 +8,17 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **CC 세션 (2026-06-05 오후 — ⭐ 여기부터 읽으세요)**: **팀장 영역 — RLS 하드닝(PR #56) + 출시전 픽스 3건(PR #57) + 전체 코드베이스 감사(6도메인) + Docker DB 검증. 열린 PR 2(#56 RLS·#57 픽스, 둘 다 팀장 머지대기).**
+- 📍 **CC 세션 (2026-06-05 밤 — ⭐ 여기부터 읽으세요)**: **전 영역(팀장+팀원1+팀원2) 인수 후 실사용화 — PR 5건 머지·prod 마이그 적용·간사 로그인 LIVE. + CCC 인증 방식 확정(B1 해제). 열린 PR 0.**
+  - ✅ **머지·prod 반영 (#56~#60)**: #56 RLS 하드닝 · #57 픽스(anonymize created_at·마스터잠금)+PWA아이콘+감사문서 · #58 (취소TZ·/chat 깨진링크 숨김·revoke 세션 즉시무효화) · #59 **간사 매직링크 로그인+마스터 온보딩** · #60 약관·방침(PIPA). **prod 마이그 000002·000003 적용 완료**(migration list Local==Remote). **anonymize_after=2026-09-29 세팅**.
+  - ✅ **🔑 간사 로그인 LIVE (매직링크, 임시·CCC 전)**: 마스터 `/admin/operators`에서 간사 추가→입장링크 복사→카톡 전달→간사 `/login/o/<token>` 입장(세션 12h). revoke 시 토큰 무효화·재발급 가능. **로컬 Docker curl end-to-end 검증**(유효→/operator 200, 무효→차단). 결정문 `docs/decisions/2026-06-05-operator-magic-link-interim-login.md`.
+  - ✅ **Vercel env 보강 (Cowork)**: `PASSENGER_SESSION_SECRET` 없었음→추가(Sensitive·Prod) + Firebase 3개 확인 + Redeploy(`299fe28`) + 스모크 `/r/BUS-TEST` PASS. → 학생 `/r` 제출 런타임오류(B6) 해소. (값 1Password 백업은 사용자 액션·선택)
+  - 🎉 **CCC 인증 방식 확정 = B1 블로커 해제** (간사님 회신): **CCC 로그인 → 1회용 코드(TTL 5분) → `?code=XXXX` 리다이렉트 → 우리가 검증 API로 코드 검증해 신원 수신(간사번호·이름·전화·지구코드·지구명)**. 학생은 CCC 불필요(간사 발급=우리 방식). **CCC측 코드검증 API = 주말 도착 예정** → 받으면 **consumer(`?code=` 콜백→API검증→operator upsert→세션) 구현** = 새 큰 작업. 매직링크는 백업으로 유지. 부가요청: **잔여석 공개뷰**(지구별 잔여석·신청인원, 무PII 집계) = 백로그.
+  - 🔵 **Firestore(채팅) 팀원2 QA**: 룰 `if false`(차단)라 BLOCKED 문의 → **prod 룰 열지 말 것**(dev/prod 동일 프로젝트=전체공개 위험). 권장=**Firebase 에뮬레이터** 로컬 QA. 채팅 보안룰은 커스텀JWT라 `request.auth` 안 잡힘 → **커스텀 토큰 브리지** 별도 설계 필요(채팅 정식화 시). 채팅 자체는 여전히 보류.
+  - 🔜 **다음 빌드 (2번, 결정 끝·사용자 허락 후 착수)**: 🔴 B3 좌석 over-booking race(RPC+unique index) · ⏰ 출발 리마인더(GitHub Actions 외부 스케줄러·출발 전) · 🟠 학생 rate-limit · partial_match 통지 · 매칭/정산 region 스코핑.
+  - ⏳ **사용자/외부 대기**: 약관 「확정 필요」 4개(운영주체 법적명칭·보호책임자·연락처·시행일) = 사용자 제공 → 페이지 반영 · CCC 검증 API(주말) · CCC 지구코드표.
+  - 📊 **실사용 readiness**: 간사 로그인·법적페이지·RLS·익명화·학생세션 env까지 **GO 근접**. 남은 출시 블로커 = **B3 좌석 race**(돈 직결) + 약관 org정보 확정. CCC 정식연동은 API 대기지만 **매직링크로 지금도 운영 가능**.
+
+- 📍 **CC 세션 (2026-06-05 오후)**: **팀장 영역 — RLS 하드닝(PR #56) + 출시전 픽스 3건(PR #57) + 전체 코드베이스 감사(6도메인) + Docker DB 검증. 열린 PR 2(#56 RLS·#57 픽스, 둘 다 팀장 머지대기).**
   - ✅ **1. RLS = 옵션 A 채택·완료 (PR #56 `feat/rls-hardening-revoke`)**: 접근모델 분석 = 앱 전량 service_role(46곳) 우회 + 커스텀 JWT(`auth.uid()`=null)라 **DB RLS 실효 = anon키 직격 차단뿐 → 이미 deny-default로 성립.** 하드닝 마이그 `20260605000002`(PII 11테이블 anon·authenticated GRANT revoke) + 결정문 `docs/decisions/2026-06-05-rls-deny-default-boundary.md` + 코드점검 통과. **Docker `db reset` 풀 검증 PASS**(anon→match_passengers=false·authenticated→operators=false·anon→regions=true). 옵션 B(DB레벨 지구별)=출시후 / C(Supabase Auth)=비채택. ⚠️ **prod 적용은 #56 머지 후 새 마이그 1개만**(기존 5/5 그대로).
   - ✅ **2. anonymize_after — 종료일 7/1 확정 → 값 2026-09-29(종료+90) prod 세팅 완료**(사용자 1회승인, service_role REST upsert `2026-09-28T15:00Z`, read-back 확인, `updated_by=cc-team-lead`). cron 🔴버그(`created_at<cutoff` 필터 누락→전체 PII 무차별 스크럽)는 **PR #57에서 수정** — 단 #57 배포 전엔 prod cron이 옛 동작이나 9/29 미도래라 `"보관 기간 중"` skip = **무해**(배포 시 적용).
   - ✅ **3. PWA 아이콘 192/512 구현 (PR #57)**: `qlmanage`+`sips`로 SVG→PNG 생성 + manifest 연결. offline PWA(next-pwa)=출시후 권장(2-SW 공존·캐시 리스크).
