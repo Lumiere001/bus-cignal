@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { StatCard } from "@/components/ui/stat-card";
 
 export const dynamic = "force-dynamic";
 
@@ -53,22 +53,6 @@ function ddayLabel(iso: string | null): { line: string; dday: string } | null {
   };
 }
 
-function Stat({ label, value, href }: { label: string; value: number; href?: string }) {
-  const body = (
-    <div className="hover:border-primary rounded-xl border p-4 transition-colors">
-      <div className="text-muted-foreground text-sm">{label}</div>
-      <div className="mt-1 text-2xl font-bold tabular-nums">{value}</div>
-    </div>
-  );
-  return href ? (
-    <Link href={href} className="block">
-      {body}
-    </Link>
-  ) : (
-    body
-  );
-}
-
 export default async function AdminDashboardPage() {
   const s = await loadStats();
   const anon = ddayLabel(s.anonymizeAfter);
@@ -81,18 +65,39 @@ export default async function AdminDashboardPage() {
       </div>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="활성 Trip" value={s.activeTrips} href="/admin/trips" />
-        <Stat label="활성 매칭" value={s.activeMatches} href="/admin/matches" />
-        <Stat label="거절 발생 (오늘)" value={s.rejectionsToday} href="/admin/rejections" />
-        <Stat label="가입 대기 간사" value={s.pendingOperators} href="/admin/operators/pending" />
+        <StatCard label="활성 Trip" value={s.activeTrips} href="/admin/trips" icon="🚌" tone="info" />
+        <StatCard
+          label="활성 매칭"
+          value={s.activeMatches}
+          href="/admin/matches"
+          icon="🔗"
+          tone={s.activeMatches > 0 ? "success" : "neutral"}
+        />
+        <StatCard
+          label="거절 발생 (오늘)"
+          value={s.rejectionsToday}
+          href="/admin/rejections"
+          icon="🚫"
+          tone={s.rejectionsToday > 0 ? "danger" : "neutral"}
+        />
+        <StatCard
+          label="가입 대기 간사"
+          value={s.pendingOperators}
+          href="/admin/operators/pending"
+          icon="⏳"
+          tone={s.pendingOperators > 0 ? "warning" : "neutral"}
+          hint={s.pendingOperators > 0 ? "승인 필요 →" : undefined}
+        />
       </section>
 
-      <section className="rounded-xl border p-5">
-        <h2 className="text-sm font-semibold">데이터 익명화</h2>
+      <section className="bg-card rounded-2xl border p-5 shadow-sm">
+        <h2 className="flex items-center gap-2 text-sm font-bold">
+          <span aria-hidden>🔒</span> 데이터 익명화
+        </h2>
         {anon ? (
           <div className="mt-2 flex items-baseline gap-3">
             <span className="text-muted-foreground text-sm">{anon.line}</span>
-            <span className="text-lg font-bold tabular-nums">{anon.dday}</span>
+            <span className="text-primary text-lg font-extrabold tabular-nums">{anon.dday}</span>
           </div>
         ) : (
           <p className="text-muted-foreground mt-2 text-sm">

@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-type Tone = "info" | "warning" | "success" | "neutral";
+type Tone = "info" | "warning" | "success" | "danger" | "neutral";
 
 const TONE: Record<Tone, { ring: string; num: string; chip: string; glow: string; hint: string }> = {
   info: { ring: "border-border", num: "text-foreground", chip: "bg-blue-50", glow: "", hint: "text-muted-foreground" },
+  danger: {
+    ring: "border-red-200",
+    num: "text-red-600",
+    chip: "bg-red-100",
+    glow: "bg-gradient-to-b from-red-50/70 to-card",
+    hint: "text-red-600",
+  },
   warning: {
     ring: "border-amber-200",
     num: "text-amber-600",
