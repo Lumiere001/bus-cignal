@@ -8,7 +8,17 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **CC 세션 (2026-06-05 밤 — ⭐ 여기부터 읽으세요)**: **전 영역(팀장+팀원1+팀원2) 인수 후 실사용화 — PR 5건 머지·prod 마이그 적용·간사 로그인 LIVE. + CCC 인증 방식 확정(B1 해제). 열린 PR 0.**
+- 📍 **CC 세션 (2026-06-05 심야 — ⭐⭐ 여기부터 읽으세요)**: **전 영역 인수 후 출시 블로커·감사 🟠 거의 소진. PR #56~#69(14건) 머지, prod 마이그 000002~000006 전부 적용, 열린 PR 0.**
+  - ✅ **이번 세션 머지 전체 (#56~#69)**: RLS 하드닝(#56)·픽스+감사문서(#57)·취소TZ/chat링크/revoke세션(#58)·**간사 매직링크 로그인+마스터 온보딩**(#59)·약관·방침 PIPA(#60)·worklog(#61)·**operator UX 버그3**(#62: 승인후 큐갱신·거절 전체안내·신청 명단동선)·**🔴 B3 좌석 over-booking·이중매칭 race 원자적 RPC**(#63)·CCC/채팅 결정문(#64,65)·**푸시 배너 v2**(#66, 9개 UX)·**출발 리마인더**(#67, GitHub Actions 외부 스케줄러)·**partial_match 통지+매칭/정산 region 스코핑**(#68)·**학생 본인확인 rate-limit**(#69).
+  - ✅ **prod 반영**: 마이그 000002(RLS revoke)·000003(매직링크 컬럼)·000004(원자승인 RPC+unique index)·000005(depart_reminded_at)·000006(verify attempts) **전부 적용**(Local==Remote). anonymize_after=2026-09-29 세팅. Vercel env PASSENGER_SESSION_SECRET 추가(Cowork)·스모크 PASS.
+  - ✅ **실사용 흐름 라이브**: 마스터 `/admin/operators` 간사 추가 → 입장링크 카톡 → 간사 `/login/o/<token>` 로그인 → 등록·매칭(race-safe RPC)·정산 / 학생 `/r` 본인확인(rate-limit)·예약·취소 / 약관·방침·RLS·익명화·푸시옵트인 전부 동작.
+  - 🎉 **CCC 인증 = B1 해제**(간사 회신): 일회용 코드+검증 API. consumer는 그쪽 API(주말) 도착 후 구현. 매직링크는 백업. **마스터 승인 제거**(자동 입장) 결정. 결정문 `2026-06-05-ccc-operator-auth-confirmed.md`.
+  - 🔵 **채팅**: 팀원 설계(Firebase 커스텀 토큰 브리지) 결정문 `2026-06-05-chat-firebase-custom-token-bridge.md` + 구현 점검포인트. 빌드 보류(에뮬레이터 개발). Firestore 룰 prod 열지 말 것.
+  - ⚠️ **머지 후 운영 TODO**: ① **저장소 Secrets에 `CRON_SECRET` 등록**(출발 리마인더 GitHub Actions 작동 필수) ② 약관 「확정 필요」 4개(운영주체·보호책임자·연락처·시행일) 사용자 제공 → 페이지 반영.
+  - 📊 **남은 출시 블로커**: 사실상 **CCC consumer(외부 API 대기)** 1개 + 약관 org정보. 매직링크로 지금도 운영 가능. 감사 🟡(DB레벨 RLS 옵션B·E2E·dev/prod Firebase 분리)는 출시 후 트랙.
+  - 🗂 **감사 종합**: `docs/AUDIT-2026-06-05-production-readiness.md`. 결정문 8건 `docs/decisions/`(인덱스 README).
+
+- 📍 **CC 세션 (2026-06-05 밤)**: **전 영역(팀장+팀원1+팀원2) 인수 후 실사용화 — PR 5건 머지·prod 마이그 적용·간사 로그인 LIVE. + CCC 인증 방식 확정(B1 해제). 열린 PR 0.**
   - ✅ **머지·prod 반영 (#56~#60)**: #56 RLS 하드닝 · #57 픽스(anonymize created_at·마스터잠금)+PWA아이콘+감사문서 · #58 (취소TZ·/chat 깨진링크 숨김·revoke 세션 즉시무효화) · #59 **간사 매직링크 로그인+마스터 온보딩** · #60 약관·방침(PIPA). **prod 마이그 000002·000003 적용 완료**(migration list Local==Remote). **anonymize_after=2026-09-29 세팅**.
   - ✅ **🔑 간사 로그인 LIVE (매직링크, 임시·CCC 전)**: 마스터 `/admin/operators`에서 간사 추가→입장링크 복사→카톡 전달→간사 `/login/o/<token>` 입장(세션 12h). revoke 시 토큰 무효화·재발급 가능. **로컬 Docker curl end-to-end 검증**(유효→/operator 200, 무효→차단). 결정문 `docs/decisions/2026-06-05-operator-magic-link-interim-login.md`.
   - ✅ **Vercel env 보강 (Cowork)**: `PASSENGER_SESSION_SECRET` 없었음→추가(Sensitive·Prod) + Firebase 3개 확인 + Redeploy(`299fe28`) + 스모크 `/r/BUS-TEST` PASS. → 학생 `/r` 제출 런타임오류(B6) 해소. (값 1Password 백업은 사용자 액션·선택)
