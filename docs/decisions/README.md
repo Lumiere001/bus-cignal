@@ -22,5 +22,11 @@
 |---|---|---|
 | 2026-05-30 | v1.1 — 간사 = CCC 로그인, 매칭 수동화, 송금 자동만료 폐지 | (요약은 `CHANGELOG.md` [Unreleased] + `docs/SPEC.md` §17) |
 | 2026-06-03 | 학생 접근 방식 · Trip 총무 연락처 필드 추가 · 차량등록 페이지 우선(팀원1) · CCC 전달방식 대기 | `2026-06-03-student-access-and-ccc-integration.md` |
+| 2026-06-05 | RLS 보안경계 = deny-default + service_role 단일경로 (옵션 A) | `2026-06-05-rls-deny-default-boundary.md` |
+| 2026-06-05 | 간사 매직링크 로그인 (CCC 전 임시) + 마스터 직접 온보딩 | `2026-06-05-operator-magic-link-interim-login.md` |
+| 2026-06-05 | 좌석 over-booking·이중매칭 race 방지 — 원자적 승인 RPC | `2026-06-05-atomic-approve-request.md` |
+| 2026-06-05 | CCC 간사 인증 확정(일회용 코드+검증 API) + 마스터 승인 제거(자동 입장) | `2026-06-05-ccc-operator-auth-confirmed.md` |
+| 2026-06-05 | 채팅 인증 = Firebase 커스텀 토큰 브리지 (서버 권한판단 → 토큰 claim → Firestore Rules) | `2026-06-05-chat-firebase-custom-token-bridge.md` |
 
 > v1.1 변경의 상세 근거는 SPEC §17 변경이력 + CHANGELOG에 정리돼 있어 별도 결정 파일은 생략. 이후 코어 변경부터 개별 파일로 기록.
+> ⚠️ `2026-06-03`의 CCC "대기" 항목은 `2026-06-05-ccc-operator-auth-confirmed.md`가 갱신(supersede).
