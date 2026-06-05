@@ -72,15 +72,14 @@ export function MatchCard({ match }: Props) {
 
       {/* 진입 버튼 */}
       <div className="flex gap-2">
-        {/* 지도 — 카카오맵 키 설정 전 비활성 */}
-        <Button
-          variant="outline"
-          size="sm"
-          disabled
-          aria-label="지도 (준비 중)"
-        >
-          지도
-        </Button>
+        {/* 지도 — 취소/만료된 매칭은 유효 탑승자가 아니므로 숨김 */}
+        {!isInactive && (
+          <Link href={`/me/trip/${match.tripId}`}>
+            <Button variant="outline" size="sm" aria-label="지도">
+              지도
+            </Button>
+          </Link>
+        )}
 
         {/* 채팅 — 취소/만료된 매칭은 더 이상 유효 탑승자가 아니므로 숨김 */}
         {!isInactive && (

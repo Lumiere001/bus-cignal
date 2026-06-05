@@ -1,5 +1,94 @@
-import { Placeholder } from "@/components/placeholder";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { requirePassenger } from "@/lib/auth/passenger";
+import { getTripForPassenger } from "@/lib/passenger/trip-detail";
+import { KakaoMap } from "@/components/kakao/KakaoMap";
 
-export default function Page() {
-  return <Placeholder title="매칭 상세" />;
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+function formatDeparture(iso: string): string {
+  const d = new Date(iso);
+  const month = d.getMonth() + 1;
+  const date = d.getDate();
+  const h = d.getHours().toString().padStart(2, "0");
+  const m = d.getMinutes().toString().padStart(2, "0");
+  return `${month}월 ${date}일 ${h}:${m}`;
+}
+
+function formatPrice(n: number): string {
+  return n.toLocaleString("ko-KR") + "원";
+}
+
+export default async function TripDetailPage({ params }: Props) {
+  const { id: tripId } = await params;
+  const session = await requirePassenger();
+
+  const trip = await getTripForPassenger(session.passengerId, tripId);
+
+  // 소유권 없음 또는 존재하지 않는 trip → 정보 누출 없이 /me로 이동
+  if (!trip) redirect("/me");
+
+  return (
+    <main className="mx-auto flex max-w-md flex-1 flex-col gap-4 p-4">
+      <nav>
+        <Link
+          href="/me"
+          className="text-muted-foreground hover:text-foreground text-sm"
+        >
+          ← 내 예약
+        </Link>
+      </nav>
+
+      <h1 className="text-xl font-bold">탑승 장소 안내</h1>
+
+      {/* 매칭 맥락 */}
+      <section className="flex flex-col gap-2 rounded-xl border bg-card p-4 text-sm">
+        <p className="font-semibold">
+          {trip.originLabel} → {trip.destinationLabel}
+        </p>
+        <dl className="flex flex-col gap-1 text-muted-foreground">
+          <div className="flex gap-2">
+            <dt className="w-16 shrink-0">출발</dt>
+            <dd>{formatDeparture(trip.departureAt)}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="w-16 shrink-0">요금</dt>
+            <dd>{formatPrice(trip.pricePerSeat)}</dd>
+          </div>
+        </dl>
+      </section>
+
+      {/* 탑승 장소 상세 */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold">탑승 장소</h2>
+        <dl className="flex flex-col gap-1 text-sm">
+          <div className="flex gap-2">
+            <dt className="w-16 shrink-0 text-muted-foreground">장소명</dt>
+            <dd>{trip.originLabel}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="w-16 shrink-0 text-muted-foreground">주소</dt>
+            <dd className="break-all">
+              {trip.originAddress || "주소 정보 없음"}
+            </dd>
+          </div>
+        </dl>
+
+        {trip.originLat !== null && trip.originLng !== null ? (
+          <KakaoMap
+            lat={trip.originLat}
+            lng={trip.originLng}
+            label={trip.originLabel}
+          />
+        ) : (
+          <div className="rounded-lg border border-dashed bg-muted px-4 py-6 text-center text-sm text-muted-foreground">
+            지도 좌표 정보가 아직 등록되지 않았어요.
+            <br />위 주소를 지도 앱에서 검색해 보세요.
+          </div>
+        )}
+      </section>
+    </main>
+  );
 }
