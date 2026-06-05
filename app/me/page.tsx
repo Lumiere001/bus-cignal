@@ -1,6 +1,7 @@
 import { requirePassenger } from "@/lib/auth/passenger";
 import { getMatchesForPassenger } from "@/lib/passenger/queries";
 import { MatchCard } from "@/components/me/MatchCard";
+import { PushOptInBanner } from "@/components/push/push-optin-banner";
 
 export default async function MePage() {
   const session = await requirePassenger();
@@ -22,6 +23,11 @@ export default async function MePage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {/* 첫 매칭 paid 시점 푸시 옵트인 권유 (SPEC §S5·§13). 미지원·이미 옵트인·닫음 시 배너가 알아서 null 렌더 */}
+      {matches.some((m) => m.status === "paid") && (
+        <PushOptInBanner audience="passenger" />
       )}
     </main>
   );
