@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { verifyMasterSession } from "@/lib/auth/master";
+import { generateLoginToken } from "@/lib/auth/operator-magic";
 import { emit } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -38,6 +39,8 @@ export async function approveOperator(operatorId: string) {
       approval_status: "approved",
       region_id: regionId,
       approved_at: new Date().toISOString(),
+      // 매직링크 입장 토큰 발급(임시 로그인). 마스터가 /admin/operators에서 링크 전달.
+      login_token: generateLoginToken(),
     })
     .eq("id", operatorId)
     .eq("approval_status", "pending")
@@ -88,6 +91,8 @@ export async function revokeOperator(operatorId: string, reason: string) {
       approval_status: "revoked",
       revoked_at: new Date().toISOString(),
       revoke_reason: trimmed,
+      // 매직링크 무효화 — 해제된 간사의 입장 링크는 즉시 차단.
+      login_token: null,
     })
     .eq("id", operatorId)
     .eq("approval_status", "approved")
@@ -112,6 +117,53 @@ export async function revokeOperator(operatorId: string, reason: string) {
   } catch {
     // 인앱 row 기록 실패는 무해(핵심 흐름=권한 해제는 이미 커밋됨).
   }
+
+  revalidatePath("/admin/operators");
+}
+
+/**
+ * 간사 직접 추가 (CCC 본구현 전 임시 온보딩) — 마스터가 이름·지구로 생성.
+ * 즉시 approved + 매직링크 토큰 발급 → 마스터가 링크를 카톡으로 전달.
+ * (CCC 연동 시 self-signup→승인 흐름으로 전환, 이 경로는 보조 수단으로 유지/제거.)
+ */
+export async function createOperator(formData: FormData) {
+  await assertMaster();
+  const name = String(formData.get("name") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const regionId = String(formData.get("regionId") ?? "").trim();
+  if (!name) throw new Error("이름을 입력하세요");
+  if (!regionId) throw new Error("지구를 선택하세요");
+
+  const db = createAdminClient();
+  const { error } = await db.from("operators").insert({
+    name,
+    phone: phone || null,
+    region_id: regionId,
+    approval_status: "approved",
+    approved_at: new Date().toISOString(),
+    login_token: generateLoginToken(),
+  });
+  if (error) throw error;
+
+  revalidatePath("/admin/operators");
+}
+
+/**
+ * 간사 입장 링크(매직링크) 재발급 — 기존 토큰 폐기·새 토큰 발급.
+ * 링크 누출·분실 대비. 활성(approved) 간사만 대상.
+ */
+export async function regenerateLoginToken(operatorId: string) {
+  await assertMaster();
+  const db = createAdminClient();
+
+  const { data, error } = await db
+    .from("operators")
+    .update({ login_token: generateLoginToken() })
+    .eq("id", operatorId)
+    .eq("approval_status", "approved")
+    .select("id");
+  if (error) throw error;
+  if (!data?.length) throw new Error("활성 간사만 입장 링크를 발급할 수 있음");
 
   revalidatePath("/admin/operators");
 }
