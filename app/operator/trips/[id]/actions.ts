@@ -88,18 +88,38 @@ export async function approveRequest(
   });
   if (rpcErr) return { error: approveErrorMessage(rpcErr.message) };
 
-  // 알림: 매칭 확정 → 신청 지구 간사 (SPEC §S8). 실패해도 본 처리엔 영향 없음.
-  try {
-    const confirmedMatchId = matchIds?.[0];
-    if (confirmedMatchId) {
+  // 알림: 매칭 확정 → 신청 지구 간사. 부분 매칭(남은 학생 있음)이면 양쪽에 추가 통지.
+  // 실패해도 본 처리엔 영향 없음(best-effort).
+  const confirmedMatchId = matchIds?.[0];
+  if (confirmedMatchId) {
+    try {
       await emit(
         "match_confirmed",
         { requestOperatorId: request.operator_id },
         { matchId: confirmedMatchId, tripId },
       );
+      // 부분 매칭 여부 = 신청 총원 > 이번에 승인한 인원 (RPC가 전원 매칭 시에만 'matched' 처리)
+      const { count: totalPax } = await db
+        .from("request_passengers")
+        .select("id", { count: "exact", head: true })
+        .eq("request_id", requestId);
+      if ((totalPax ?? 0) > selectedPassengerIds.length) {
+        await emit(
+          "partial_match",
+          {
+            supplyOperatorId: session.operatorId,
+            requestOperatorId: request.operator_id,
+          },
+          {
+            matchId: confirmedMatchId,
+            requestId,
+            seatCount: selectedPassengerIds.length,
+          },
+        );
+      }
+    } catch {
+      /* 알림 실패 무시 */
     }
-  } catch {
-    /* 알림 실패 무시 */
   }
 
   revalidatePath(`/operator/trips/${tripId}`);
