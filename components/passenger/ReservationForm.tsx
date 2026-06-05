@@ -11,6 +11,8 @@ type Props = {
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: "입력 형식이 올바르지 않습니다. 다시 확인해 주세요.",
   notfound: "이름 또는 전화번호 끝 4자리가 일치하지 않습니다.",
+  locked:
+    "여러 번 일치하지 않아 잠시 잠겼어요. 30분 후 다시 시도하거나 담당 간사에게 문의해 주세요.",
 };
 
 export function ReservationForm({ code, error, action }: Props) {

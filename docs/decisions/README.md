@@ -27,6 +27,7 @@
 | 2026-06-05 | 좌석 over-booking·이중매칭 race 방지 — 원자적 승인 RPC | `2026-06-05-atomic-approve-request.md` |
 | 2026-06-05 | CCC 간사 인증 확정(일회용 코드+검증 API) + 마스터 승인 제거(자동 입장) | `2026-06-05-ccc-operator-auth-confirmed.md` |
 | 2026-06-05 | 채팅 인증 = Firebase 커스텀 토큰 브리지 (서버 권한판단 → 토큰 claim → Firestore Rules) | `2026-06-05-chat-firebase-custom-token-bridge.md` |
+| 2026-06-05 | 학생 본인확인 rate-limit 도입 (06-03 미도입 갱신 — 7회/30분 잠금) | `2026-06-05-passenger-verify-rate-limit.md` |
 
 > v1.1 변경의 상세 근거는 SPEC §17 변경이력 + CHANGELOG에 정리돼 있어 별도 결정 파일은 생략. 이후 코어 변경부터 개별 파일로 기록.
 > ⚠️ `2026-06-03`의 CCC "대기" 항목은 `2026-06-05-ccc-operator-auth-confirmed.md`가 갱신(supersede).
