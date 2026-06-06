@@ -5,6 +5,7 @@ import Link from "next/link";
 import { SearchBox } from "@/components/ui/search-box";
 import { DIRECTION_SHORT, REQUEST_STATUS_LABEL } from "@/lib/labels";
 import { formatKstDateTime } from "@/lib/datetime";
+import { RequestGraph } from "./RequestGraph";
 
 const REQUEST_STATUS_COLOR: Record<string, string> = {
   queued: "bg-blue-100 text-blue-700",
@@ -28,13 +29,71 @@ function statusLabel(status: string): string {
   return REQUEST_STATUS_LABEL[status] ?? status;
 }
 
+type DirectionFilter = "all" | "up" | "down";
+type ViewMode = "list" | "graph";
+
+const DIRECTION_FILTERS: { value: DirectionFilter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "up", label: DIRECTION_SHORT.up },
+  { value: "down", label: DIRECTION_SHORT.down },
+];
+
+const VIEW_MODES: { value: ViewMode; label: string }[] = [
+  { value: "list", label: "목록" },
+  { value: "graph", label: "그래프" },
+];
+
+// 모바일 친화 세그먼트 컨트롤 — 방향 필터·뷰 토글 공용.
+function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className="inline-flex rounded-lg border bg-gray-50 p-0.5"
+    >
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(opt.value)}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              active
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function RequestsList({ requests }: { requests: RequestRow[] }) {
   const [q, setQ] = useState("");
+  const [direction, setDirection] = useState<DirectionFilter>("all");
+  const [view, setView] = useState<ViewMode>("list");
 
   const filtered = useMemo(() => {
     const keyword = q.trim().toLowerCase();
-    if (!keyword) return requests;
     return requests.filter((r) => {
+      // 방향 필터 (AND) — 검색어와 결합
+      if (direction !== "all" && r.direction !== direction) return false;
+      if (!keyword) return true;
       // 필터 대상: 학생 이름 / 도착지·차량 정보 / 상태(텍스트)
       const haystack = [
         ...r.passengerNames,
@@ -48,21 +107,42 @@ export function RequestsList({ requests }: { requests: RequestRow[] }) {
         .toLowerCase();
       return haystack.includes(keyword);
     });
-  }, [requests, q]);
+  }, [requests, q, direction]);
+
+  const emptyMessage =
+    requests.length === 0
+      ? "아직 신청한 차량이 없습니다."
+      : "검색 결과가 없습니다.";
 
   return (
     <div className="space-y-4">
-      <SearchBox
-        value={q}
-        onChange={setQ}
-        placeholder="학생 이름·도착지·차량·상태 검색"
-      />
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchBox
+          value={q}
+          onChange={setQ}
+          placeholder="학생 이름·도착지·차량·상태 검색"
+        />
+        <Segmented
+          options={DIRECTION_FILTERS}
+          value={direction}
+          onChange={setDirection}
+          ariaLabel="상하행 필터"
+        />
+        <div className="ml-auto">
+          <Segmented
+            options={VIEW_MODES}
+            value={view}
+            onChange={setView}
+            ariaLabel="보기 방식"
+          />
+        </div>
+      </div>
 
-      {filtered.length === 0 ? (
+      {view === "graph" ? (
+        <RequestGraph requests={filtered} emptyMessage={emptyMessage} />
+      ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed py-16 text-center text-sm text-gray-400">
-          {requests.length === 0
-            ? "아직 신청한 차량이 없습니다."
-            : "검색 결과가 없습니다."}
+          {emptyMessage}
         </div>
       ) : (
         <ul className="space-y-3">
