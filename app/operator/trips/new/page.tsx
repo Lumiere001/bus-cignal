@@ -14,7 +14,7 @@ export default async function Page() {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-8">
-      <h1 className="mb-6 text-xl font-semibold">새 Trip 등록</h1>
+      <h1 className="mb-6 text-xl font-semibold">차량 등록</h1>
       <TripNewForm locations={locations ?? []} />
     </div>
   );

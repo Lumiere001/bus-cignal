@@ -21,7 +21,8 @@ type SupplyTrip = {
   departureAt: string;
   capacity: number;
   available: number;
-  queued: number;
+  queuedTeams: number;
+  queuedPeople: number;
 };
 
 async function loadDashboard(regionId: string) {
@@ -42,17 +43,23 @@ async function loadDashboard(regionId: string) {
 
   const tripIds = (trips ?? []).map((t) => t.id);
 
-  // 우리 차량별 대기(queued) 신청 수 + 우리 지구가 보낸 신청 상태별 집계
+  // 우리 차량별 대기(queued) 신청 — 팀(요청) 수 + 인원(좌석 합) 둘 다 집계.
+  // 한 요청(=한 팀)에 여러 학생이 들어가므로 "팀"과 "명"은 다르다.
   const [queuedRows, sentRows] = await Promise.all([
     tripIds.length
-      ? db.from("seat_requests").select("trip_id").in("trip_id", tripIds).eq("status", "queued")
-      : Promise.resolve({ data: [] as { trip_id: string }[] }),
+      ? db
+          .from("seat_requests")
+          .select("trip_id, seat_count")
+          .in("trip_id", tripIds)
+          .eq("status", "queued")
+      : Promise.resolve({ data: [] as { trip_id: string; seat_count: number }[] }),
     db.from("seat_requests").select("status").eq("region_id", regionId),
   ]);
 
-  const queuedByTrip = new Map<string, number>();
-  for (const r of (queuedRows.data ?? []) as { trip_id: string }[]) {
-    queuedByTrip.set(r.trip_id, (queuedByTrip.get(r.trip_id) ?? 0) + 1);
+  const queuedByTrip = new Map<string, { teams: number; people: number }>();
+  for (const r of (queuedRows.data ?? []) as { trip_id: string; seat_count: number }[]) {
+    const cur = queuedByTrip.get(r.trip_id) ?? { teams: 0, people: 0 };
+    queuedByTrip.set(r.trip_id, { teams: cur.teams + 1, people: cur.people + (r.seat_count ?? 0) });
   }
 
   const one = <T,>(v: T | T[]): T | undefined => (Array.isArray(v) ? v[0] : v);
@@ -70,7 +77,8 @@ async function loadDashboard(regionId: string) {
       departureAt: t.departure_at,
       capacity: t.capacity,
       available: Math.max(0, openSeats - active),
-      queued: queuedByTrip.get(t.id) ?? 0,
+      queuedTeams: queuedByTrip.get(t.id)?.teams ?? 0,
+      queuedPeople: queuedByTrip.get(t.id)?.people ?? 0,
     };
   });
 
@@ -86,9 +94,10 @@ async function loadDashboard(regionId: string) {
   const activeMatches = (trips ?? [])
     .flatMap((t) => t.matches ?? [])
     .filter((m) => ACTIVE_MATCH.includes(m.status ?? "")).length;
-  const totalQueued = [...queuedByTrip.values()].reduce((a, b) => a + b, 0);
+  const totalQueuedTeams = [...queuedByTrip.values()].reduce((a, b) => a + b.teams, 0);
+  const totalQueuedPeople = [...queuedByTrip.values()].reduce((a, b) => a + b.people, 0);
 
-  return { supplyTrips, sent, activeMatches, totalQueued };
+  return { supplyTrips, sent, activeMatches, totalQueuedTeams, totalQueuedPeople };
 }
 
 export default async function OperatorDashboardPage() {
@@ -139,9 +148,9 @@ export default async function OperatorDashboardPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold">
             공개 차량 <span className="text-muted-foreground">{d.supplyTrips.length}</span>
-            {d.totalQueued > 0 && (
-              <span className="ml-2 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                대기 신청 {d.totalQueued}
+            {d.totalQueuedTeams > 0 && (
+              <span className="ml-2 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-amber-800">
+                대기 {d.totalQueuedTeams}팀 · {d.totalQueuedPeople}명
               </span>
             )}
           </h2>
@@ -185,9 +194,9 @@ export default async function OperatorDashboardPage() {
                       정원 {t.capacity}석 · 잔여 {t.available}석
                     </p>
                   </div>
-                  {t.queued > 0 ? (
+                  {t.queuedTeams > 0 ? (
                     <span className="shrink-0 rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-bold whitespace-nowrap text-amber-800">
-                      대기 {t.queued}명 →
+                      대기 {t.queuedTeams}팀·{t.queuedPeople}명 →
                     </span>
                   ) : (
                     <span className="text-muted-foreground/60 shrink-0 text-xs whitespace-nowrap">

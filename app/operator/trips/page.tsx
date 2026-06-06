@@ -38,7 +38,7 @@ export default async function Page() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold">{regionName} 공급 차량</h1>
         <Link href="/operator/trips/new" className={cn(buttonVariants())}>
-          + 새 Trip 등록
+          + 차량 등록
         </Link>
       </div>
 
