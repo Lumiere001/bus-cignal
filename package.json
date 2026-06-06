@@ -17,7 +17,10 @@
     "test:e2e": "playwright test",
     "test:e2e:reset": "supabase db reset && playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "load:seed": "node scripts/load/seed-dummy.mjs",
+    "load:test": "node scripts/load/load-test.mjs",
+    "load:wipe": "node scripts/load/seed-dummy.mjs --wipe"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
