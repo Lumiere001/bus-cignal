@@ -46,6 +46,36 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // 읽음 커서 / 입장 멤버: channels/{tripId}/members/{uid}
+    //   uid = 토큰 subjectId (== request.auth.token.subjectId). 본인 문서만 쓰기 가능.
+    //   문서 shape = { displayName, role, lastReadAt(serverTimestamp) }.
+    match /channels/{tripId}/members/{uid} {
+
+      // 읽기: 이 trip claim을 가진 인증 사용자 (멤버 목록·읽음 커서 열람)
+      allow read: if request.auth != null
+        && request.auth.token.tripId == tripId;
+
+      // 생성·수정: 같은 trip + 본인(uid == subjectId)만, 필드/시각 검증
+      allow create, update: if request.auth != null
+        && request.auth.token.tripId == tripId
+        // 본인 member 문서만 쓰기 (uid = 토큰 subjectId)
+        && uid == request.auth.token.subjectId
+        // role은 토큰 role과 일치 (클라이언트 위조 차단)
+        && request.resource.data.role == request.auth.token.role
+        // 표시명 문자열, 과도한 길이 차단
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100
+        // 읽은 시각은 서버 시간(serverTimestamp)만 허용 — 클라이언트 시간 위조 차단
+        && request.resource.data.lastReadAt == request.time
+        // 위 3개 필드 외 추가 필드 금지
+        && request.resource.data.keys().hasOnly(
+          ['displayName', 'role', 'lastReadAt']
+        );
+
+      // 멤버 문서는 삭제 불가
+      allow delete: if false;
+    }
+
     // 그 외 모든 경로 차단 (deny-default)
     match /{document=**} {
       allow read, write: if false;

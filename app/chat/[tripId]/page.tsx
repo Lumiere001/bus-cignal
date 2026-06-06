@@ -49,19 +49,32 @@ export default async function ChatPage({ params }: Props) {
 
   const header = await getChatTripHeader(tripId);
 
+  // KCCC 다크 테마는 이 채팅 화면(main)에만 적용 — globals.css / 다른 페이지 미변경.
+  // 색상값은 ChatRoom.tsx의 토큰과 일치(SURFACE/PANEL/TEXT/MUTED/BORDER).
   return (
-    <main className="mx-auto flex h-[100dvh] max-w-md flex-1 flex-col">
+    <main
+      className="mx-auto flex h-[100dvh] max-w-md flex-1 flex-col"
+      style={{
+        backgroundColor: "#101013",
+        color: "#ECECEE",
+        fontFamily: "Pretendard, -apple-system, system-ui, sans-serif",
+      }}
+    >
       {/* 헤더 — 노선·출발 시각 (Trip 식별 정보) */}
-      <header className="flex items-center gap-3 border-b p-3">
+      <header
+        className="flex items-center gap-3 p-3"
+        style={{ backgroundColor: "#16161a", borderBottom: "1px solid #26262c" }}
+      >
         <Link
           href={access.role === "operator" ? "/operator" : "/me"}
           aria-label="뒤로"
-          className="text-muted-foreground hover:text-foreground shrink-0 text-sm"
+          className="shrink-0 text-lg"
+          style={{ color: "#9a9aa2" }}
         >
           ←
         </Link>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">
+          <p className="truncate text-sm font-semibold" style={{ color: "#ECECEE" }}>
             {header
               ? `${header.originLabel} → ${header.destinationLabel}${
                   directionShort(header.direction)
@@ -71,7 +84,7 @@ export default async function ChatPage({ params }: Props) {
               : "버스 채팅"}
           </p>
           {header && (
-            <p className="text-muted-foreground truncate text-xs">
+            <p className="truncate text-xs" style={{ color: "#9a9aa2" }}>
               출발 시각: {formatDeparture(header.departureAt)}
             </p>
           )}

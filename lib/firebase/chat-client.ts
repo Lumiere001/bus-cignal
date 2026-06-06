@@ -64,7 +64,11 @@ function chatAuth(): Auth {
   return auth;
 }
 
-function chatDb(): Firestore {
+/**
+ * 채팅용 Firestore 핸들. 에뮬레이터 플래그 ON이면(브라우저) 1회만 에뮬레이터 연결.
+ * members helper(lib/chat/members.ts)가 같은 에뮬레이터 연결 핸들을 쓰도록 export.
+ */
+export function chatDb(): Firestore {
   const db = getFirestore(firebaseClientApp());
   if (
     typeof window !== "undefined" &&
