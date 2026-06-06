@@ -108,6 +108,7 @@ export async function createApproveScenario(
 
   const cleanup = async () => {
     await db.from("matches").delete().eq("trip_id", tripId);
+    await db.from("rejection_log").delete().eq("seat_request_id", requestId);
     await db.from("request_passengers").delete().eq("request_id", requestId);
     await db.from("seat_requests").delete().eq("id", requestId);
     await db.from("seat_offers").delete().eq("trip_id", tripId);
@@ -165,4 +166,25 @@ export async function createPaidMatchScenario(): Promise<PaidMatchScenario> {
 /** rate-limit 등 부수효과 정리용. */
 export async function clearVerifyAttempts(code: string): Promise<void> {
   await db.from("reservation_verify_attempts").delete().eq("code", code);
+}
+
+/** 가입 승인 대기(pending) 간사 1명 격리 생성 — 마스터 승인 흐름 테스트용. */
+export async function createPendingOperator(): Promise<{
+  id: string;
+  name: string;
+  cleanup: () => Promise<void>;
+}> {
+  const busan = await regionIdByCode("2801"); // 신청 지구(승인 시 소속으로 확정)
+  const id = randomUUID();
+  const name = `E2E대기간사${randomUUID().slice(0, 4)}`;
+  await db.from("operators").insert({
+    id,
+    name,
+    requested_region_id: busan,
+    approval_status: "pending",
+  });
+  const cleanup = async () => {
+    await db.from("operators").delete().eq("id", id);
+  };
+  return { id, name, cleanup };
 }

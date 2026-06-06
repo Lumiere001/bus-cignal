@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { db } from "./support/db";
 import { assertLocalSupabase } from "./support/env";
 import { E2E_MASTER_PASSWORD } from "./master-auth.fixtures";
+import { E2E_CRON_SECRET } from "./support/secrets";
 
 /**
  * E2E 사전 점검 + 결정적 마스터 해시 주입.
@@ -51,7 +52,8 @@ export default async function globalSetup() {
   const existing = fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, "utf8") : "";
   if (!existing.includes(E2E_BLOCK_START)) {
     const hash = bcrypt.hashSync(E2E_MASTER_PASSWORD, 10).replace(/\$/g, () => "\\$");
-    const block = `\n${E2E_BLOCK_START}\nMASTER_PASSWORD_HASH=${hash}\n${E2E_BLOCK_END}\n`;
+    // CRON_SECRET도 결정적 값으로 주입 → cron 인증(Bearer) 경로 테스트 가능. ('$' 없음 → 이스케이프 불필요)
+    const block = `\n${E2E_BLOCK_START}\nMASTER_PASSWORD_HASH=${hash}\nCRON_SECRET=${E2E_CRON_SECRET}\n${E2E_BLOCK_END}\n`;
     fs.writeFileSync(ENV_FILE, existing + block, "utf8");
   }
 }

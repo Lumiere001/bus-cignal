@@ -54,8 +54,12 @@ pnpm test:e2e:report     # 마지막 HTML 리포트 열기
 | `master-operator-onboard.spec.ts` | **①** 마스터가 간사 추가 → 입장 링크(매직링크) 발급 |
 | `operator-approve-chain.spec.ts` | **②** 대기 큐 → 모두 선택 → **원자 승인(B3)** → 입금 확인 → 예약번호 발급 |
 | `passenger-reservation.spec.ts` | **③** `/r` 본인확인 → `/me` 조회 + **푸시 옵트인 배너 분기** / 취소(취소됨) / **rate-limit 잠금** |
+| `operator-match-actions.spec.ts` | 신청 **거절**(사유 필수) → 큐 제거 / **자리 풀기**(매칭 해제) |
+| `admin-operations.spec.ts` | 가입 **승인**(대기→active) / **정산 매트릭스** 데이터 렌더 |
+| `public-pages.spec.ts` | `/signup`·`/pending`·`/terms`·`/offline` 렌더 |
+| `cron-auth.spec.ts` | cron 4종(depart/anonymize/payment/push-retry) **Bearer 인증 경계**(401/200) |
 
-(미커버·후속 후보: 정산 매트릭스 금액 검증, 부분 매칭 통지, operator `자리 풀기`/`매칭 취소`, 출발 리마인더 cron.)
+(미커버·후속 후보: 차량 등록→공개 UI, 부분 매칭 통지, `/me/trip` 카카오 지도, push subscribe API, admin trips/matches/regions/system 목록 상세.)
 
 ---
 
