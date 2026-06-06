@@ -327,7 +327,30 @@ export async function updateRequest(
     };
   }
 
-  // 명단 전면 교체 — queued라 이 명단을 참조하는 매칭이 없음(위 가드로 보장).
+  // 동시 승인(approve_request_atomic) 레이스 차단 — 명단을 건드리기 전에 status='queued'를
+  // 가드 UPDATE로 선점(claim)한다. 그 사이 매칭이 확정돼 status가 바뀌었으면 0행 → 삭제 없이 중단.
+  // requested_at은 손대지 않음(큐 순번 보존). seat_count·동의는 이 선점 update에서 함께 갱신.
+  const reqUpdate: { seat_count: number; consent_confirmed_at?: string; consent_confirmed_by?: string } = {
+    seat_count: normalized.length,
+  };
+  if (hasNewPassenger) {
+    reqUpdate.consent_confirmed_at = new Date().toISOString();
+    reqUpdate.consent_confirmed_by = session.operatorId;
+  }
+  const { data: claimed } = await db
+    .from("seat_requests")
+    .update(reqUpdate)
+    .eq("id", requestId)
+    .eq("status", "queued")
+    .select("id")
+    .maybeSingle();
+  if (!claimed) {
+    return {
+      error: "수정하는 사이 매칭이 진행되어 수정할 수 없습니다. 새로고침 후 확인해주세요.",
+    };
+  }
+
+  // 명단 전면 교체 — queued 선점 후 진행(이 명단을 참조하는 활성 매칭 없음).
   const { error: delErr } = await db
     .from("request_passengers")
     .delete()
@@ -351,17 +374,6 @@ export async function updateRequest(
       error: "학생 명단 저장 중 오류가 발생했습니다. 다시 시도해주세요.",
     };
   }
-
-  // seat_count 동기화. 새 학생 추가로 동의가 필요했던 경우 동의 시각·주체 갱신.
-  // requested_at은 손대지 않음(큐 순번 보존).
-  const reqUpdate: { seat_count: number; consent_confirmed_at?: string; consent_confirmed_by?: string } = {
-    seat_count: normalized.length,
-  };
-  if (hasNewPassenger) {
-    reqUpdate.consent_confirmed_at = new Date().toISOString();
-    reqUpdate.consent_confirmed_by = session.operatorId;
-  }
-  await db.from("seat_requests").update(reqUpdate).eq("id", requestId);
 
   revalidatePath("/operator/requests");
   revalidatePath(`/operator/requests/${requestId}`);
