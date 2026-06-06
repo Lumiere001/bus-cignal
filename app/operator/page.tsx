@@ -21,8 +21,9 @@ type SupplyTrip = {
   departureAt: string;
   capacity: number;
   available: number;
-  queuedTeams: number;
+  queuedTeams: number; // 대기 신청(승인 필요) 팀 수 — 공급 역할
   queuedPeople: number;
+  toConfirm: number; // 송금 보고됨 → 입금 확인 필요 건수 — 공급 역할
 };
 
 async function loadDashboard(regionId: string) {
@@ -45,7 +46,7 @@ async function loadDashboard(regionId: string) {
 
   // 우리 차량별 대기(queued) 신청 — 팀(요청) 수 + 인원(좌석 합) 둘 다 집계.
   // 한 요청(=한 팀)에 여러 학생이 들어가므로 "팀"과 "명"은 다르다.
-  const [queuedRows, sentRows] = await Promise.all([
+  const [queuedRows, sentRows, demandMatchesRes] = await Promise.all([
     tripIds.length
       ? db
           .from("seat_requests")
@@ -54,7 +55,14 @@ async function loadDashboard(regionId: string) {
           .eq("status", "queued")
       : Promise.resolve({ data: [] as { trip_id: string; seat_count: number }[] }),
     db.from("seat_requests").select("status").eq("region_id", regionId),
+    // 수요 매칭 수 — /operator/matches와 동일 집합(우리 지구 신청의 매칭, 전 상태).
+    // inner join 필터로 카운트해 reqId .in() URI 한계를 피한다.
+    db
+      .from("matches")
+      .select("request:seat_requests!request_id!inner(region_id)", { count: "exact", head: true })
+      .eq("request.region_id", regionId),
   ]);
+  const demandMatches = demandMatchesRes.count ?? 0;
 
   const queuedByTrip = new Map<string, { teams: number; people: number }>();
   for (const r of (queuedRows.data ?? []) as { trip_id: string; seat_count: number }[]) {
@@ -70,6 +78,7 @@ async function loadDashboard(regionId: string) {
       .filter((o) => o.status === "open")
       .reduce((s, o) => s + o.seat_count, 0);
     const active = (t.matches ?? []).filter((m) => ACTIVE_MATCH.includes(m.status ?? "")).length;
+    const toConfirm = (t.matches ?? []).filter((m) => m.status === "payment_reported").length;
     return {
       id: t.id,
       direction: t.direction as "up" | "down",
@@ -79,6 +88,7 @@ async function loadDashboard(regionId: string) {
       available: Math.max(0, openSeats - active),
       queuedTeams: queuedByTrip.get(t.id)?.teams ?? 0,
       queuedPeople: queuedByTrip.get(t.id)?.people ?? 0,
+      toConfirm,
     };
   });
 
@@ -91,13 +101,11 @@ async function loadDashboard(regionId: string) {
     else sent.done++;
   }
 
-  const activeMatches = (trips ?? [])
-    .flatMap((t) => t.matches ?? [])
-    .filter((m) => ACTIVE_MATCH.includes(m.status ?? "")).length;
   const totalQueuedTeams = [...queuedByTrip.values()].reduce((a, b) => a + b.teams, 0);
   const totalQueuedPeople = [...queuedByTrip.values()].reduce((a, b) => a + b.people, 0);
+  const totalToConfirm = supplyTrips.reduce((a, t) => a + t.toConfirm, 0);
 
-  return { supplyTrips, sent, activeMatches, totalQueuedTeams, totalQueuedPeople };
+  return { supplyTrips, sent, demandMatches, totalQueuedTeams, totalQueuedPeople, totalToConfirm };
 }
 
 export default async function OperatorDashboardPage() {
@@ -153,6 +161,11 @@ export default async function OperatorDashboardPage() {
                 대기 {d.totalQueuedTeams}팀 · {d.totalQueuedPeople}명
               </span>
             )}
+            {d.totalToConfirm > 0 && (
+              <span className="ml-2 rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-blue-800">
+                입금확인 {d.totalToConfirm}
+              </span>
+            )}
           </h2>
           <Link href="/operator/trips" className="text-primary text-xs font-medium hover:underline">
             전체 차량 →
@@ -194,15 +207,21 @@ export default async function OperatorDashboardPage() {
                       정원 {t.capacity}석 · 잔여 {t.available}석
                     </p>
                   </div>
-                  {t.queuedTeams > 0 ? (
-                    <span className="shrink-0 rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-bold whitespace-nowrap text-amber-800">
-                      대기 {t.queuedTeams}팀·{t.queuedPeople}명 →
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground/60 shrink-0 text-xs whitespace-nowrap">
-                      대기 없음
-                    </span>
-                  )}
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    {t.queuedTeams > 0 && (
+                      <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-bold whitespace-nowrap text-amber-800">
+                        대기 {t.queuedTeams}팀·{t.queuedPeople}명
+                      </span>
+                    )}
+                    {t.toConfirm > 0 && (
+                      <span className="rounded-lg bg-blue-100 px-2.5 py-1 text-xs font-bold whitespace-nowrap text-blue-800">
+                        입금확인 {t.toConfirm}
+                      </span>
+                    )}
+                    {t.queuedTeams === 0 && t.toConfirm === 0 && (
+                      <span className="text-muted-foreground/60 text-xs whitespace-nowrap">할 일 없음</span>
+                    )}
+                  </div>
                 </Link>
               </li>
             ))}
@@ -244,9 +263,9 @@ export default async function OperatorDashboardPage() {
           href="/operator/matches"
           className="bg-card hover:border-primary/50 rounded-xl border p-4 shadow-sm transition-colors"
         >
-          <p className="text-muted-foreground text-xs">진행중 매칭</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums">{d.activeMatches}</p>
-          <p className="text-primary mt-1 text-xs font-medium">송금·예약 관리 →</p>
+          <p className="text-muted-foreground text-xs">우리 학생 매칭 (수요)</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums">{d.demandMatches}</p>
+          <p className="text-primary mt-1 text-xs font-medium">송금 보고·예약 →</p>
         </Link>
         <Link
           href="/operator/settlement"
