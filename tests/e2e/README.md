@@ -13,7 +13,7 @@
 
 ```bash
 # 0) 최초 1회
-pnpm exec playwright install chromium
+pnpm exec playwright install chromium webkit
 
 # 1) 로컬 supabase 띄우고 시드 로드 (마이그 + seed.sql + seed-dev.sql)
 supabase start
@@ -58,6 +58,17 @@ pnpm test:e2e:report     # 마지막 HTML 리포트 열기
 | `admin-operations.spec.ts` | 가입 **승인**(대기→active) / **정산 매트릭스** 데이터 렌더 |
 | `public-pages.spec.ts` | `/signup`·`/pending`·`/terms`·`/offline` 렌더 |
 | `cron-auth.spec.ts` | cron 4종(depart/anonymize/payment/push-retry) **Bearer 인증 경계**(401/200) |
+
+### 브라우저/디바이스 (projects)
+
+| project | 엔진 | 대상 스펙 | 목적 |
+|---|---|---|---|
+| `chromium` | Chrome | 전체 | 데스크톱(간사·마스터 포함) |
+| `mobile-safari` | **WebKit + iPhone 14** | smoke·public·passenger | **아이폰 사용자**(학생) — Safari 엔진·모바일 뷰포트·터치 |
+
+> 아이폰 호환성의 핵심은 OS가 아니라 **WebKit 엔진**이라, 실제 macOS/iOS 없이 ubuntu에서 검증된다.
+> 단 **PWA 홈화면추가 · iOS 푸시**는 실기기 전용 기능이라 자동화 대상이 아니며 **수동 실기기 QA**로 다룬다.
+> (푸시 배너는 iOS에서 `needs_home_screen` 변형으로 떠 "나중에"만 노출 — 스펙이 이를 분기 처리.)
 
 (미커버·후속 후보: 차량 등록→공개 UI, 부분 매칭 통지, `/me/trip` 카카오 지도, push subscribe API, admin trips/matches/regions/system 목록 상세.)
 

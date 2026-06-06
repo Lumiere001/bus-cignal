@@ -37,6 +37,15 @@ export default defineConfig({
       dependencies: ["setup"],
       testIgnore: /auth\.setup\.ts$/,
     },
+    // 아이폰 사용자 커버리지 — Safari 엔진(WebKit) + iPhone 뷰포트/터치.
+    // iOS 호환성의 핵심은 OS가 아니라 WebKit 엔진이라 실제 macOS/iOS 없이 ubuntu에서 검증된다.
+    // 학생(공개/예약) 흐름만 대상 — 간사·마스터는 데스크톱 영역이라 chromium으로 충분.
+    // (storageState 불필요한 스펙뿐이라 setup 의존 없음.)
+    {
+      name: "mobile-safari",
+      use: { ...devices["iPhone 14"] },
+      testMatch: /(smoke|public-pages|passenger-reservation)\.spec\.ts$/,
+    },
   ],
   webServer: {
     command: `pnpm exec next dev --port ${PORT}`,

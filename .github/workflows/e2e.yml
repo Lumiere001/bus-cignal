@@ -62,7 +62,7 @@ jobs:
           } > .env.development.local
 
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: Run E2E
         run: pnpm test:e2e
