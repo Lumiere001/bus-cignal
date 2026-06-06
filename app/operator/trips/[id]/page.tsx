@@ -6,6 +6,7 @@ import {
   DIRECTION_SHORT,
   TRIP_STATUS_LABEL,
   TRIP_STATUS_COLOR,
+  MATCH_STATUS_ORDER,
 } from "@/lib/labels";
 import { one } from "@/lib/supabase/relation";
 import { formatKstDateTime } from "@/lib/datetime";
@@ -117,9 +118,18 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     .filter((r) => r.passengers.length > 0); // 남은 학생 없는 신청 카드는 숨김
 
   // 매칭 현황 표 행 — 최근 매칭순. 전화 풀 노출(간사 운영 연락용, 팀장 승인).
+  // 진행 순서로 정렬(awaiting→reported→paid→…). 입금 확인 클릭 후에도 자리가 튀지 않도록
+  // 상태 우선 + matched_at desc + id 보조정렬로 결정적 순서(동률 셔플 제거).
   const matchRows: MatchRow[] = (trip.matches ?? [])
     .slice()
-    .sort((a, b) => new Date(b.matched_at).getTime() - new Date(a.matched_at).getTime())
+    .sort((a, b) => {
+      const so =
+        (MATCH_STATUS_ORDER[a.status ?? ""] ?? 99) - (MATCH_STATUS_ORDER[b.status ?? ""] ?? 99);
+      if (so !== 0) return so;
+      const t = new Date(b.matched_at).getTime() - new Date(a.matched_at).getTime();
+      if (t !== 0) return t;
+      return a.id.localeCompare(b.id);
+    })
     .map((m) => {
       const p = one(m.passenger);
       return {
