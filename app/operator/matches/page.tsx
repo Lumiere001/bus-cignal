@@ -3,6 +3,7 @@ import { getOperatorRegionName } from "@/lib/auth/operator-region";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { one } from "@/lib/supabase/relation";
 import { formatKstDateTime } from "@/lib/datetime";
+import { MATCH_STATUS_ORDER } from "@/lib/labels";
 import { MatchesList, type MatchRow } from "./MatchesList";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +50,7 @@ export default async function Page() {
           )
           .in("request_id", reqIds)
           .order("matched_at", { ascending: false })
+          .order("id", { ascending: true })
       ).data
     : null;
 
@@ -77,6 +79,12 @@ export default async function Page() {
       supplyName: supply?.name ?? null,
     };
   });
+
+  // 진행 순서로 정렬(송금완료→입금확인 대기중→공유문구 복사). 안정 정렬 + 쿼리의 id 보조정렬로
+  // 송금완료 클릭 후에도 같은 건의 자리가 튀지 않게 한다(동률 셔플 제거).
+  matches.sort(
+    (a, b) => (MATCH_STATUS_ORDER[a.status] ?? 99) - (MATCH_STATUS_ORDER[b.status] ?? 99),
+  );
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">

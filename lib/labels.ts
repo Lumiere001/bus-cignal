@@ -36,3 +36,13 @@ export const REQUEST_STATUS_LABEL: Record<string, string> = {
   rejected: "거절됨",
   cancelled: "취소됨",
 };
+
+// 매칭 목록 정렬 기준 — 생애주기(진행) 순서. 송금완료/입금확인 클릭 후에도 자리가
+// 튀지 않도록 이 순서 + 안정 보조정렬(matched_at·id)로 결정적 정렬에 사용.
+export const MATCH_STATUS_ORDER: Record<string, number> = {
+  awaiting_payment: 0,
+  payment_reported: 1,
+  paid: 2,
+  expired: 3,
+  cancelled: 4,
+};
