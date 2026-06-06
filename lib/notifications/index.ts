@@ -10,6 +10,7 @@ import type {
 import { formatPush, sendPush } from "./push";
 import { isRetryDue, reducePushAttempt } from "./retry";
 import { resolveTargets } from "./targets";
+import { reportOpsIssue } from "@/lib/ops/report-issue";
 
 export { NOTIFICATION_EVENTS } from "./events";
 export type {
@@ -89,6 +90,23 @@ export async function emit<E extends NotificationEvent>(
 
   if (rows.some((row) => row.channel === "push")) {
     await deliverPushBatch();
+  }
+
+  // 운영 이상(system_error) → GitHub 이슈 자동 생성 (베스트에포트·게이트 미설정 시 no-op).
+  // 인앱 알림 본 처리와 독립 — 실패해도 emit은 정상 종료.
+  if (event === "system_error") {
+    const p = payload as PayloadFor<"system_error">;
+    await reportOpsIssue({
+      title: `🚨 운영 이상: ${p.context}`,
+      fingerprint: `system_error:${p.context}`,
+      body: [
+        "자동 감지된 운영 이상입니다 (notifications.emit system_error).",
+        "",
+        `- context: \`${p.context}\``,
+        `- detail: \`${p.detail ?? "-"}\``,
+        `- 감지(UTC): ${now}`,
+      ].join("\n"),
+    });
   }
 }
 
