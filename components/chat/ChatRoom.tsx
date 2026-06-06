@@ -141,6 +141,13 @@ export function ChatRoom({ tripId }: Props) {
         displayName: identity.displayName,
       });
       setDraft("");
+      // 알림 발송은 secondary — fire-and-forget. UI를 막지도, 오류를 노출하지도 않는다.
+      // 메시지 자체는 위에서 이미 Firestore에 전송됨. 실패해도 채팅에 영향 없음.
+      void fetch("/api/chat/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tripId }),
+      }).catch(() => {});
     } catch {
       setSendError("메시지 전송에 실패했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
