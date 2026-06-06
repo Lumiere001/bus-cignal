@@ -16,13 +16,18 @@ test.describe("학생 예약 흐름", () => {
       await expect(page.getByText(s.code)).toBeVisible();
       await expect(page.getByText("예약 완료")).toBeVisible();
 
-      // paid 매칭 → 푸시 옵트인 배너 노출(데스크톱 크롬 = ready). 분기: 닫기/다시 보지 않기.
+      // paid 매칭 → 푸시 옵트인 배너 노출. 환경별 분기:
+      //  - 데스크톱 크롬(ready): "다시 보지 않기"(VAPID 있음) 또는 "닫기"(준비 중)
+      //  - iPhone Safari(needs_home_screen): "나중에"만 — 홈 화면 추가 안내
       const banner = page.getByRole("region", { name: "알림 설정 안내" });
       await expect(banner).toBeVisible();
-      const dontShow = banner.getByRole("button", { name: "다시 보지 않기" });
-      const close = banner.getByRole("button", { name: "닫기" });
-      if (await dontShow.count()) await dontShow.click();
-      else await close.click();
+      for (const name of ["다시 보지 않기", "닫기", "나중에"]) {
+        const btn = banner.getByRole("button", { name });
+        if (await btn.count()) {
+          await btn.first().click();
+          break;
+        }
+      }
       await expect(banner).toBeHidden();
     } finally {
       await s.cleanup();

@@ -22,11 +22,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # dev 서버(webServer.env가 process.env를 상속)·세션 서명용 더미 시크릿 (E2E 전용·운영 무관).
-      # 마스터 해시는 globalSetup이 .env.development.local에 주입.
+      # 마스터 해시·CRON_SECRET은 globalSetup이 .env.development.local에 결정적으로 주입한다.
+      # (CRON_SECRET을 여기 두면 process.env가 우선이라 cron-auth 스펙의 주입값과 불일치 → 제거.)
       MASTER_SESSION_SECRET: e2e-master-session-secret-not-a-real-secret-000
       OPERATOR_SESSION_SECRET: e2e-operator-session-secret-not-a-real-secret-0
       PASSENGER_SESSION_SECRET: e2e-passenger-session-secret-not-a-real-secret
-      CRON_SECRET: e2e-cron-secret-not-a-real-secret
     steps:
       - uses: actions/checkout@v4
 
@@ -62,7 +62,7 @@ jobs:
           } > .env.development.local
 
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: Run E2E
         run: pnpm test:e2e
