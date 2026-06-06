@@ -52,3 +52,12 @@ export function formatKstDateShort(iso: string): string {
 export function formatWon(n: number): string {
   return n.toLocaleString("ko-KR") + "원";
 }
+
+/**
+ * 오늘(KST) 0시의 UTC ISO — "오늘 발생" 집계 필터의 하한 경계.
+ * 예) KST 6/6 새벽이면 6/5 15:00Z 반환. admin 대시보드·운영 모니터링 공용.
+ */
+export function startOfTodayKstUtc(now: number = Date.now()): string {
+  const kstDate = new Date(now + 9 * 3_600_000).toISOString().slice(0, 10);
+  return new Date(`${kstDate}T00:00:00+09:00`).toISOString();
+}
