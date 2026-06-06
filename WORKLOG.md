@@ -8,12 +8,14 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **CC 세션 (2026-06-06 — ⭐⭐⭐ 다음 세션 여기부터 읽으세요)**: **UI/UX 대개편 + Phase 2(타지구 신청 위저드) + 현실 더미. 멀티에이전트(Workflow)로 병렬 구현. 전부 게이트 green, push+PR 완료(사용자 예외 허용).**
-  - 📦 **푸시·PR 상태 (전부 origin push됨)**:
+- 📍 **CC 세션 (2026-06-06 — ⭐⭐⭐ 다음 세션 여기부터 읽으세요)**: **UI/UX 대개편 + Phase 2(타지구 신청 위저드) + 현실 더미. 멀티에이전트(Workflow)로 병렬 구현. 전부 게이트 green, #77~#81 main 머지 완료(열린 PR 0). 다음 세션 main에서 시작.**
+  - 📦 **푸시·PR 상태 (전부 origin push + main 머지 완료)**:
     - **PR #79** `feat/admin-ops-monitoring` — 마스터 운영 모니터링(/admin/system: DB용량·오늘활동·Pro권장 신호).
     - **PR #80** `fix/operator-cookie-render` — `requireOperator`가 미승인/revoke 간사에 렌더 중 쿠키삭제 → Next16 에러. redirect만 하도록 수정(별도 워크트리).
-    - **PR (신규)** `feat/operator-screen-cleanup` — ⭐ **이번 대개편 전체(8커밋)**: 간사화면 1-A/1-C·1-B 대시보드·UI견고화·여러 수정·Phase2 위저드·**현실 더미시드(은행 제거본)**. 머지하면 다 들어감.
-    - `chore/realistic-dummy` = feat에 동일 시드 포함되어 **폐기(삭제함)**.
+    - **PR #81** `feat/operator-screen-cleanup` — ⭐ **이번 대개편 전체**: 간사화면 1-A/1-C·1-B 대시보드·UI견고화·여러 수정·Phase2 위저드·지도 선택 시 핀 중심이동·**현실 더미시드(은행 제거본)**. 머지하면 다 들어감.
+      - ⚠️→✅ **#81 처음 push 때 playwright E2E 1건 실패→수정 완료**: 입금확인 "취소불가" **모달** 추가 + 매칭현황 **표** 전환으로 `tests/e2e/operator-approve-chain.spec.ts`가 깨짐(입금확인 1회만 클릭/예약번호 셀 분리). 테스트를 모달 확정 + `BUS-XXXX` 패턴 검증으로 갱신 → **로컬 전체 25 E2E green → CI 재실행 green.** (다른 화면 E2E·신청위저드 E2E는 영향 없음)
+    - **#79·#80·#81 전부 main 머지 완료** (East_Star 직접, #77·#78도 이전 머지). 열린 PR 0 → 대개편이 main에 반영. 다음 세션은 **main 기준 새 브랜치**로(스택 금지).
+    - `chore/realistic-dummy` = #81에 동일 시드 포함되어 **폐기(삭제함)**.
   - ✅ **완료 (feat/operator-screen-cleanup)**:
     - **더미 현실화**: 지구↔평창(상행 6/23 입소·하행 6/27 퇴소), **통합 간사 1명/지구**, 결제 깔때기(awaiting/reported/paid), 평창 지구별 픽업. `scripts/load/seed-dummy.mjs`.
     - **간사 1-A**: 지구명 동적표기 전반("○○ 운영현황/공급차량/신청목록") · 내정보 캠퍼스 제거 · 대기큐 학생+담당간사 **전화 풀노출** · 입금확인 "취소불가" 모달 · 매칭현황 표.

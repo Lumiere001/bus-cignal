@@ -13,11 +13,13 @@ To: CC 다음 세션 (⭐ 여기부터)
 목적: Phase 2 남은 하위 → Phase 3(마스터) → Phase 4(학생) → Phase 5(공개) 순 진행
 ```
 
-### ✅ 이번 세션 결과 (push+PR 완료 — 사용자 예외 허용)
+### ✅ 이번 세션 결과 (#77~#81 전부 main 머지 완료 — 열린 PR 0)
 - **PR #79** `feat/admin-ops-monitoring` 마스터 운영 모니터링(/admin/system).
 - **PR #80** `fix/operator-cookie-render` requireOperator 렌더 중 쿠키삭제 버그 픽스.
-- **PR(신규) `feat/operator-screen-cleanup`** = ⭐ 대개편 8커밋(간사 1-A/1-C·1-B 대시보드·UI견고화·수정들·Phase 2 위저드·**현실 더미시드**).
-- `chore/realistic-dummy` = feat에 동일 시드 포함 → **폐기(삭제)**.
+- **PR #81 `feat/operator-screen-cleanup`** = ⭐ 대개편(간사 1-A/1-C·1-B 대시보드·UI견고화·여러 수정·Phase 2 위저드·**현실 더미시드**·지도 선택 시 핀 중심이동).
+  - ⚠️ 처음 push 때 **playwright E2E 1건 실패** → 원인=내 변경 2개(입금확인 "취소불가" **모달** 추가 + 매칭현황 **표** 전환)로 `operator-approve-chain.spec`가 깨짐(입금확인 1번만 클릭/예약번호 셀 분리). **테스트를 모달 확정 + 예약번호 `BUS-XXXX` 패턴으로 갱신해 해결** → 로컬 전체 25 E2E green → **CI 재실행 green**.
+- **#79·#80·#81 전부 main 머지 완료** (East_Star가 직접 머지, #77·#78도 이전 머지). 열린 PR 0 → **대개편 전체가 main에 반영됨**. 다음 세션은 **main에서 바로 시작**(별도 브랜치 체크아웃 불필요).
+- `chore/realistic-dummy` = #81에 동일 시드 포함 → **폐기(삭제)**.
 - 완료/결정/다음할일 **전부 WORKLOG 맨 위 "2026-06-06" 엔트리** 에 상세.
 
 ### 🔜 다음 세션 할 일 (우선순위)
@@ -31,8 +33,9 @@ To: CC 다음 세션 (⭐ 여기부터)
 ### ⚠️ 인계 주의
 - **카카오 지도**: 로컬은 빌린 키라 미표시(코드는 graceful 에러). **배포 후 카카오 콘솔에 도메인(localhost+Vercel) 등록 → 간사 결과지도 + 학생 지도 둘 다 검증.**
 - 타지구 신청 모델: **출발=공급지구 선택**(정정 완료). 권역 매핑은 `RequestWizard.tsx` 상수(regions.area→권역).
-- 머지 권장: `feat/operator-screen-cleanup`(대개편) → #79 → #80 (전부 main 기준 독립, 스택 아님). chore/realistic-dummy 머지 X.
+- ~~머지 권장~~ → **완료**: #79·#80·#81 모두 main 머지됨. 다음 세션은 main 기준으로 새 브랜치 분기(스택 금지: 항상 최신 main에서).
 - 학생 전화 풀노출=간사 화면 한정(승인). 마스터=전용 비번(CCC 분리). 승인대기→CCC 자동입장+예외/해지 큐(미구현).
+- **알려진 비치명 issue(다음 정리거리)**: client 컴포넌트(`MatchingQueue.tsx` 등)의 `formatKstDateTime`=`toLocaleString`이 Node/브라우저 ICU 차이로 **hydration 경고** 발생(기능 영향 없음, 기존 issue·이번 변경 무관). 정리하려면 `lib/datetime`의 `formatKstShort`(결정적 ISO 슬라이스)로 교체.
 
 ### ▶️ 다음 세션 시작 방법
 1. `cd /Users/east_star/Projects/bus-cignal && claude`
