@@ -18,6 +18,9 @@ concurrency:
   group: depart-reminder
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   ping:
     runs-on: ubuntu-latest
@@ -33,3 +36,27 @@ jobs:
           curl -fsS --max-time 60 -X GET \
             "https://bus-cignal.vercel.app/api/cron/depart-reminder" \
             -H "Authorization: Bearer ${CRON_SECRET}"
+
+  # ping 실패 시(엔드포인트 5xx·CRON_SECRET 누락·타임아웃) → GitHub 이슈 자동 생성/갱신.
+  notify-failure:
+    needs: ping
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or append failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TITLE="🚨 [cron] depart-reminder 실패"
+          BODY=$(printf '출발 리마인더 워크플로가 실패했습니다 — 학생/간사 출발 알림이 누락됐을 수 있습니다.\n\n- 실행 로그: %s\n- 시각(UTC): %s\n\n점검: 엔드포인트 응답·CRON_SECRET 시크릿·Vercel 배포 상태.' "$RUN_URL" "$(date -u +%FT%TZ)")
+          gh label create ops-auto --color B60205 --description "자동 운영 알림" 2>/dev/null || true
+          NUM=$(gh issue list --state open --search "$TITLE in:title" \
+                  --json number,title --jq "map(select(.title==\"$TITLE\")) | .[0].number // empty")
+          if [ -n "$NUM" ]; then
+            gh issue comment "$NUM" --body "🔁 재발생$(printf '\n\n')$BODY"
+          else
+            gh issue create --title "$TITLE" --label ops-auto --body "$BODY"
+          fi
