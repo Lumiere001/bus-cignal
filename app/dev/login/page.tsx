@@ -1,21 +1,15 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { devLoginAsMaster, devLoginAsOperator } from "@/lib/auth/dev-login";
+import { devLoginEnabled } from "@/lib/auth/dev-login-guard";
 import { Button } from "@/components/ui/button";
 
 // 매 요청 시 DB(seed) 조회 — 빌드 시 정적 캐시 방지
 export const dynamic = "force-dynamic";
 
-// 프로덕션에서는 노출 X (CCC 로그인 연동 전 seed 테스트용 진입점)
-function devEnabled() {
-  return (
-    process.env.NODE_ENV !== "production" ||
-    process.env.ENABLE_DEV_LOGIN === "true"
-  );
-}
-
 export default async function DevLoginPage() {
-  if (!devEnabled()) notFound();
+  // 프로덕션 노출 X (Vercel production은 강제 비활성 — dev-login-guard)
+  if (!devLoginEnabled()) notFound();
 
   const db = createAdminClient();
 

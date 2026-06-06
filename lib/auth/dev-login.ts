@@ -5,13 +5,11 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { OPERATOR_COOKIE, signOperatorToken } from "./operator-session";
 import { MASTER_COOKIE, signMasterToken } from "./master-session";
+import { devLoginEnabled } from "./dev-login-guard";
 
-// ⚠️ 개발 전용 진입점. 프로덕션에서는 비활성 (CCC 로그인 연동 전 seed 테스트용).
+// ⚠️ 개발 전용 진입점. Vercel production에선 항상 비활성(백도어 방지) — dev-login-guard.
 function assertDevLoginEnabled() {
-  const enabled =
-    process.env.NODE_ENV !== "production" ||
-    process.env.ENABLE_DEV_LOGIN === "true";
-  if (!enabled) throw new Error("dev login is disabled in production");
+  if (!devLoginEnabled()) throw new Error("dev login is disabled in production");
 }
 
 const baseCookie = {
