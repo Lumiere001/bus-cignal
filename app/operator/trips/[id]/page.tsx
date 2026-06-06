@@ -184,6 +184,14 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             {trip.note}
           </p>
         )}
+
+        {/* 버스(상/하행) 채팅 입장 — 이 차량 한 방에 공급 간사 + 매칭된 전 지구 학생이 함께 */}
+        <Link
+          href={`/chat/${trip.id}`}
+          className="mt-4 inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+        >
+          💬 버스 채팅 ({DIRECTION_SHORT[direction]})
+        </Link>
       </div>
 
       {/* 대기 큐 */}

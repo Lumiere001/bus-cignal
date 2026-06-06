@@ -1,8 +1,14 @@
 "use client";
-import { getAuth, signInWithCustomToken, type Auth } from "firebase/auth";
+import {
+  connectAuthEmulator,
+  getAuth,
+  signInWithCustomToken,
+  type Auth,
+} from "firebase/auth";
 import {
   addDoc,
   collection,
+  connectFirestoreEmulator,
   getFirestore,
   onSnapshot,
   orderBy,
@@ -30,12 +36,45 @@ export type ChatMessage = {
   createdAtMs: number | null;
 };
 
+/**
+ * 로컬 에뮬레이터 사용 여부. 빌드/런타임 env로 게이트.
+ * 미설정 → 실제 Firebase(프로덕션) 동작 그대로 유지.
+ */
+function shouldUseEmulator(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_FIREBASE_USE_EMULATOR);
+}
+
+// 에뮬레이터 연결은 app/SDK 핸들당 한 번만 (HMR·재마운트 시 재연결 예외 방지).
+let authEmulatorConnected = false;
+let firestoreEmulatorConnected = false;
+
 function chatAuth(): Auth {
-  return getAuth(firebaseClientApp());
+  const auth = getAuth(firebaseClientApp());
+  // 브라우저 + 플래그 ON일 때만, 그리고 한 번만 연결.
+  if (
+    typeof window !== "undefined" &&
+    shouldUseEmulator() &&
+    !authEmulatorConnected
+  ) {
+    authEmulatorConnected = true;
+    connectAuthEmulator(auth, "http://localhost:9099", {
+      disableWarnings: true,
+    });
+  }
+  return auth;
 }
 
 function chatDb(): Firestore {
-  return getFirestore(firebaseClientApp());
+  const db = getFirestore(firebaseClientApp());
+  if (
+    typeof window !== "undefined" &&
+    shouldUseEmulator() &&
+    !firestoreEmulatorConnected
+  ) {
+    firestoreEmulatorConnected = true;
+    connectFirestoreEmulator(db, "localhost", 8080);
+  }
+  return db;
 }
 
 /** Custom Token으로 채팅 세션 로그인. 이미 로그인돼 있으면 토큰으로 재인증. */
