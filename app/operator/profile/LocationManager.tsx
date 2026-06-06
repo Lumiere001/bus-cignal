@@ -1,7 +1,12 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  KakaoSearchPicker,
+  type PickedPlace,
+} from "@/components/kakao/KakaoSearchPicker";
+import type { MapPin } from "@/components/kakao/KakaoMultiMap";
 import { DIRECTION_SHORT } from "@/lib/labels";
 import { addLocation, deleteLocation } from "./actions";
 
@@ -11,6 +16,8 @@ export type RegionLocation = {
   location_type: "origin" | "destination";
   address: string;
   label: string | null;
+  lat: number | null;
+  lng: number | null;
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -20,6 +27,37 @@ const TYPE_LABEL: Record<string, string> = {
 
 export function LocationManager({ locations }: { locations: RegionLocation[] }) {
   const [state, formAction, isPending] = useActionState(addLocation, undefined);
+
+  // 지도에서 고른 장소 (방식 B). null이면 미선택.
+  const [picked, setPicked] = useState<PickedPlace | null>(null);
+  // 직접 입력 모드 — 지도 미동작(localhost)·수동 보정용 fallback.
+  const [manual, setManual] = useState(false);
+  const [manualAddress, setManualAddress] = useState("");
+
+  // 좌표가 있는 기존 장소만 지도 핀으로 표시 (공간 맥락).
+  const pins: MapPin[] = useMemo(
+    () =>
+      locations
+        .filter((l) => l.lat != null && l.lng != null)
+        .map((l) => ({
+          id: l.id,
+          lat: l.lat as number,
+          lng: l.lng as number,
+          title: l.label ?? l.address,
+          subtitle: l.address,
+        })),
+    [locations],
+  );
+
+  // 제출 후 상태 초기화는 굳이 하지 않음(revalidate로 목록 갱신). 다시 선택은 사용자 클릭.
+  function handlePick(p: PickedPlace) {
+    setPicked(p);
+    setManual(false);
+  }
+
+  // 직접 입력 모드일 땐 manualAddress, 지도 모드일 땐 picked.address를 제출.
+  const submitAddress = manual ? manualAddress.trim() : (picked?.address ?? "");
+  const canSubmit = submitAddress.length >= 2;
 
   return (
     <section className="space-y-4">
@@ -78,19 +116,76 @@ export function LocationManager({ locations }: { locations: RegionLocation[] }) 
           </div>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-gray-600" htmlFor="address">
-            주소
-          </label>
-          <input
-            id="address"
-            name="address"
-            type="text"
-            required
-            maxLength={200}
-            placeholder="예) 강원 평창군 봉평면 무이리"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          />
+        {/* 주소 — 방식 B: 지도에서 검색·선택. localhost 등 지도 미동작 시 직접 입력 fallback. */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium text-gray-600">
+              주소 {manual ? "(직접 입력)" : "(지도에서 선택)"}
+            </label>
+            <button
+              type="button"
+              onClick={() => setManual((v) => !v)}
+              className="text-xs font-medium text-blue-600 hover:underline"
+            >
+              {manual ? "지도에서 선택" : "직접 입력"}
+            </button>
+          </div>
+
+          {!manual && (
+            <>
+              <KakaoSearchPicker
+                onPick={handlePick}
+                pins={pins}
+                initialCenter={pins[0]}
+              />
+              {picked ? (
+                <div className="flex items-start justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                  <div className="min-w-0">
+                    {picked.placeName && (
+                      <p className="text-sm font-medium text-gray-900">
+                        {picked.placeName}
+                      </p>
+                    )}
+                    <p className="truncate text-sm text-gray-700">{picked.address}</p>
+                    <p className="text-xs text-gray-500">
+                      좌표: {picked.lat.toFixed(5)}, {picked.lng.toFixed(5)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPicked(null)}
+                    className="shrink-0 text-xs font-medium text-blue-600 hover:underline"
+                  >
+                    다시 선택
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  지도에서 장소를 검색해 선택하면 주소·좌표가 자동 입력됩니다.
+                </p>
+              )}
+            </>
+          )}
+
+          {manual && (
+            <input
+              type="text"
+              value={manualAddress}
+              onChange={(e) => setManualAddress(e.target.value)}
+              maxLength={200}
+              placeholder="예) 강원 평창군 봉평면 무이리"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
+          )}
+
+          {/* 서버 액션 제출용 필드 — 모드와 무관하게 address를 채워 보냄. 좌표는 지도 선택 시에만. */}
+          <input type="hidden" name="address" value={submitAddress} />
+          {!manual && picked && (
+            <>
+              <input type="hidden" name="lat" value={picked.lat} />
+              <input type="hidden" name="lng" value={picked.lng} />
+            </>
+          )}
         </div>
 
         <div className="space-y-1">
@@ -112,7 +207,7 @@ export function LocationManager({ locations }: { locations: RegionLocation[] }) 
         )}
 
         <div className="flex justify-end">
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending || !canSubmit}>
             {isPending ? "추가중..." : "추가"}
           </Button>
         </div>

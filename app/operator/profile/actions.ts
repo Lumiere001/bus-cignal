@@ -7,6 +7,22 @@ import { revalidatePath } from "next/cache";
 
 type ActionResult = { error: string } | undefined;
 
+// FormData의 lat/lng → 유효 좌표(범위 검증). 둘 다 유효한 한국 좌표일 때만 반환, 아니면 null.
+// (위조·부분 입력 방어 — 이상값이면 무시하고 지오코딩 fallback으로 떨어진다)
+function parseCoords(
+  rawLat: FormDataEntryValue | null,
+  rawLng: FormDataEntryValue | null,
+): { lat: number; lng: number } | null {
+  if (typeof rawLat !== "string" || typeof rawLng !== "string") return null;
+  if (rawLat.trim() === "" || rawLng.trim() === "") return null;
+  const lat = Number(rawLat);
+  const lng = Number(rawLng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  // 대략적 한반도 경계 — 명백한 이상값(0,0 등) 차단.
+  if (lat < 33 || lat > 39 || lng < 124 || lng > 132) return null;
+  return { lat, lng };
+}
+
 // ─── 출발/도착지 추가 ──────────────────────────────────────────────────────────
 // 차량 등록폼의 출발지·도착지 드롭다운 소스(region_locations)를 간사가 직접 관리.
 // 본인 지구(session.regionId)에만 추가 — region_id 위조 불가.
@@ -32,8 +48,11 @@ export async function addLocation(
     return { error: "주소를 2~200자로 입력해주세요." };
   if (label && label.length > 50) return { error: "이름표는 50자 이하로 입력해주세요." };
 
-  // 주소 → 좌표(지오코딩). 실패 시 null로 저장(학생 지도는 주소 fallback). 차단하지 않음.
-  const coords = await geocodeAddress(address);
+  // 좌표 확정 — 방식 B(지도 선택)에서 lat/lng를 함께 보내면 그대로 사용.
+  // 미제공(직접 입력 fallback)이면 기존대로 주소→좌표 지오코딩. 실패 시 null로 저장
+  // (학생 지도는 주소 fallback). 차단하지 않음.
+  const picked = parseCoords(formData.get("lat"), formData.get("lng"));
+  const coords = picked ?? (await geocodeAddress(address));
 
   const db = createAdminClient();
   const { error } = await db.from("region_locations").insert({

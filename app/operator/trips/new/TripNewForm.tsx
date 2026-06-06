@@ -1,7 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  KakaoSearchPicker,
+  type PickedPlace,
+} from "@/components/kakao/KakaoSearchPicker";
+import type { MapPin } from "@/components/kakao/KakaoMultiMap";
 import { DIRECTION_LABEL } from "@/lib/labels";
 import { createTrip } from "../actions";
 
@@ -11,11 +16,25 @@ type Location = {
   location_type: string;
   address: string;
   label: string | null;
+  lat: number | null;
+  lng: number | null;
 };
+
+// 한 지점(출발지/도착지) 선택 결과. id가 있으면 등록 장소, place가 있으면 새 장소.
+type Selection =
+  | { kind: "registered"; id: string }
+  | { kind: "new"; place: PickedPlace }
+  | null;
 
 export function TripNewForm({ locations }: { locations: Location[] }) {
   const [direction, setDirection] = useState<"up" | "down">("down");
   const [state, formAction, isPending] = useActionState(createTrip, undefined);
+
+  // 방식 B: 지도/직접입력 모드 토글 (localhost 지도 미동작 시 select fallback).
+  const [manual, setManual] = useState(false);
+
+  const [origin, setOrigin] = useState<Selection>(null);
+  const [dest, setDest] = useState<Selection>(null);
 
   const origins = locations.filter(
     (l) => l.direction === direction && l.location_type === "origin",
@@ -46,7 +65,12 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
                 name="direction"
                 value={dir}
                 checked={direction === dir}
-                onChange={() => setDirection(dir)}
+                onChange={() => {
+                  setDirection(dir);
+                  // 방향 바뀌면 선택 초기화 (다른 방향의 장소를 잘못 제출하지 않도록)
+                  setOrigin(null);
+                  setDest(null);
+                }}
                 className="accent-blue-600"
               />
               <span className="text-sm">{DIRECTION_LABEL[dir]}</span>
@@ -55,57 +79,76 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
         </div>
       </fieldset>
 
-      {/* 출발지 */}
-      <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-700" htmlFor="origin">
-          출발지
-        </label>
-        {origins.length === 0 ? (
-          <p className="text-sm text-red-500">
-            등록된 출발지가 없습니다. 프로필에서 먼저 등록해주세요.
-          </p>
-        ) : (
-          <select
-            id="origin"
-            name="origin_location_id"
-            required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          >
-            <option value="">출발지 선택</option>
-            {origins.map((l) => (
-              <option key={l.id} value={l.id}>
-                {locationLabel(l)}
-              </option>
-            ))}
-          </select>
-        )}
+      {/* 입력 방식 토글 */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">출발지 · 도착지</span>
+        <button
+          type="button"
+          onClick={() => setManual((v) => !v)}
+          className="text-xs font-medium text-blue-600 hover:underline"
+        >
+          {manual ? "지도에서 선택" : "목록에서 선택"}
+        </button>
       </div>
 
-      {/* 도착지 */}
-      <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-700" htmlFor="dest">
-          도착지
-        </label>
-        {destinations.length === 0 ? (
-          <p className="text-sm text-red-500">
-            등록된 도착지가 없습니다. 프로필에서 먼저 등록해주세요.
-          </p>
-        ) : (
-          <select
+      {manual ? (
+        // ── Fallback: 기존 <select> 드롭다운 (지도 미동작 환경) ──
+        <>
+          <SelectField
+            label="출발지"
+            id="origin"
+            name="origin_location_id"
+            placeholder="출발지 선택"
+            emptyMsg="등록된 출발지가 없습니다. 프로필에서 먼저 등록해주세요."
+            options={origins}
+            labelOf={locationLabel}
+          />
+          <SelectField
+            label="도착지"
             id="dest"
             name="destination_location_id"
-            required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          >
-            <option value="">도착지 선택</option>
-            {destinations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {locationLabel(l)}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
+            placeholder="도착지 선택"
+            emptyMsg="등록된 도착지가 없습니다. 프로필에서 먼저 등록해주세요."
+            options={destinations}
+            labelOf={locationLabel}
+          />
+        </>
+      ) : (
+        // ── 방식 B: 지도 + 검색으로 출발지/도착지 선택 ──
+        <>
+          <PointPicker
+            title="출발지"
+            options={origins}
+            labelOf={locationLabel}
+            value={origin}
+            onChange={setOrigin}
+          />
+          <PointPicker
+            title="도착지"
+            options={destinations}
+            labelOf={locationLabel}
+            value={dest}
+            onChange={setDest}
+          />
+          {/* 서버 액션 제출용 hidden — 등록 장소면 id, 새 장소면 JSON. */}
+          {origin?.kind === "registered" && (
+            <input type="hidden" name="origin_location_id" value={origin.id} />
+          )}
+          {origin?.kind === "new" && (
+            <input
+              type="hidden"
+              name="origin_new"
+              value={JSON.stringify(origin.place)}
+            />
+          )}
+          {dest?.kind === "registered" && (
+            <input type="hidden" name="destination_location_id" value={dest.id} />
+          )}
+          {dest?.kind === "new" && (
+            <input type="hidden" name="dest_new" value={JSON.stringify(dest.place)} />
+          )}
+        </>
+      )}
 
       {/* 출발 시각 */}
       <div className="space-y-1">
@@ -226,5 +269,149 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
         </Button>
       </div>
     </form>
+  );
+}
+
+// ── Fallback <select> (기존 동작 유지) ──
+function SelectField({
+  label,
+  id,
+  name,
+  placeholder,
+  emptyMsg,
+  options,
+  labelOf,
+}: {
+  label: string;
+  id: string;
+  name: string;
+  placeholder: string;
+  emptyMsg: string;
+  options: Location[];
+  labelOf: (l: Location) => string;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-sm font-medium text-gray-700" htmlFor={id}>
+        {label}
+      </label>
+      {options.length === 0 ? (
+        <p className="text-sm text-red-500">{emptyMsg}</p>
+      ) : (
+        <select
+          id={id}
+          name={name}
+          required
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        >
+          <option value="">{placeholder}</option>
+          {options.map((l) => (
+            <option key={l.id} value={l.id}>
+              {labelOf(l)}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
+// ── 방식 B 지점 선택기: 지도(등록 핀 + 검색) + 등록 장소 quick-select ──
+function PointPicker({
+  title,
+  options,
+  labelOf,
+  value,
+  onChange,
+}: {
+  title: string;
+  options: Location[];
+  labelOf: (l: Location) => string;
+  value: Selection;
+  onChange: (s: Selection) => void;
+}) {
+  // 좌표 있는 등록 장소만 지도 핀으로. address를 subtitle에 실어 핀 클릭→선택 가능.
+  const pins: MapPin[] = useMemo(
+    () =>
+      options
+        .filter((l) => l.lat != null && l.lng != null)
+        .map((l) => ({
+          id: l.id,
+          lat: l.lat as number,
+          lng: l.lng as number,
+          title: labelOf(l),
+          subtitle: l.address,
+        })),
+    [options, labelOf],
+  );
+
+  // 지도에서 장소를 고르면: 등록 핀과 좌표가 일치하면 등록 장소로, 아니면 새 장소로.
+  function handlePick(p: PickedPlace) {
+    const match = options.find(
+      (l) =>
+        l.lat != null &&
+        l.lng != null &&
+        Math.abs((l.lat as number) - p.lat) < 1e-6 &&
+        Math.abs((l.lng as number) - p.lng) < 1e-6,
+    );
+    if (match) onChange({ kind: "registered", id: match.id });
+    else onChange({ kind: "new", place: p });
+  }
+
+  // 현재 선택 요약 텍스트.
+  let summary: string | null = null;
+  if (value?.kind === "registered") {
+    const l = options.find((o) => o.id === value.id);
+    summary = l ? `등록 장소: ${labelOf(l)}` : "등록 장소";
+  } else if (value?.kind === "new") {
+    summary = `새 장소: ${value.place.placeName ?? value.place.address}`;
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-gray-700">{title}</p>
+
+      {/* 등록 장소 quick-select (지도 없이도 고를 수 있게) */}
+      {options.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {options.map((l) => {
+            const active = value?.kind === "registered" && value.id === l.id;
+            return (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => onChange({ kind: "registered", id: l.id })}
+                className={`rounded-full border px-3 py-1 text-xs ${
+                  active
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-gray-300 bg-white text-gray-700 hover:border-blue-400"
+                }`}
+              >
+                {labelOf(l)}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <KakaoSearchPicker onPick={handlePick} pins={pins} initialCenter={pins[0]} />
+
+      {summary ? (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+          <p className="truncate text-sm text-gray-800">{summary}</p>
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="shrink-0 text-xs font-medium text-blue-600 hover:underline"
+          >
+            다시 선택
+          </button>
+        </div>
+      ) : (
+        <p className="text-xs text-gray-400">
+          등록 장소를 고르거나 지도에서 검색해 선택하세요.
+        </p>
+      )}
+    </div>
   );
 }

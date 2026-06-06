@@ -8,7 +8,7 @@ export default async function Page() {
 
   const { data: locations } = await supabase
     .from("region_locations")
-    .select("id, direction, location_type, address, label")
+    .select("id, direction, location_type, address, label, lat, lng")
     .eq("region_id", session.regionId!)
     .order("is_default", { ascending: false });
 

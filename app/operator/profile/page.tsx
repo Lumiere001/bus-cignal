@@ -35,7 +35,7 @@ async function loadLocations(regionId: string): Promise<RegionLocation[]> {
   const db = createAdminClient();
   const { data } = await db
     .from("region_locations")
-    .select("id, direction, location_type, address, label")
+    .select("id, direction, location_type, address, label, lat, lng")
     .eq("region_id", regionId)
     .order("direction", { ascending: true })
     .order("location_type", { ascending: true })
