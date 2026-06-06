@@ -94,12 +94,18 @@ export function StatusView({ regions }: { regions: RegionSupply[] }) {
                   </div>
                 )}
 
-                {/* 대기 신청 — 건수/인원만 (PII 없음) */}
+                {/* 대기 신청 — 건수/인원만 (PII 없음). 공급 지구(=이 지구 버스) 기준. */}
                 {r.waitingTeams > 0 && (
-                  <div className="mt-3 flex items-center gap-2">
-                    <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-                      대기 신청 {r.waitingTeams}건 · {r.waitingPeople}명
-                    </span>
+                  <div className="mt-3 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+                        대기 신청 {r.waitingTeams}건 · {r.waitingPeople}명
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground text-[11px] leading-relaxed">
+                      이 지구 버스를 기다리는(승인 대기) 신청입니다. 신청 지구가
+                      아니라 차량 공급 지구 기준이라 위 잔여석과 같은 기준입니다.
+                    </p>
                   </div>
                 )}
 
