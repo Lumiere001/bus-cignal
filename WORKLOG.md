@@ -8,7 +8,26 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **CC 세션 (2026-06-06 밤 — ⭐ 다음 세션 여기부터 읽으세요)**: **Phase 2 잔여 완료 + Phase 3·5 빌드 + 지도 방식B + 채팅 푸시 버그픽스 + 매칭 정렬. 멀티에이전트 병렬(9 에이전트). 11개 PR 전부 CI green·main 머지(열린 PR 0). E2E 35 passed. 로컬 dev(:3000) 가동 중.**
+- 📍 **CC 세션 (2026-06-07 — ⭐ 다음 세션 여기부터 읽으세요)**: **지도B·동적 그래프·신청 취소/수정·매칭정렬·공개뷰 보강·regions 마이그·보안 점검·채팅 풀구현(카톡식+KCCC) 전부 main 머지. E2E 35 + 채팅 에뮬레이터 E2E 검증.**
+  - ✅ **머지 완료 (#89~#100, 전부 CI green)**:
+    - **#89** 지도 방식 B(간사 차량등록·위치관리 검색→핀, createTrip 새장소 upsert, 지도 미가용 시 드롭다운/주소 폴백)
+    - **#90** 마스터 차량 검색/필터 · **#91** 마스터 매칭 그래프뷰(노드=지구) · **#92** 정산 매트릭스 검색 · **#93** 공개 잔여석 뷰 `/status`
+    - **#95** 매칭 그래프 **동적 force**(2색: 보라#7c3aed=공급우세/골드#f5b544=신청우세 · 드래그·hover·줌·간격확대)
+    - **#96** 채팅 버스(상/하행)방 모델 + 간사/학생 진입점 + 에뮬레이터 배선 · **#97** `/status` 대기인원 **공급지구 기준**+설명 + 랜딩 링크 · **#98** regions 시드 마이그레이션(prod가 `db push`로 지구 보유)
+    - **#99** 보안 Finding2(updateRequest 동시승인 레이스 — queued 선점 가드)
+    - **#100** **채팅 카톡식 UI**(말풍선 그룹화·이니셜 아바타·날짜구분·타임스탬프·실명) + **읽음 수**(members read-cursor + firestore.rules) + **멤버 프로필/입장** + **KCCC 다크 디자인**(채팅 한정: #101013·바이올렛·Pretendard) + **토큰 재검증**(보안 Finding1)
+  - 🔒 **보안 점검(읽기전용 에이전트) = GO-with-fixes** (Critical/High 0): Finding1(채팅 토큰 비회수)→#100 클라 재검증으로 보완 · Finding2(updateRequest 레이스)→#99 · Finding3(chat_message 푸시 옵트인 컬럼 없음 = Info, 보안 아님) · 토큰IDOR·Firestore규칙·인젝션·/status PII·시크릿/에뮬게이팅 전부 클린.
+  - 🧪 **검증**: E2E 35 passed. **채팅 로컬 에뮬레이터 E2E 성공** — 간사↔학생 실시간 + 카톡 디자인(날짜구분·바이올렛 버블·멤버바). 신청취소/수정·지도B(폴백)·그래프 2색 브라우저 확인.
+  - ⛔ **남은 것 (prod 활성화 — 사용자/Cowork 몫 + 외부)**:
+    1. **prod regions**: `supabase/seed.sql`(regions만, 멱등) Studio 붙여넣기 **또는** `supabase db push`(#98 마이그). → "지구 선택 안됨" 해소.
+    2. **채팅 prod 활성화**: prod 전용 Firebase 분리 + `firebase login` + **firestore.rules 배포(CLAUDE.md §2.1 팀장 승인 게이트)** + Vercel Firebase env. (rules 파일은 main에 있음, 배포만 남음)
+    3. **카카오 지도**: 배포 도메인 등록(사용자: 등록돼 있다 함) → Cowork로 배포본 지도 렌더 검증(프롬프트 = 2026-06-06 핸드오프 + 본 세션).
+    4. **약관 org 4항목**(운영주체·보호책임자·연락처·시행일) 사용자 제공 → 페이지 반영.
+    5. **실험 더미 삭제** 후 최종 배포(사용자 승인). 6. CCC consumer·지구코드 + CCC 해지큐(외부 API 대기). 7. 채팅 고급(입장 system메시지 등)·Finding3 푸시 옵트인 = 향후 트랙.
+  - 🧪 **로컬 채팅 에뮬레이터 재개법**: ⚠️ firebase-tools 최신(@15)은 **Java 21+** 요구(시스템 Java 11) → **`npx firebase-tools@14`** 사용(Java11+Node22 OK). `npx firebase-tools@14 emulators:start --only firestore,auth --project demo-bus-cignal` → `NEXT_PUBLIC_FIREBASE_USE_EMULATOR=1 NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-bus-cignal FIRESTORE_EMULATOR_HOST=localhost:8080 FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 pnpm dev` → /dev/login 간사 → trip 상세 "버스 채팅" / 학생 `/r/BUS-7K9M`(이지은·끝4 4444)→/me 채팅. ⚠️ **`pnpm build`는 `.next`를 공유해 실행 중 `pnpm dev`를 죽임** → dev 멈추고 빌드할 것.
+  - 🧰 **권한 메모**: 이번 세션 한정으로 사용자가 **CC가 직접 PR·머지**까지 하도록 허락(평소 push는 사용자). 그래서 #83~#100 전부 CC가 `--admin --squash`로 머지함. 기본 정책(push=사용자)은 다음 세션에 복귀.
+
+- 📍 **CC 세션 (2026-06-06 밤)**: **Phase 2 잔여 완료 + Phase 3·5 빌드 + 지도 방식B + 채팅 푸시 버그픽스 + 매칭 정렬. 멀티에이전트 병렬(9 에이전트). 11개 PR 전부 CI green·main 머지(열린 PR 0). E2E 35 passed. 로컬 dev(:3000) 가동 중.**
   - ✅ **머지 완료 (11 PR · 전부 CI green: typecheck·lint·test·build + playwright E2E)**:
     - **#83** 신청목록 상/하행 분리 + 옵시디언 그래프뷰(무의존 SVG·노드클릭→상세)
     - **#84** 마스터뷰 용어 간사뷰 통일(Trip→차량 등). admin/login "운영자"(=마스터)는 유지
