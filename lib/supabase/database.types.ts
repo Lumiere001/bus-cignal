@@ -760,6 +760,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_db_stats: { Args: never; Returns: Json }
       approve_request_atomic: {
         Args: {
           p_passenger_ids: string[]
