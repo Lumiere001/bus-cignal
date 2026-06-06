@@ -36,10 +36,12 @@ async function loadStatus(): Promise<RegionSupply[]> {
     )
     .eq("status", "published");
 
-  // 수요: 대기(queued) 신청 — region_id별 건수/인원만. 학생·간사 식별 컬럼은 select 안 함.
+  // 수요: 대기(queued) 신청 — 신청이 걸린 "버스의 공급 지구"(trips.operator_region_id)
+  // 기준으로 건수/인원만. 학생·간사 식별 컬럼은 select 안 함.
+  // 잔여석도 공급 지구 기준이므로 같은 기준으로 묶어 일관성을 맞춘다.
   const { data: queued } = await db
     .from("seat_requests")
-    .select("region_id, seat_count")
+    .select("seat_count, trip:trips!trip_id(operator_region_id)")
     .eq("status", "queued");
 
   type Acc = {
@@ -105,19 +107,22 @@ async function loadStatus(): Promise<RegionSupply[]> {
     }
   }
 
-  // 수요 집계: 대기 신청은 공급 차량이 없는 지구에도 있을 수 있으나,
-  // region_id는 신청 "주체 지구"이고 차량 공급 지구와 다를 수 있다.
-  // 공개 화면은 "지구별 현황"을 보여주는 게 목적이므로 같은 지구 버킷에 누적한다.
-  // 지구명을 모르는(공급 trip이 없는) region_id는 별도 조회로 채운다.
+  // 수요 집계: 대기 신청을 "그 신청이 걸린 버스의 공급 지구"(trip.operator_region_id)
+  // 기준으로 누적한다. 즉 잔여석과 동일하게 "해당 지구 버스" 기준이라 두 숫자가 일관됨.
+  // 공급 trip이 published 목록에 없어(드래프트/마감 등) byRegion에 없던 지구는
+  // 지구명을 별도 조회로 채운다.
   const waitingByRegion = new Map<string, { teams: number; people: number }>();
   const unknownRegionIds = new Set<string>();
   for (const r of queued ?? []) {
-    const cur = waitingByRegion.get(r.region_id) ?? { teams: 0, people: 0 };
-    waitingByRegion.set(r.region_id, {
+    const trip = one(r.trip);
+    if (!trip) continue; // 공급 지구를 알 수 없는 신청은 집계 제외
+    const supplyRegionId = trip.operator_region_id;
+    const cur = waitingByRegion.get(supplyRegionId) ?? { teams: 0, people: 0 };
+    waitingByRegion.set(supplyRegionId, {
       teams: cur.teams + 1,
       people: cur.people + (r.seat_count ?? 0),
     });
-    if (!byRegion.has(r.region_id)) unknownRegionIds.add(r.region_id);
+    if (!byRegion.has(supplyRegionId)) unknownRegionIds.add(supplyRegionId);
   }
 
   if (unknownRegionIds.size > 0) {
@@ -168,9 +173,11 @@ export default async function StatusPage() {
           전국 지구별 잔여석 현황
         </h1>
         <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-          CCC 전국 여름 수련회 — 각 공급 지구가 공개한 차량의 잔여석과 대기 신청
-          현황을 실시간으로 요약합니다. 숫자(차량 수·정원·잔여석·대기 인원)만
-          보여주며, 학생·간사 등 개인정보는 일절 표시하지 않습니다.
+          CCC 전국 여름 수련회 — 각 공급 지구가 공개한 차량의 잔여석과 그 차량을
+          기다리는 대기 신청 현황을 실시간으로 요약합니다. 잔여석과 대기 인원 모두
+          &ldquo;해당 지구 버스&rdquo; 기준이라 같은 기준으로 비교할 수 있습니다.
+          숫자(차량 수·정원·잔여석·대기 인원)만 보여주며, 학생·간사 등 개인정보는
+          일절 표시하지 않습니다.
         </p>
         <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-2 text-xs leading-relaxed">
           좌석 신청·예약 상세 확인은{" "}
@@ -200,6 +207,9 @@ export default async function StatusPage() {
             <p className="text-muted-foreground mt-0.5 text-xs">{c.label}</p>
           </div>
         ))}
+        <p className="text-muted-foreground col-span-3 mt-1 text-center text-[11px] leading-relaxed">
+          대기 인원 = 해당 지구 버스를 기다리는(승인 대기) 신청 인원입니다.
+        </p>
       </section>
 
       <StatusView regions={regions} />

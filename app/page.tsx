@@ -53,6 +53,12 @@ export default function Home() {
           >
             예약 조회
           </Link>
+          <Link
+            href="/status"
+            className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "h-12 w-full text-[15px]")}
+          >
+            전국 잔여석 현황 →
+          </Link>
         </div>
       </section>
 
