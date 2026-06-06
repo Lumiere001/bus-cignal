@@ -151,7 +151,7 @@ function MonitoringSection({ mon }: { mon: Monitoring }) {
 
   const rowItems: { label: string; value: number }[] = [
     { label: "간사", value: rows.operators },
-    { label: "차량(Trip)", value: rows.trips },
+    { label: "차량", value: rows.trips },
     { label: "신청", value: rows.seatRequests },
     { label: "학생", value: rows.passengers },
     { label: "매칭", value: rows.matches },

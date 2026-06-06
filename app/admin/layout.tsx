@@ -10,7 +10,7 @@ const NAV: NavItem[] = [
   { href: "/admin", label: "대시보드" },
   { href: "/admin/operators", label: "간사" },
   { href: "/admin/operators/pending", label: "승인 대기" },
-  { href: "/admin/trips", label: "Trip" },
+  { href: "/admin/trips", label: "차량" },
   { href: "/admin/matches", label: "매칭" },
   { href: "/admin/settlement", label: "정산" },
   { href: "/admin/rejections", label: "거절" },
