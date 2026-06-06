@@ -65,7 +65,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="활성 Trip" value={s.activeTrips} href="/admin/trips" icon="🚌" tone="info" />
+        <StatCard label="활성 차량" value={s.activeTrips} href="/admin/trips" icon="🚌" tone="info" />
         <StatCard
           label="활성 매칭"
           value={s.activeMatches}

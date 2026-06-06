@@ -34,12 +34,12 @@ export default async function AdminTripsPage() {
   return (
     <main className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">전체 Trip</h1>
+        <h1 className="text-2xl font-bold tracking-tight">전체 차량</h1>
         <p className="text-muted-foreground mt-1 text-sm">전국 운행 {trips.length}건 · 출발 임박순 (읽기)</p>
       </div>
 
       {trips.length === 0 ? (
-        <p className="text-muted-foreground text-sm">등록된 Trip이 없습니다.</p>
+        <p className="text-muted-foreground text-sm">등록된 차량이 없습니다.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border">
           <table className="w-full min-w-[640px] text-sm">
