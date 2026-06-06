@@ -177,6 +177,9 @@ export function KakaoMultiMap({
     const entry = entriesRef.current.find((e) => e.id === selectedId);
     if (!entry) return;
 
+    // 선택한 차량의 평창 픽업 위치로 지도를 이동(center) + InfoWindow 강조.
+    // → 추천 차량을 고르면 지도의 출발 위치가 그 위치로 바뀐다.
+    map.setCenter(entry.marker.getPosition());
     entry.infoWindow.open(map, entry.marker);
     openInfoWindowRef.current = entry.infoWindow;
   }, [selectedId, status, pinsKey]);
