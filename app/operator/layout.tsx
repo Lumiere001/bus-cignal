@@ -18,6 +18,7 @@ const NAV = [
   { href: "/operator/trips", label: "내 차량", icon: "🚌" },
   { href: "/operator/requests", label: "신청", icon: "📨" },
   { href: "/operator/matches", label: "매칭", icon: "🔗" },
+  { href: "/operator/boarding", label: "탑승 학생", icon: "🚍" },
   { href: "/operator/settlement", label: "정산", icon: "🧾" },
   { href: "/operator/profile", label: "내 정보", icon: "👤" },
 ];
