@@ -8,11 +8,12 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: CC 세션 (2026-06-06 밤 — Phase 2 잔여 + Phase 3/5 + 지도B + 채팅푸시픽스 + 매칭정렬, 멀티에이전트 11 PR 머지)
-To: CC 다음 세션 (⭐ 여기부터) — 상세는 WORKLOG 최상단 "2026-06-06 밤" 엔트리
-결과: #83~#93 전부 CI green·main 머지(열린 PR 0). E2E 35 passed. 로컬 dev :3000 가동(현실더미 1000명).
-다음: ①사용자 피드백 반영 ②카카오 콘솔 도메인 등록+지도(방식B) 배포검증=Cowork(아래 프롬프트) ③채팅 prod화(설계대로) ④CCC consumer(외부 API 대기)
-블로킹: 학생 그룹채팅+읽음수(Firebase prod) · 학생/간사 지도(배포+카카오) · CCC consumer·지구코드(외부) · CCC 해지큐(자동입장 의존)
+From: CC 세션 (2026-06-07 — 지도B·동적그래프·신청취소/수정·정렬·공개뷰·regions·보안점검·채팅 풀구현(카톡+KCCC), #89~#100 머지)
+To: CC 다음 세션 (⭐ 여기부터) — 상세는 WORKLOG 최상단 "2026-06-07" 엔트리
+결과: #89~#100 전부 CI green·main 머지(열린 PR 0). E2E 35 + 채팅 에뮬레이터 E2E(간사↔학생 실시간·카톡 디자인) 검증. 보안 점검 GO-with-fixes(수정 완료).
+다음(=prod 활성화, 사용자/Cowork): ①prod regions 시드(seed.sql Studio 또는 #98 db push) ②채팅 prod(Firebase 분리+firebase login+firestore.rules 배포[팀장 승인]+Vercel env) ③카카오 지도 배포 검증(Cowork) ④약관 org 4항목 ⑤더미 삭제 후 최종 배포
+블로킹(외부): CCC consumer·지구코드 + CCC 해지큐(CCC API 대기). 채팅 고급(입장 system메시지)·푸시 옵트인=향후.
+로컬 채팅 재개: firebase-tools@14(=Java11 OK, @15는 Java21 필요) 에뮬레이터 + dev 에뮬모드 env. 상세 WORKLOG.
 ```
 
 ### ✅ 이번 세션 결과 (#77~#81 전부 main 머지 완료 — 열린 PR 0)
