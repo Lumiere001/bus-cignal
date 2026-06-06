@@ -3,7 +3,15 @@ import {
   getChatTripHeader,
   resolveChatAccess,
 } from "@/lib/chat/access";
+import { DIRECTION_SHORT } from "@/lib/labels";
 import { ChatRoom } from "@/components/chat/ChatRoom";
+
+/** trips.direction('up'|'down') → '상행'|'하행'. 알 수 없는 값은 빈 문자열. */
+function directionShort(direction: string): string {
+  return direction === "up" || direction === "down"
+    ? DIRECTION_SHORT[direction]
+    : "";
+}
 
 type Props = {
   params: Promise<{ tripId: string }>;
@@ -55,8 +63,12 @@ export default async function ChatPage({ params }: Props) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">
             {header
-              ? `${header.originLabel} → ${header.destinationLabel}`
-              : "Trip 채팅"}
+              ? `${header.originLabel} → ${header.destinationLabel}${
+                  directionShort(header.direction)
+                    ? ` ${directionShort(header.direction)} 버스 채팅`
+                    : " 버스 채팅"
+                }`
+              : "버스 채팅"}
           </p>
           {header && (
             <p className="text-muted-foreground truncate text-xs">

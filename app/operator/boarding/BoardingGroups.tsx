@@ -115,7 +115,7 @@ export function BoardingGroups({ boarders }: { boarders: BoarderRow[] }) {
               key={g.regionId}
               className="rounded-xl border bg-white shadow-sm"
             >
-              {/* 그룹 헤더 — 지구명 · 인원 · 담당 간사 연락 · 채팅(준비 중) */}
+              {/* 그룹 헤더 — 지구명 · 인원 · 담당 간사 연락 (채팅은 지구별 아님 → 차량 방으로) */}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b bg-gray-50/60 px-4 py-3">
                 <h2 className="text-sm font-semibold text-gray-900">
                   {g.regionName}
@@ -134,16 +134,6 @@ export function BoardingGroups({ boarders }: { boarders: BoarderRow[] }) {
                   ) : (
                     <span className="text-xs text-gray-400">담당 간사 연락처 없음</span>
                   )}
-                  {/* 채팅은 설계 단계 — 비활성 placeholder. 실제 채팅 미연결. */}
-                  <button
-                    type="button"
-                    disabled
-                    aria-disabled="true"
-                    title="채팅 기능은 준비 중입니다"
-                    className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-dashed border-gray-300 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-400"
-                  >
-                    💬 채팅 (준비 중)
-                  </button>
                 </div>
               </div>
 
