@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { DIRECTION_SHORT, REQUEST_STATUS_LABEL } from "@/lib/labels";
 import { one } from "@/lib/supabase/relation";
 import { formatKstDateTime } from "@/lib/datetime";
+import { RequestActions } from "./RequestActions";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,18 @@ export default async function RequestDetailPage({
 
   const trip = one(req.trip);
   const passengers = [...req.request_passengers].sort((a, b) => a.priority - b.priority);
+
+  // 수정·취소 가능 = 대기중 + 진행 중 매칭 없음 (서버 액션에서도 동일 가드로 재검증).
+  let canModify = req.status === "queued";
+  if (canModify) {
+    const { data: activeMatches } = await db
+      .from("matches")
+      .select("id")
+      .eq("request_id", req.id)
+      .in("status", ["awaiting_payment", "payment_reported", "paid"])
+      .limit(1);
+    if (activeMatches && activeMatches.length > 0) canModify = false;
+  }
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 px-4 py-8">
@@ -120,6 +133,8 @@ export default async function RequestDetailPage({
           ))}
         </ol>
       </section>
+
+      {canModify && <RequestActions requestId={req.id} />}
     </main>
   );
 }

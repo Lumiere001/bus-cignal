@@ -6,6 +6,7 @@
  */
 export const NOTIFICATION_EVENTS = {
   REQUEST_NEW: "request_new", // 매칭 큐 신규 신청 → 공급
+  REQUEST_CANCELLED: "request_cancelled", // 대기 중 신청 취소(신청 간사) → 공급
   MATCH_CONFIRMED: "match_confirmed", // 매칭 확정 → 신청
   MATCH_REJECTED: "match_rejected", // 거절 + 사유 → 신청
   PARTIAL_MATCH: "partial_match", // 부분 매칭 처리(간사 수동) → 양쪽
@@ -53,6 +54,7 @@ export type RecipientSlots = {
 /** 이벤트 → 필요한 수신자 슬롯. SPEC §8 대상 컬럼 그대로. */
 export const EVENT_SLOTS = {
   request_new: ["supplyOperatorId"],
+  request_cancelled: ["supplyOperatorId"],
   match_confirmed: ["requestOperatorId"],
   match_rejected: ["requestOperatorId"],
   partial_match: ["supplyOperatorId", "requestOperatorId"],
@@ -82,6 +84,7 @@ export const EVENT_SLOTS = {
  */
 export interface NotificationPayloads {
   request_new: { requestId: string; tripId: string; seatCount: number };
+  request_cancelled: { requestId: string; tripId: string };
   match_confirmed: { matchId: string; tripId: string };
   match_rejected: { requestId: string; reason: string };
   partial_match: { matchId: string; requestId: string; seatCount: number };

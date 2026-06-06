@@ -21,6 +21,8 @@ export function formatPush(type: string, payload: unknown): PushCopy {
   switch (type as NotificationEvent) {
     case "request_new":
       return { title: "새 차량 신청", body: "타지구에서 자리 신청이 들어왔어요. 매칭 큐를 확인해 주세요." };
+    case "request_cancelled":
+      return { title: "신청 취소", body: "대기 중이던 타지구 신청이 취소됐어요. 매칭 큐에서 사라졌어요." };
     case "match_confirmed":
       return { title: "매칭 확정", body: "신청이 매칭됐어요. 송금 후 [송금 완료]를 눌러주세요." };
     case "match_rejected":
