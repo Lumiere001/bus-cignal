@@ -9,9 +9,10 @@
 
 ## 1. 더미데이터 생성
 ```bash
-node scripts/load/seed-dummy.mjs --students 2000 --regions 15   # 또는 pnpm load:seed
+node scripts/load/seed-dummy.mjs --students 2000          # 기본 = 전체 53지구 / 또는 pnpm load:seed
+node scripts/load/seed-dummy.mjs --students 2000 --regions 15   # 지구 제한하고 싶을 때
 ```
-- 지구 15 × (공급·수요 간사) + 차량 30 + 신청/학생 ~2000 + paid 예약 ~40%.
+- **전체 53지구** × (공급·수요 간사) + 차량 106 + 신청/학생 ~2000 + paid 예약 ~40%.
 - 끝에 **QA용 샘플 예약번호** 출력(학생 `/r` 확인용). seed의 `BUS-7K9M`(이지은/4444)도 그대로 존재.
 - 마커(`ccc_id LIKE 'load-%'`, `note LIKE '[LOAD]%'`)로만 생성 → seed/실데이터와 안 섞임.
 
@@ -61,4 +62,28 @@ node scripts/load/seed-dummy.mjs --wipe            # 또는 pnpm load:wipe — �
 - **부하 = 로컬에서만**(무료 티어 안 건드림). prod 버팀은 위 계산 + 필요 시:
   - 예약 오픈 대량 동시 접속 예상 → **Supabase Pro($25/mo)** 또는 오픈 시간 분산.
   - 채팅 활성 예상 → Firestore 사용량 모니터(초과 시 Blaze 전환, 소액 종량).
-- **눈으로 QA = Preview + dev-login**(prod는 dev-login 끈 채 유지). 더미는 위 생성기로 소량.
+
+---
+
+## 모바일·iPad 실기기 QA — 로컬 서버를 기기에서 (권장)
+> Vercel Preview에 dev-login 켜는 방식은 **폐기**(아래 결정 참고). 대신 로컬 서버를 실기기로.
+
+1. 로컬에 더미 + 서버 띄우기:
+   ```bash
+   supabase start && supabase db reset
+   node scripts/load/seed-dummy.mjs --students 300        # QA용 소량
+   ENABLE_DEV_LOGIN=true pnpm dev                          # 또는 pnpm build && pnpm start
+   ```
+2. iPad/폰을 **같은 WiFi** 또는 **Tailscale**로 맥에 접속 → 브라우저에서:
+   - LAN: `http://<맥 LAN IP>:3000/dev/login`  (`ipconfig getifaddr en0`로 IP 확인)
+   - Tailscale: `http://<맥 tailscale 이름 or 100.x.x.x>:3000/dev/login`
+3. `/dev/login`에서 마스터·간사·학생 클릭 → 모든 페이지 실기기로 확인.
+   - iPad는 **홈 화면에 추가(PWA)** + **푸시(iPadOS 16.4+)** 까지 실기기 검증 가능.
+   - iOS 화면 보려면 iPad Safari 주소창 **AA → 모바일용 웹사이트 보기**.
+- **장점**: prod 무·위험·무료 티어 0 소모, 전체 53지구 더미, 실제 iOS 동작.
+
+### dev-login Preview 결정 (2026-06-06)
+- Cowork가 `ENABLE_DEV_LOGIN=true`(Preview)로 시도 → **500**: 운영 env 18개가 Production-only라 Preview 빌드에서 undefined → `createServerClient` throw(미들웨어 전 라우트 죽음).
+- 코드 리뷰: **dev-login은 DB 쓰기 없음(읽기·쿠키만)**, **seed-dev는 배포 앱이 호출 안 함(로컬 전용)** → *자동 seed→prod 오염 위험은 없음*. 단 Preview에 운영 env를 주면 **Preview가 prod DB에 붙은 무비번 admin 백도어**가 되고(인증 UI로 prod 변경 가능) prod가 비어 QA용 데이터도 없음.
+- **결정 = C**: Preview의 `ENABLE_DEV_LOGIN` 제거. 모바일 QA는 위 **로컬+Tailscale**로. 공유 클라우드 QA URL이 정말 필요해지면 그때 **별도 dev Supabase 프로젝트(B)**.
+- 추가 안전장치: dev-login에 **Vercel production 가드**(VERCEL_ENV=production이면 강제 비활성) — `fix/dev-login-prod-guard`.

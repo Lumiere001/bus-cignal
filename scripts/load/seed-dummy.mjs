@@ -13,7 +13,7 @@ const db = createClient(SUPABASE_URL, SERVICE_KEY, {
 });
 
 const STUDENTS = Number(arg("students", 2000));
-const REGIONS = Number(arg("regions", 15));
+const REGIONS = arg("regions", "all"); // 기본 = 전체 지구(53). --regions N 으로 제한 가능.
 const WIPE = !!arg("wipe", false);
 
 const rand = (n) => Math.floor(Math.random() * n);
@@ -71,7 +71,9 @@ async function main() {
   await wipe();
   if (WIPE) return console.log("✅ wipe 완료.");
 
-  const { data: regions } = await db.from("regions").select("id, code, name").limit(REGIONS);
+  let rq = db.from("regions").select("id, code, name").order("code");
+  if (REGIONS !== "all" && REGIONS !== true) rq = rq.limit(Number(REGIONS));
+  const { data: regions } = await rq;
   if (!regions?.length) throw new Error("regions 없음 — supabase db reset 먼저");
   console.log(`🌱 더미 생성: 지구 ${regions.length} · 목표 학생 ${STUDENTS}`);
 
