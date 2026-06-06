@@ -35,10 +35,29 @@ const STATUS_FILL: Record<string, string> = {
 };
 const STATUS_FILL_FALLBACK = "#9ca3af";
 
-// 상태 표시 순서 — 생애주기 순(MATCH_STATUS_ORDER). 범례·분포 모두 동일 순서.
-const STATUS_KEYS = Object.keys(MATCH_STATUS_LABEL).sort(
-  (a, b) => (MATCH_STATUS_ORDER[a] ?? 99) - (MATCH_STATUS_ORDER[b] ?? 99),
-);
+// 노드 2색 스킴 — tree-2026 reference 의 "약 두 색"(보라 + 골드) 감성을, 흰 배경 UI 에 맞게 조정.
+//   net role 로 한 지구를 한 색으로 칠한다(공급 우세 = 보라계, 신청 우세 = 골드계).
+//   엣지·dim 은 중립색만 써서 hue 를 2개로 유지(옵시디언 focus 느낌).
+const ROLE_SUPPLY = "#7c5cff"; // 인디고/바이올렛 — 공급(asSupply) ≥ 신청(asRequest)
+const ROLE_SUPPLY_ACTIVE = "#9b82ff"; // hover/선택 시 밝게
+const ROLE_DEMAND = "#f5b544"; // 앰버/골드 — 신청 우세
+const ROLE_DEMAND_ACTIVE = "#ffca6b"; // hover/선택 시 밝게
+
+type NodeRole = "supply" | "demand";
+
+// net role 판정 — 공급(보낸 차량) 관여가 신청(받은) 관여 이상이면 supply-leaning.
+function nodeRole(node: GraphNode): NodeRole {
+  return node.asSupply.total >= node.asRequest.total ? "supply" : "demand";
+}
+
+// role + 활성 여부 → 노드 fill. 두 hue 만 사용(활성은 같은 hue 의 밝은 톤).
+function roleFill(role: NodeRole, active: boolean): string {
+  if (role === "supply") return active ? ROLE_SUPPLY_ACTIVE : ROLE_SUPPLY;
+  return active ? ROLE_DEMAND_ACTIVE : ROLE_DEMAND;
+}
+
+// 라벨 가독성 — 두 색 모두 채도/명도가 높아 흰 텍스트가 잘 보인다.
+const ROLE_LABEL_FILL = "#ffffff";
 
 function statusFill(status: string): string {
   return STATUS_FILL[status] ?? STATUS_FILL_FALLBACK;
@@ -90,12 +109,14 @@ const MAX_EDGE_W = 8;
 // 물리 파라미터 — tree-2026 D3 reference 의 비율을 이 좌표계로 옮긴 값.
 //   reference: distance 48 · charge -110 · center 0.03 · collide r+4 · velocityDecay(D3 기본 0.4)
 // 이 그래프는 노드가 더 크고(12~34) 적으므로 거리·반발을 비례 확대.
-const LINK_DISTANCE = 150; // 엣지 rest length (노드 중심 간)
+// 2026-06: 노드가 "너무 붙어 있음" → 간격 확대 튜닝(반발 1.75×·rest +50%·collide pad 2.5×).
+//   viewBox 는 auto-fit 이므로 넓게 퍼져도 OK. alpha decay 그대로라 여전히 안정 정착.
+const LINK_DISTANCE = 225; // 엣지 rest length (노드 중심 간) — 150 → 225 (+50%)
 const LINK_STRENGTH = 0.06; // 스프링 강성 (0~1, 매 스텝 보정 비율)
-const CHARGE = -2400; // many-body 반발 계수 (음수 = 반발). 거리² 반비례.
-const CHARGE_MAX_DIST = 360; // 반발이 작용하는 최대 거리 (멀면 무시 → 안정·성능)
-const CENTER_GRAVITY = 0.012; // 중앙으로 끌어당기는 약한 중력
-const COLLIDE_PAD = 8; // 충돌 시 노드 반지름에 더하는 여유
+const CHARGE = -4200; // many-body 반발 계수 (음수 = 반발). 거리² 반비례. -2400 → -4200 (≈1.75×)
+const CHARGE_MAX_DIST = 520; // 반발 최대 거리 — 360 → 520 (넓어진 간격까지 반발이 닿도록)
+const CENTER_GRAVITY = 0.009; // 중앙으로 끌어당기는 약한 중력 — 0.012 → 0.009 (퍼질 여유)
+const COLLIDE_PAD = 20; // 충돌 시 노드 반지름에 더하는 여유 — 8 → 20 (덜 뭉치게)
 const VELOCITY_DECAY = 0.6; // 속도 감쇠 (1 - 0.4 = 0.6 유지 → D3 기본과 동일 느낌)
 const ALPHA_DECAY = 0.0228; // alpha 가 매 틱 줄어드는 비율 (D3 기본)
 const ALPHA_MIN = 0.001; // 이보다 작아지면 시뮬레이션 정지
@@ -748,7 +769,7 @@ export function MatchesGraph({
                       y1={a.y}
                       x2={b.x}
                       y2={b.y}
-                      stroke={active ? "#2563eb" : "#cbd5e1"}
+                      stroke={active ? "#64748b" : "#cbd5e1"}
                       strokeWidth={e.width / view.k + (active ? 0.5 : 0)}
                       strokeLinecap="round"
                     />
@@ -770,7 +791,7 @@ export function MatchesGraph({
                           dominantBaseline="central"
                           fontSize={10 / view.k}
                           fontWeight={600}
-                          fill={active ? "#2563eb" : "#64748b"}
+                          fill={active ? "#334155" : "#64748b"}
                           className="pointer-events-none select-none"
                         >
                           {e.count}
@@ -789,6 +810,8 @@ export function MatchesGraph({
               const isSelected = s.id === selectedId;
               const isActive = s.id === activeId;
               const faded = isFaded(s.id);
+              const role = nodeRole(node);
+              const fill = roleFill(role, isActive);
               const ariaLabel = `${node.name} 지구, 총 매칭 ${node.total}건 (공급 ${node.asSupply.total}건, 신청 ${node.asRequest.total}건)`;
               const labelFont = Math.max(10, Math.min(13, s.r * 0.55)) / view.k;
               // 라벨 표시: 활성/선택, 큰 노드, 또는 충분히 확대됐을 때 (가독성·잡음 균형).
@@ -839,10 +862,8 @@ export function MatchesGraph({
                     cx={s.x}
                     cy={s.y}
                     r={s.r}
-                    fill={isActive ? "#111827" : "#1f2937"}
-                    stroke={
-                      isSelected ? "#2563eb" : isActive ? "#60a5fa" : "#ffffff"
-                    }
+                    fill={fill}
+                    stroke={isSelected ? "#1e293b" : "#ffffff"}
                     strokeWidth={(isSelected ? 3 : isActive ? 2.5 : 2) / view.k}
                   />
                   <text
@@ -852,7 +873,7 @@ export function MatchesGraph({
                     dominantBaseline="central"
                     fontSize={labelFont}
                     fontWeight={600}
-                    fill="#ffffff"
+                    fill={ROLE_LABEL_FILL}
                     className="pointer-events-none select-none"
                   >
                     {node.total}
@@ -866,7 +887,7 @@ export function MatchesGraph({
                       dominantBaseline="central"
                       fontSize={11 / view.k}
                       fontWeight={isSelected || isActive ? 700 : 500}
-                      fill={isSelected || isActive ? "#2563eb" : "#475569"}
+                      fill={isSelected || isActive ? "#1e293b" : "#475569"}
                       className="pointer-events-none select-none"
                     >
                       {node.name}
@@ -878,22 +899,28 @@ export function MatchesGraph({
           </g>
         </svg>
 
-        {/* 범례 */}
+        {/* 범례 — 노드 2색(공급/신청 우세) + 크기·엣지 의미 */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pt-2 pb-1 text-xs text-gray-500">
-          <span className="text-gray-400">
-            노드 크기·숫자 = 매칭 관여 수 · 엣지 굵기·숫자 = 쌍 매칭 건수 · 드래그·휠로
-            이동·확대 ·
+          <span className="inline-flex items-center gap-1">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: ROLE_SUPPLY }}
+              aria-hidden
+            />
+            공급 우세 지구
           </span>
-          {STATUS_KEYS.map((s) => (
-            <span key={s} className="inline-flex items-center gap-1">
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: statusFill(s) }}
-                aria-hidden
-              />
-              {statusLabel(s)}
-            </span>
-          ))}
+          <span className="inline-flex items-center gap-1">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: ROLE_DEMAND }}
+              aria-hidden
+            />
+            신청 우세 지구
+          </span>
+          <span className="text-gray-400">
+            노드 크기·숫자 = 매칭 관여 수 · 엣지 굵기·숫자 = 쌍 매칭 건수 ·
+            드래그·휠로 이동·확대
+          </span>
         </div>
       </div>
 
