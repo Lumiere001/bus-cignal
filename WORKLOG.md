@@ -8,6 +8,24 @@
 
 ## 🔄 현재 작업 (Active)
 
+- 📍 **CC 세션 (2026-06-06 밤 — ⭐ 다음 세션 여기부터 읽으세요)**: **Phase 2 잔여 완료 + Phase 3·5 빌드 + 지도 방식B + 채팅 푸시 버그픽스 + 매칭 정렬. 멀티에이전트 병렬(9 에이전트). 11개 PR 전부 CI green·main 머지(열린 PR 0). E2E 35 passed. 로컬 dev(:3000) 가동 중.**
+  - ✅ **머지 완료 (11 PR · 전부 CI green: typecheck·lint·test·build + playwright E2E)**:
+    - **#83** 신청목록 상/하행 분리 + 옵시디언 그래프뷰(무의존 SVG·노드클릭→상세)
+    - **#84** 마스터뷰 용어 간사뷰 통일(Trip→차량 등). admin/login "운영자"(=마스터)는 유지
+    - **#85** 탑승 학생 모아보기 `/operator/boarding`(홈지구별 그룹·간사 연락) + 채팅 설계문서 + nav "내 차량"→"지구 차량"
+    - **#86** 본인 신청 취소(`cancelRequest`·신규 이벤트 `request_cancelled`) + 명단 수정(`/operator/requests/[id]/edit`·`requested_at` 보존·새학생만 동의재확인). queued+무매칭 한정
+    - **#87** 채팅 `chat_message` 푸시 미발송 실버그 픽스(`/api/chat/notify` 전송후 emit·발신자제외·`isPushConfigured()=false`시 no-op)
+    - **#88** 매칭 목록 정렬 결정화(`MATCH_STATUS_ORDER` 생애주기순 + id 보조정렬 → 송금완료/입금확인 클릭 후 셔플 제거)
+    - **#89** 지도 방식B(차량등록·위치관리 검색→핀, `createTrip` 새장소 region_locations upsert, 지도 미가용시 드롭다운/주소 폴백). ⚠️**카카오는 배포 도메인서만 렌더**
+    - **#90** 마스터 차량 검색/필터(`/admin/trips`)
+    - **#91** 마스터 매칭 그래프뷰(`/admin/matches` 노드=지구·간선=매칭수·클릭→공급/신청 상태분포, 무PII)
+    - **#92** 정산 매트릭스 지구 검색·가독성(표시기준 합계·제브라·하이라이트). 계산 로직 불변
+    - **#93** 공개 잔여석 뷰 `/status`(무로그인·무PII: 지구별 공개차량·정원·잔여석·상하행·대기 건수/인원 + 전국 롤업)
+  - 🧪 **검증**: E2E **35 passed**(로컬 :3100). 로컬 dev :3000 가동 + 현실더미(지구53·간사53·trip72·신청287/대기116·학생1000·매칭493/paid153). 신규 페이지 전부 200/307(컴파일 에러 0).
+  - ⛔ **블로킹(미빌드)**: P4 학생 그룹채팅+읽음수(Firebase prod 차단·설계완료 `docs/design/2026-06-06-operator-chat-and-onboarding-design.md`) · P4 학생 지도(배포+카카오 도메인) · P3 CCC 연결 예외/해지큐(CCC 자동입장 의존) · P6 CCC consumer·지구코드(외부 API 대기). **지도 방식B 실검증=Cowork(배포)**.
+  - 🔜 **다음**: 카카오 콘솔 도메인 등록+지도 배포검증(Cowork) · 채팅 prod화(설계대로 token 브리지·서브룸 규칙·읽음수·chat 푸시 emit 점검) · CCC consumer(API 도착시) · 사용자 피드백 반영.
+  - 🧪 **재개**: `git pull` → `supabase start && supabase db reset && node scripts/load/seed-dummy.mjs --students 1000` → `pnpm dev` → `/dev/login`(마스터·간사·학생 클릭). 카카오 지도는 localhost 미표시(폴백 동작).
+
 - 📍 **CC 세션 (2026-06-06 — ⭐⭐⭐ 다음 세션 여기부터 읽으세요)**: **UI/UX 대개편 + Phase 2(타지구 신청 위저드) + 현실 더미. 멀티에이전트(Workflow)로 병렬 구현. 전부 게이트 green, #77~#81 main 머지 완료(열린 PR 0). 다음 세션 main에서 시작.**
   - 📦 **푸시·PR 상태 (전부 origin push + main 머지 완료)**:
     - **PR #79** `feat/admin-ops-monitoring` — 마스터 운영 모니터링(/admin/system: DB용량·오늘활동·Pro권장 신호).
