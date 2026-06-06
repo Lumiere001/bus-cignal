@@ -8,6 +8,34 @@
 
 ## 🔄 현재 작업 (Active)
 
+- 📍 **CC 세션 (2026-06-06 — ⭐⭐⭐ 다음 세션 여기부터 읽으세요)**: **UI/UX 대개편 + Phase 2(타지구 신청 위저드) + 현실 더미. 멀티에이전트(Workflow)로 병렬 구현. 전부 게이트 green, push+PR 완료(사용자 예외 허용).**
+  - 📦 **푸시·PR 상태 (전부 origin push됨)**:
+    - **PR #79** `feat/admin-ops-monitoring` — 마스터 운영 모니터링(/admin/system: DB용량·오늘활동·Pro권장 신호).
+    - **PR #80** `fix/operator-cookie-render` — `requireOperator`가 미승인/revoke 간사에 렌더 중 쿠키삭제 → Next16 에러. redirect만 하도록 수정(별도 워크트리).
+    - **PR (신규)** `feat/operator-screen-cleanup` — ⭐ **이번 대개편 전체(8커밋)**: 간사화면 1-A/1-C·1-B 대시보드·UI견고화·여러 수정·Phase2 위저드·**현실 더미시드(은행 제거본)**. 머지하면 다 들어감.
+    - `chore/realistic-dummy` = feat에 동일 시드 포함되어 **폐기(삭제함)**.
+  - ✅ **완료 (feat/operator-screen-cleanup)**:
+    - **더미 현실화**: 지구↔평창(상행 6/23 입소·하행 6/27 퇴소), **통합 간사 1명/지구**, 결제 깔때기(awaiting/reported/paid), 평창 지구별 픽업. `scripts/load/seed-dummy.mjs`.
+    - **간사 1-A**: 지구명 동적표기 전반("○○ 운영현황/공급차량/신청목록") · 내정보 캠퍼스 제거 · 대기큐 학생+담당간사 **전화 풀노출** · 입금확인 "취소불가" 모달 · 매칭현황 표.
+    - **간사 1-C**: 신청·매칭·정산 검색(SearchBox + 클라 필터).
+    - **간사 1-B 대시보드 통합**: 공급차량·보낸신청 인라인(클릭=이동)·진입점 통일 · 대기 **팀/명** 분리 · 공급 "입금확인"/수요 "우리 학생 매칭" 분리(숫자 페이지와 일치).
+    - **UI 견고화**: admin표·학생카드·간사목록 nowrap/overflow/모바일(정산 매트릭스 가로스크롤+sticky 포함).
+    - **Phase 2 타지구 신청 위저드**(기차표식 3단계): ① 조회(**출발=공급지구 선택**·도착 평창·스왑=상/하행·날짜·인원·동의) ② 결과(**선택지구 정확일치 우선 + 권역 추천** `regions.area→권역`, 다중마커 지도, 선택 시 핀 중심이동, 좌석부족=대기신청) ③ 명단 후입력 → `createRequest`(기존 액션). `NewRequestForm` 제거.
+    - **송금정보(은행·계좌·예금주) 전면 제거**(더미+matches UI). 송금보고/입금확인 흐름은 유지.
+  - 🧩 **공유 컴포넌트 추가**: `lib/auth/operator-region.ts`(getOperatorRegionName) · `components/ui/search-box.tsx` · `components/kakao/KakaoMultiMap.tsx`(다중마커) · `lib/auth/operator-region`.
+  - ⚠️ **주의·결정**:
+    - **카카오 지도 = localhost 미표시**(빌린 팀원 키). 코드는 graceful 에러. **배포 후 카카오 콘솔에 도메인 등록 → 간사 결과지도 + 학생 지도 둘 다 검증**.
+    - 출발=공급지구 선택 모델(처음 본인지구 고정은 오류, 정정됨). 권역 매핑은 `RequestWizard.tsx` 상수.
+    - 학생 전화 풀노출=간사 화면 한정(팀장 승인). 마스터=전용 비번(CCC 분리). 승인대기→CCC 자동입장+예외/해지 큐(미구현).
+  - 🔜 **다음 할 일 (우선순위)**:
+    1. **Phase 2 남은 하위**: 신청 목록 상/하행 분리+옵시디언 그래프뷰·노드 클릭 정보/수정 · **신청 취소** · 신규 "우리 버스 탄 타지구 학생 모아보기 + 간사 채팅".
+    2. **Phase 3 마스터**: Trip 검색 · 매칭 그래프뷰(노드=지구·간선=매칭·요청량=노드크기·클릭→지구상황) · 정산 매트릭스 UI개선+검색 · CCC 연결 예외/해지 큐.
+    3. **Phase 4 학생**: 지도(배포 후)·문의 연락처에 총무 추가(차량별 총무는 이미 학생 /me/trip 노출 — 지구 공통으로 바꿀지 확인)·**그룹 채팅(같은 버스+간사)+읽음 수**.
+    4. **Phase 5 공개**: 전국 지구별 잔여석·신청인원 뷰(무로그인·무PII).
+    5. **Phase 6**: CCC consumer(외부 API 대기) + 지구코드 매핑.
+    6. 운영: 약관 「확정 필요」 4개(대기) · iPad QA(배포 또는 Tailscale HTTPS).
+  - 🧪 **재개 방법**: `supabase start && supabase db reset && node scripts/load/seed-dummy.mjs --students 1000` → dev 서버(`/run` 또는 preview) → `/dev/login`(간사 클릭). 멀티에이전트는 Workflow(파일 분리+인터페이스 계약)로. ⚠️ reseed하면 기존 dev-login 세션 stale → 다시 클릭.
+
 - 📍 **CC 세션 (2026-06-05 심야 — ⭐⭐ 여기부터 읽으세요)**: **전 영역 인수 후 출시 블로커·감사 🟠 거의 소진. PR #56~#69(14건) 머지, prod 마이그 000002~000006 전부 적용, 열린 PR 0.**
   - ✅ **이번 세션 머지 전체 (#56~#69)**: RLS 하드닝(#56)·픽스+감사문서(#57)·취소TZ/chat링크/revoke세션(#58)·**간사 매직링크 로그인+마스터 온보딩**(#59)·약관·방침 PIPA(#60)·worklog(#61)·**operator UX 버그3**(#62: 승인후 큐갱신·거절 전체안내·신청 명단동선)·**🔴 B3 좌석 over-booking·이중매칭 race 원자적 RPC**(#63)·CCC/채팅 결정문(#64,65)·**푸시 배너 v2**(#66, 9개 UX)·**출발 리마인더**(#67, GitHub Actions 외부 스케줄러)·**partial_match 통지+매칭/정산 region 스코핑**(#68)·**학생 본인확인 rate-limit**(#69).
   - ✅ **prod 반영**: 마이그 000002(RLS revoke)·000003(매직링크 컬럼)·000004(원자승인 RPC+unique index)·000005(depart_reminded_at)·000006(verify attempts) **전부 적용**(Local==Remote). anonymize_after=2026-09-29 세팅. Vercel env PASSENGER_SESSION_SECRET 추가(Cowork)·스모크 PASS.
