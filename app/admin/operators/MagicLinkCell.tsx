@@ -23,10 +23,13 @@ export function MagicLinkCell({ url }: { url: string | null }) {
 
   return (
     <div className="flex items-center gap-2">
-      <code className="max-w-[160px] truncate rounded bg-muted px-1.5 py-0.5 text-xs">
+      <code
+        title={url}
+        className="block max-w-[160px] truncate rounded bg-muted px-1.5 py-0.5 text-xs"
+      >
         {url}
       </code>
-      <Button type="button" size="sm" variant="outline" onClick={copy}>
+      <Button type="button" size="sm" variant="outline" onClick={copy} className="shrink-0 whitespace-nowrap">
         {copied ? "복사됨" : "링크 복사"}
       </Button>
     </div>

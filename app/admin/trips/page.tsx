@@ -42,27 +42,27 @@ export default async function AdminTripsPage() {
         <p className="text-muted-foreground text-sm">등록된 Trip이 없습니다.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-muted/50 text-muted-foreground text-left">
               <tr>
-                <th className="px-4 py-2 font-medium">공급 지구</th>
-                <th className="px-4 py-2 font-medium">방향</th>
-                <th className="px-4 py-2 font-medium">출발</th>
-                <th className="px-4 py-2 font-medium">정원</th>
-                <th className="px-4 py-2 font-medium">요금</th>
-                <th className="px-4 py-2 font-medium">상태</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">공급 지구</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">방향</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">출발</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">정원</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">요금</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">상태</th>
               </tr>
             </thead>
             <tbody>
               {trips.map((t) => (
                 <tr key={t.id} className="border-t">
-                  <td className="px-4 py-2 font-medium">{t.supply?.name ?? "—"}</td>
-                  <td className="px-4 py-2">{DIRECTION_SHORT[t.direction]}</td>
+                  <td className="px-4 py-2 font-medium whitespace-nowrap">{t.supply?.name ?? "—"}</td>
+                  <td className="px-4 py-2 whitespace-nowrap">{DIRECTION_SHORT[t.direction]}</td>
                   <td className="px-4 py-2 whitespace-nowrap tabular-nums">{formatKstShort(t.departure_at)}</td>
-                  <td className="px-4 py-2 tabular-nums">{t.capacity}석</td>
-                  <td className="px-4 py-2 tabular-nums">{t.price_per_seat.toLocaleString("ko-KR")}원</td>
+                  <td className="px-4 py-2 tabular-nums whitespace-nowrap">{t.capacity}석</td>
+                  <td className="px-4 py-2 tabular-nums whitespace-nowrap">{t.price_per_seat.toLocaleString("ko-KR")}원</td>
                   <td className="px-4 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TRIP_STATUS_COLOR[t.status]}`}>
+                    <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${TRIP_STATUS_COLOR[t.status]}`}>
                       {TRIP_STATUS_LABEL[t.status]}
                     </span>
                   </td>

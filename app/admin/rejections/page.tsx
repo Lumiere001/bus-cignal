@@ -46,13 +46,13 @@ export default async function AdminRejectionsPage() {
         <p className="text-muted-foreground text-sm">거절 기록이 없습니다.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[600px] text-sm">
             <thead className="bg-muted/50 text-muted-foreground text-left">
               <tr>
-                <th className="px-4 py-2 font-medium">시각</th>
-                <th className="px-4 py-2 font-medium">공급 지구</th>
-                <th className="px-4 py-2 font-medium">신청 지구</th>
-                <th className="px-4 py-2 font-medium">인원</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">시각</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">공급 지구</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">신청 지구</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">인원</th>
                 <th className="px-4 py-2 font-medium">사유</th>
               </tr>
             </thead>
@@ -62,10 +62,10 @@ export default async function AdminRejectionsPage() {
                   <td className="px-4 py-2 whitespace-nowrap tabular-nums">
                     {formatKstShort(r.created_at)}
                   </td>
-                  <td className="px-4 py-2">{r.seat_requests?.trips?.regions?.name ?? "—"}</td>
-                  <td className="px-4 py-2">{r.seat_requests?.regions?.name ?? "—"}</td>
-                  <td className="px-4 py-2 tabular-nums">{r.seat_requests?.seat_count ?? "—"}</td>
-                  <td className="text-muted-foreground px-4 py-2">{r.reason}</td>
+                  <td className="px-4 py-2 whitespace-nowrap">{r.seat_requests?.trips?.regions?.name ?? "—"}</td>
+                  <td className="px-4 py-2 whitespace-nowrap">{r.seat_requests?.regions?.name ?? "—"}</td>
+                  <td className="px-4 py-2 tabular-nums whitespace-nowrap">{r.seat_requests?.seat_count ?? "—"}</td>
+                  <td className="text-muted-foreground px-4 py-2 min-w-[12rem]">{r.reason}</td>
                 </tr>
               ))}
             </tbody>

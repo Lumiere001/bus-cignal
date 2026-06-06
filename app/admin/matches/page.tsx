@@ -48,14 +48,14 @@ export default async function AdminMatchesPage() {
         <p className="text-muted-foreground text-sm">매칭 내역이 없습니다.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[600px] text-sm">
             <thead className="bg-muted/50 text-muted-foreground text-left">
               <tr>
-                <th className="px-4 py-2 font-medium">공급 지구</th>
-                <th className="px-4 py-2 font-medium">신청 지구</th>
-                <th className="px-4 py-2 font-medium">금액</th>
-                <th className="px-4 py-2 font-medium">상태</th>
-                <th className="px-4 py-2 font-medium">매칭 시각</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">공급 지구</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">신청 지구</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">금액</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">상태</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">매칭 시각</th>
               </tr>
             </thead>
             <tbody>
@@ -64,12 +64,12 @@ export default async function AdminMatchesPage() {
                 const request = one(m.request);
                 return (
                   <tr key={m.id} className="border-t">
-                    <td className="px-4 py-2 font-medium">{one(trip?.supply ?? null)?.name ?? "—"}</td>
-                    <td className="px-4 py-2">{one(request?.region ?? null)?.name ?? "—"}</td>
-                    <td className="px-4 py-2 tabular-nums">
+                    <td className="px-4 py-2 font-medium whitespace-nowrap">{one(trip?.supply ?? null)?.name ?? "—"}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{one(request?.region ?? null)?.name ?? "—"}</td>
+                    <td className="px-4 py-2 tabular-nums whitespace-nowrap">
                       {trip ? `${trip.price_per_seat.toLocaleString("ko-KR")}원` : "—"}
                     </td>
-                    <td className="px-4 py-2">{MATCH_STATUS_LABEL[m.status] ?? m.status}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{MATCH_STATUS_LABEL[m.status] ?? m.status}</td>
                     <td className="px-4 py-2 whitespace-nowrap tabular-nums">{formatKstShort(m.matched_at)}</td>
                   </tr>
                 );

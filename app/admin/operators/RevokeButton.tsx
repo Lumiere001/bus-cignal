@@ -34,7 +34,7 @@ export function RevokeButton({ operatorId, name }: { operatorId: string; name: s
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="border-destructive/40 text-destructive hover:bg-destructive/10 rounded-md border px-3 py-1 text-xs font-medium transition-colors"
+        className="border-destructive/40 text-destructive hover:bg-destructive/10 rounded-md border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors"
       >
         비활성화
       </button>
@@ -66,7 +66,7 @@ export function RevokeButton({ operatorId, name }: { operatorId: string; name: s
               setError(null);
             }}
             disabled={pending}
-            className="hover:bg-muted rounded-lg px-4 py-2 text-sm transition-colors"
+            className="hover:bg-muted rounded-lg px-4 py-2 text-sm whitespace-nowrap transition-colors"
           >
             취소
           </button>
@@ -74,7 +74,7 @@ export function RevokeButton({ operatorId, name }: { operatorId: string; name: s
             type="button"
             onClick={submit}
             disabled={pending}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors disabled:opacity-50"
           >
             {pending ? "처리 중…" : "비활성화 확정"}
           </button>

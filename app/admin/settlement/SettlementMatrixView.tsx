@@ -74,12 +74,12 @@ export function SettlementMatrixView({ matrix }: { matrix: SettlementMatrix }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm">
           <span className="text-muted-foreground">전국 확정 합계 </span>
-          <span className="font-bold tabular-nums">{won(matrix.grandConfirmedAmount)}</span>
+          <span className="font-bold tabular-nums whitespace-nowrap">{won(matrix.grandConfirmedAmount)}</span>
           {matrix.grandPendingAmount > 0 && (
-            <span className="text-muted-foreground ml-2">
+            <span className="text-muted-foreground ml-2 whitespace-nowrap">
               (진행중 {won(matrix.grandPendingAmount)})
             </span>
           )}
@@ -87,17 +87,17 @@ export function SettlementMatrixView({ matrix }: { matrix: SettlementMatrix }) {
         <button
           type="button"
           onClick={downloadCsv}
-          className="hover:bg-muted rounded-md border px-3 py-1 text-sm font-medium transition-colors"
+          className="hover:bg-muted shrink-0 rounded-md border px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors"
         >
           CSV 내보내기
         </button>
       </div>
 
       <div className="overflow-x-auto rounded-xl border">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
             <tr className="bg-muted/50">
-              <th className="text-muted-foreground sticky left-0 z-10 bg-inherit px-3 py-2 text-left text-xs font-medium">
+              <th className="text-muted-foreground sticky left-0 z-10 bg-inherit px-3 py-2 text-left text-xs font-medium whitespace-nowrap">
                 공급↓ / 신청→
               </th>
               {regions.map((r) => (
@@ -135,9 +135,9 @@ export function SettlementMatrixView({ matrix }: { matrix: SettlementMatrix }) {
                           isSel ? "bg-primary/15 ring-primary/40 ring-1" : ""
                         }`}
                       >
-                        <span className="font-medium">{c.confirmedAmount.toLocaleString("ko-KR")}</span>
+                        <span className="block font-medium whitespace-nowrap">{c.confirmedAmount.toLocaleString("ko-KR")}</span>
                         {c.pendingAmount > 0 && (
-                          <span className="text-muted-foreground block text-xs">
+                          <span className="text-muted-foreground block text-xs whitespace-nowrap">
                             +{c.pendingAmount.toLocaleString("ko-KR")}
                           </span>
                         )}
@@ -145,7 +145,7 @@ export function SettlementMatrixView({ matrix }: { matrix: SettlementMatrix }) {
                     </td>
                   );
                 })}
-                <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                <td className="px-3 py-2 text-right font-semibold tabular-nums whitespace-nowrap">
                   {(rowTotal.get(supply.id) ?? 0).toLocaleString("ko-KR")}
                 </td>
               </tr>
@@ -153,15 +153,15 @@ export function SettlementMatrixView({ matrix }: { matrix: SettlementMatrix }) {
           </tbody>
           <tfoot>
             <tr className="border-t-2">
-              <th className="sticky left-0 z-10 bg-background px-3 py-2 text-left font-semibold">
+              <th className="sticky left-0 z-10 bg-background px-3 py-2 text-left font-semibold whitespace-nowrap">
                 보낼 합
               </th>
               {regions.map((request) => (
-                <td key={request.id} className="px-3 py-2 text-right font-semibold tabular-nums">
+                <td key={request.id} className="px-3 py-2 text-right font-semibold tabular-nums whitespace-nowrap">
                   {(colTotal.get(request.id) ?? 0).toLocaleString("ko-KR")}
                 </td>
               ))}
-              <td className="bg-muted/30 px-3 py-2 text-right font-bold tabular-nums">
+              <td className="bg-muted/30 px-3 py-2 text-right font-bold tabular-nums whitespace-nowrap">
                 {matrix.grandConfirmedAmount.toLocaleString("ko-KR")}
               </td>
             </tr>
@@ -172,14 +172,14 @@ export function SettlementMatrixView({ matrix }: { matrix: SettlementMatrix }) {
 
       {selected && (
         <div className="rounded-xl border p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="min-w-0 truncate text-sm font-semibold">
               {nameOf(selected.supplyRegionId)} → {nameOf(selected.requestRegionId)}
             </h2>
             <button
               type="button"
               onClick={() => setSelected(null)}
-              className="text-muted-foreground hover:text-foreground text-xs"
+              className="text-muted-foreground hover:text-foreground shrink-0 text-xs"
             >
               닫기
             </button>
@@ -187,12 +187,12 @@ export function SettlementMatrixView({ matrix }: { matrix: SettlementMatrix }) {
           <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-lg border p-3">
               <dt className="text-muted-foreground text-xs">확정 (입금완료)</dt>
-              <dd className="mt-0.5 font-bold tabular-nums">{won(selected.confirmedAmount)}</dd>
+              <dd className="mt-0.5 font-bold tabular-nums whitespace-nowrap">{won(selected.confirmedAmount)}</dd>
               <dd className="text-muted-foreground text-xs">{selected.confirmedCount}명</dd>
             </div>
             <div className="rounded-lg border p-3">
               <dt className="text-muted-foreground text-xs">진행중 (송금 대기·보고)</dt>
-              <dd className="mt-0.5 font-bold tabular-nums">{won(selected.pendingAmount)}</dd>
+              <dd className="mt-0.5 font-bold tabular-nums whitespace-nowrap">{won(selected.pendingAmount)}</dd>
               <dd className="text-muted-foreground text-xs">{selected.pendingCount}명</dd>
             </div>
           </dl>

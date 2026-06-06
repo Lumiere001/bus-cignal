@@ -31,27 +31,31 @@ export function MatchCard({ match }: Props) {
     >
       {/* 노선 + 상태 */}
       <div className="flex items-start justify-between gap-2 border-b border-dashed px-4 pt-4 pb-3">
-        <div>
-          <span className="text-base leading-snug font-bold">
+        <div className="min-w-0">
+          <span className="block text-base leading-snug font-bold break-words">
             {match.originLabel} → {match.destinationLabel}
           </span>
-          <p className="text-muted-foreground mt-1 text-xs font-medium">
+          <p className="text-muted-foreground mt-1 text-xs font-medium tabular-nums">
             {formatKstDateShort(match.departureAt)} 출발
           </p>
         </div>
-        <StatusPill tone={s.tone}>{s.label}</StatusPill>
+        <StatusPill tone={s.tone} className="mt-0.5 shrink-0">
+          {s.label}
+        </StatusPill>
       </div>
 
       {/* 상세 정보 */}
       <dl className="text-muted-foreground flex flex-col gap-2 px-4 py-3 text-sm">
-        <div className="flex items-center justify-between">
-          <dt className="text-muted-foreground">요금</dt>
-          <dd className="text-foreground font-bold">{formatWon(match.pricePerSeat)}</dd>
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground shrink-0">요금</dt>
+          <dd className="text-foreground font-bold whitespace-nowrap tabular-nums">
+            {formatWon(match.pricePerSeat)}
+          </dd>
         </div>
-        <div className="flex items-center justify-between">
-          <dt className="text-muted-foreground">예약번호</dt>
-          <dd>
-            <span className="bg-blue-50 font-mono text-sm font-extrabold tracking-wider text-blue-700 rounded-md px-2 py-0.5">
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground shrink-0">예약번호</dt>
+          <dd className="min-w-0">
+            <span className="bg-blue-50 font-mono text-sm font-extrabold tracking-wider text-blue-700 rounded-md px-2 py-0.5 inline-block whitespace-nowrap tabular-nums">
               {match.reservationCode ?? "-"}
             </span>
           </dd>
@@ -59,11 +63,15 @@ export function MatchCard({ match }: Props) {
       </dl>
 
       {/* 진입 버튼 */}
-      <div className="flex gap-2 px-4 pb-4">
+      <div className="flex flex-wrap gap-2 px-4 pb-4">
         {/* 지도 — 취소/만료된 매칭은 유효 탑승자가 아니므로 숨김 */}
         {!isInactive && (
-          <Link href={`/me/trip/${match.tripId}`} className="flex-1">
-            <Button variant="outline" className="bg-card h-11 w-full" aria-label="지도">
+          <Link href={`/me/trip/${match.tripId}`} className="min-w-0 flex-1">
+            <Button
+              variant="outline"
+              className="bg-card h-11 w-full whitespace-nowrap"
+              aria-label="지도"
+            >
               🗺️ 지도
             </Button>
           </Link>
@@ -71,8 +79,8 @@ export function MatchCard({ match }: Props) {
 
         {/* 채팅 — paid(예약 완료)에서만 입장. awaiting/reported/취소/만료는 숨김 (SPEC §S6) */}
         {match.status === "paid" && (
-          <Link href={`/chat/${match.tripId}`}>
-            <Button variant="outline" size="sm" aria-label="채팅">
+          <Link href={`/chat/${match.tripId}`} className="shrink-0">
+            <Button variant="outline" size="sm" className="h-11 whitespace-nowrap" aria-label="채팅">
               채팅
             </Button>
           </Link>
@@ -80,8 +88,8 @@ export function MatchCard({ match }: Props) {
 
         {/* 취소 진입 — 비활성 상태면 숨김 */}
         {!isInactive && (
-          <Link href={`/me/cancel/${match.matchId}`} className="flex-1">
-            <Button variant="ghost" className="text-destructive hover:bg-destructive/10 h-11 w-full">
+          <Link href={`/me/cancel/${match.matchId}`} className="min-w-0 flex-1">
+            <Button className="text-destructive hover:bg-destructive/10 h-11 w-full whitespace-nowrap" variant="ghost">
               예약 취소
             </Button>
           </Link>

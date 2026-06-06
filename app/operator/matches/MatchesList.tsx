@@ -62,40 +62,55 @@ export function MatchesList({ matches }: { matches: MatchRow[] }) {
             <li key={m.id} className="rounded-xl border bg-white p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-block whitespace-nowrap rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
                       {DIRECTION_SHORT[m.direction]}
                     </span>
-                    <span className="text-sm font-medium text-gray-900">{m.studentName}</span>
-                    <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                    <span className="min-w-0 truncate text-sm font-medium text-gray-900" title={m.studentName}>
+                      {m.studentName}
+                    </span>
+                    <span className="inline-block whitespace-nowrap rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
                       {MATCH_STATUS_LABEL[m.status] ?? m.status}
                     </span>
                   </div>
-                  <div className="mt-1 text-sm text-gray-700">{m.route}</div>
+                  <div className="mt-1 truncate text-sm text-gray-700" title={m.route}>
+                    {m.route}
+                  </div>
                   <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-gray-500">
-                    <span>{m.departure} 출발</span>
+                    <span className="whitespace-nowrap">{m.departure} 출발</span>
                     {m.pricePerSeat !== null && (
-                      <span>{m.pricePerSeat.toLocaleString()}원/인</span>
+                      <span className="whitespace-nowrap tabular-nums">
+                        {m.pricePerSeat.toLocaleString()}원/인
+                      </span>
                     )}
-                    {m.supplyName && <span>{m.supplyName} 차량</span>}
+                    {m.supplyName && (
+                      <span className="truncate" title={`${m.supplyName} 차량`}>
+                        {m.supplyName} 차량
+                      </span>
+                    )}
                   </div>
                   {/* 송금 정보 (공급 지구 계좌) — awaiting_payment일 때 안내 */}
                   {m.status === "awaiting_payment" && m.bankAccount && (
                     <div className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                      송금 계좌: {m.bankName} {m.bankAccount}
+                      송금 계좌:{" "}
+                      <span className="whitespace-nowrap tabular-nums">
+                        {m.bankName} {m.bankAccount}
+                      </span>
                       {m.accountHolder ? ` (${m.accountHolder})` : ""}
                     </div>
                   )}
                 </div>
 
-                <MatchPaymentCell
-                  matchId={m.id}
-                  status={m.status}
-                  reservationCode={m.reservationCode}
-                  studentName={m.studentName}
-                  route={m.route}
-                  departure={m.departure}
-                />
+                <div className="shrink-0">
+                  <MatchPaymentCell
+                    matchId={m.id}
+                    status={m.status}
+                    reservationCode={m.reservationCode}
+                    studentName={m.studentName}
+                    route={m.route}
+                    departure={m.departure}
+                  />
+                </div>
               </div>
             </li>
           ))}

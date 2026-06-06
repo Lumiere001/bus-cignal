@@ -29,33 +29,38 @@ function LedgerTable({
         <p className="py-8 text-center text-sm text-gray-400">{emptyText}</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[380px] text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-gray-500">
                 <th className="py-2 pr-2 font-medium">지구</th>
-                <th className="py-2 px-2 text-right font-medium">확정 (입금완료)</th>
-                <th className="py-2 pl-2 text-right font-medium">진행중</th>
+                <th className="py-2 px-2 text-right font-medium whitespace-nowrap">확정 (입금완료)</th>
+                <th className="py-2 pl-2 text-right font-medium whitespace-nowrap">진행중</th>
               </tr>
             </thead>
             <tbody>
               {entries.map((e) => (
                 <tr key={e.counterpartRegionId} className="border-b last:border-0">
                   <td className="py-2 pr-2 font-medium text-gray-800">
-                    {e.counterpartRegionName}
+                    <span
+                      className="block max-w-[10rem] truncate"
+                      title={e.counterpartRegionName}
+                    >
+                      {e.counterpartRegionName}
+                    </span>
                   </td>
-                  <td className="py-2 px-2 text-right">
-                    <span className="font-medium text-gray-900">
+                  <td className="py-2 px-2 text-right whitespace-nowrap">
+                    <span className="font-medium text-gray-900 tabular-nums">
                       {won(e.confirmedAmount)}
                     </span>
-                    <span className="ml-1 text-xs text-gray-400">
+                    <span className="ml-1 text-xs text-gray-400 tabular-nums">
                       ({e.confirmedCount}명)
                     </span>
                   </td>
-                  <td className="py-2 pl-2 text-right text-gray-500">
+                  <td className="py-2 pl-2 text-right whitespace-nowrap text-gray-500">
                     {e.pendingAmount > 0 ? (
                       <>
-                        {won(e.pendingAmount)}
-                        <span className="ml-1 text-xs text-gray-400">
+                        <span className="tabular-nums">{won(e.pendingAmount)}</span>
+                        <span className="ml-1 text-xs text-gray-400 tabular-nums">
                           ({e.pendingCount}명)
                         </span>
                       </>
@@ -69,8 +74,8 @@ function LedgerTable({
             <tfoot>
               <tr className="border-t-2 text-sm font-semibold">
                 <td className="py-2 pr-2">합계</td>
-                <td className="py-2 px-2 text-right text-gray-900">{won(confirmedTotal)}</td>
-                <td className="py-2 pl-2 text-right text-gray-500">{won(pendingTotal)}</td>
+                <td className="py-2 px-2 text-right whitespace-nowrap text-gray-900 tabular-nums">{won(confirmedTotal)}</td>
+                <td className="py-2 pl-2 text-right whitespace-nowrap text-gray-500 tabular-nums">{won(pendingTotal)}</td>
               </tr>
             </tfoot>
           </table>
@@ -121,8 +126,12 @@ export function SettlementList({ ledger }: { ledger: SettlementLedger }) {
   return (
     <>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <SearchBox value={q} onChange={setQ} placeholder="상대 지구명 검색" />
-        <SettlementCsvButton ledger={ledger} />
+        <div className="min-w-0 flex-1">
+          <SearchBox value={q} onChange={setQ} placeholder="상대 지구명 검색" />
+        </div>
+        <div className="shrink-0">
+          <SettlementCsvButton ledger={ledger} />
+        </div>
       </div>
 
       <div className="space-y-4">

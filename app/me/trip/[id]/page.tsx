@@ -33,17 +33,17 @@ export default async function TripDetailPage({ params }: Props) {
 
       {/* 매칭 맥락 */}
       <section className="flex flex-col gap-2 rounded-xl border bg-card p-4 text-sm">
-        <p className="font-semibold">
+        <p className="font-semibold break-words">
           {trip.originLabel} → {trip.destinationLabel}
         </p>
         <dl className="flex flex-col gap-1 text-muted-foreground">
           <div className="flex gap-2">
             <dt className="w-16 shrink-0">출발</dt>
-            <dd>{formatKstDateShort(trip.departureAt)}</dd>
+            <dd className="min-w-0 tabular-nums">{formatKstDateShort(trip.departureAt)}</dd>
           </div>
           <div className="flex gap-2">
             <dt className="w-16 shrink-0">요금</dt>
-            <dd>{formatWon(trip.pricePerSeat)}</dd>
+            <dd className="min-w-0 whitespace-nowrap tabular-nums">{formatWon(trip.pricePerSeat)}</dd>
           </div>
         </dl>
       </section>
@@ -54,11 +54,11 @@ export default async function TripDetailPage({ params }: Props) {
         <dl className="flex flex-col gap-1 text-sm">
           <div className="flex gap-2">
             <dt className="w-16 shrink-0 text-muted-foreground">장소명</dt>
-            <dd>{trip.originLabel}</dd>
+            <dd className="min-w-0 break-words">{trip.originLabel}</dd>
           </div>
           <div className="flex gap-2">
             <dt className="w-16 shrink-0 text-muted-foreground">주소</dt>
-            <dd className="break-all">
+            <dd className="min-w-0 break-all">
               {trip.originAddress || "주소 정보 없음"}
             </dd>
           </div>
@@ -86,11 +86,11 @@ export default async function TripDetailPage({ params }: Props) {
             {trip.operatorPhone && (
               <div className="flex gap-2">
                 <dt className="text-muted-foreground w-16 shrink-0">담당 간사</dt>
-                <dd>
+                <dd className="min-w-0 break-words">
                   {trip.operatorName ? `${trip.operatorName} · ` : ""}
                   <a
                     href={`tel:${trip.operatorPhone}`}
-                    className="text-primary underline-offset-4 hover:underline"
+                    className="text-primary underline-offset-4 hover:underline whitespace-nowrap tabular-nums"
                   >
                     {trip.operatorPhone}
                   </a>
@@ -100,11 +100,11 @@ export default async function TripDetailPage({ params }: Props) {
             {trip.treasurerPhone && (
               <div className="flex gap-2">
                 <dt className="text-muted-foreground w-16 shrink-0">총무</dt>
-                <dd>
+                <dd className="min-w-0 break-words">
                   {trip.treasurerName ? `${trip.treasurerName} · ` : ""}
                   <a
                     href={`tel:${trip.treasurerPhone}`}
-                    className="text-primary underline-offset-4 hover:underline"
+                    className="text-primary underline-offset-4 hover:underline whitespace-nowrap tabular-nums"
                   >
                     {trip.treasurerPhone}
                   </a>

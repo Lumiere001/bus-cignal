@@ -27,10 +27,10 @@ export function CancelConfirmForm({ match, action, error }: Props) {
       {/* 노선 요약 */}
       <div>
         <p className="text-muted-foreground text-xs">취소할 예약</p>
-        <h1 className="text-xl font-bold">
+        <h1 className="text-xl font-bold break-words">
           {match.originLabel} → {match.destinationLabel}
         </h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-muted-foreground text-sm break-words tabular-nums">
           {formatKstDateShort(match.departureAt)}
           {match.reservationCode ? ` · ${match.reservationCode}` : ""}
         </p>
@@ -95,15 +95,15 @@ export function CancelConfirmForm({ match, action, error }: Props) {
 
         {/* 액션 버튼 */}
         <div className="flex gap-2">
-          <Link href="/me" className="flex-1">
-            <Button type="button" variant="outline" className="w-full">
+          <Link href="/me" className="min-w-0 flex-1">
+            <Button type="button" variant="outline" className="w-full whitespace-nowrap">
               돌아가기
             </Button>
           </Link>
           <Button
             type="submit"
             variant="destructive"
-            className="flex-1"
+            className="min-w-0 flex-1 whitespace-nowrap"
             disabled={!confirmed}
           >
             취소 확정

@@ -28,13 +28,13 @@ export function PendingActions({
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex shrink-0 flex-col items-end gap-1">
       <div className="flex gap-2">
         <button
           type="button"
           onClick={() => run(rejectOperator)}
           disabled={pending}
-          className="hover:bg-muted rounded-md border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50"
+          className="hover:bg-muted rounded-md border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors disabled:opacity-50"
         >
           거절
         </button>
@@ -43,7 +43,7 @@ export function PendingActions({
           onClick={() => run(approveOperator)}
           disabled={pending || !hasRegion}
           title={hasRegion ? undefined : "신청 지구가 없어 승인할 수 없습니다"}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors disabled:opacity-50"
         >
           {pending ? "처리 중…" : "승인"}
         </button>

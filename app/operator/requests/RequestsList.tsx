@@ -81,18 +81,18 @@ export function RequestsList({ requests }: { requests: RequestRow[] }) {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                      <span className="inline-block whitespace-nowrap rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
                         {DIRECTION_SHORT[r.direction]}
                       </span>
                       <span
-                        className={`rounded-md px-2 py-0.5 text-xs font-medium ${
+                        className={`inline-block whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium ${
                           REQUEST_STATUS_COLOR[status] ?? "bg-gray-100 text-gray-500"
                         }`}
                       >
                         {statusLabel(status)}
                       </span>
                     </div>
-                    <span className="text-xs text-gray-400">
+                    <span className="shrink-0 whitespace-nowrap text-xs text-gray-400">
                       {formatKstDateTime(r.requestedAt)} 신청
                     </span>
                   </div>
@@ -109,9 +109,15 @@ export function RequestsList({ requests }: { requests: RequestRow[] }) {
                   )}
 
                   <div className="flex items-center gap-3 text-xs text-gray-500">
-                    {r.regionName && <span>{r.regionName} 차량</span>}
-                    <span>학생 {paxCount}명</span>
-                    <span className="ml-auto text-blue-600">상세 보기 →</span>
+                    {r.regionName && (
+                      <span className="truncate" title={`${r.regionName} 차량`}>
+                        {r.regionName} 차량
+                      </span>
+                    )}
+                    <span className="whitespace-nowrap">학생 {paxCount}명</span>
+                    <span className="ml-auto shrink-0 whitespace-nowrap text-blue-600">
+                      상세 보기 →
+                    </span>
                   </div>
                 </Link>
               </li>
