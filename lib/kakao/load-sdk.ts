@@ -25,6 +25,27 @@ export type KakaoInfoWindow = {
   close(): void;
 };
 
+// Kakao Places(키워드 검색) — libraries=services 로드 시 사용 가능.
+// KakaoSearchPicker(방식 B)에서 장소 검색 결과(주소·좌표)를 얻는다.
+export type KakaoPlacesResult = {
+  id: string;
+  place_name: string;
+  address_name: string; // 지번 주소
+  road_address_name: string; // 도로명 주소 (없으면 "")
+  x: string; // 경도(lng)
+  y: string; // 위도(lat)
+};
+
+export type KakaoPlacesStatus = "OK" | "ZERO_RESULT" | "ERROR";
+
+export type KakaoPlaces = {
+  keywordSearch(
+    keyword: string,
+    callback: (data: KakaoPlacesResult[], status: KakaoPlacesStatus) => void,
+    options?: { location?: KakaoLatLng; radius?: number },
+  ): void;
+};
+
 type KakaoMapsApi = {
   load(callback: () => void): void;
   Map: new (container: HTMLElement, options: object) => KakaoMap;
@@ -42,6 +63,11 @@ type KakaoMapsApi = {
       type: string,
       handler: () => void,
     ): void;
+  };
+  // libraries=services 로 로드된 경우에만 존재. KakaoSearchPicker에서 존재 여부를 가드.
+  services?: {
+    Places: new () => KakaoPlaces;
+    Status: { OK: "OK"; ZERO_RESULT: "ZERO_RESULT"; ERROR: "ERROR" };
   };
 };
 
@@ -87,7 +113,9 @@ export function loadKakaoMapSdk(): Promise<void> {
     }, SDK_TIMEOUT_MS);
 
     const script = document.createElement("script");
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false`;
+    // libraries=services: Places 키워드 검색(방식 B, KakaoSearchPicker)에 필요.
+    // 추가만 함 — 기존 지도/마커 로딩에는 영향 없음(services는 부가 모듈).
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false&libraries=services`;
     script.async = true;
 
     script.onload = () => {
