@@ -1,33 +1,74 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DIRECTION_SHORT, TRIP_STATUS_COLOR, TRIP_STATUS_LABEL } from "@/lib/labels";
-import { formatKstShort } from "@/lib/datetime";
+import { one } from "@/lib/supabase/relation";
+import { TripsSearch } from "./TripsSearch";
+import type { TripRow } from "./TripsSearch";
 
 export const dynamic = "force-dynamic";
 
-// SPEC §4.4 — 마스터 전국 Trip 목록(읽기 모니터링). 출발 임박순.
+// SPEC §4.4 — 마스터 전국 차량 목록(읽기 모니터링). 출발 임박순.
+// 검색·필터는 클라이언트(TripsSearch)에서 처리하므로 여기선 전 행을 직렬화해 전달.
 
-type Row = {
+// 활성(자리 점유) 매칭 — 잔여석 계산용. operator 대시보드와 동일 집합.
+const ACTIVE_MATCH: string[] = ["awaiting_payment", "payment_reported", "paid"];
+
+type LocationRel = { label: string | null; address: string | null };
+
+type QueryRow = {
   id: string;
   direction: "up" | "down";
   departure_at: string;
   capacity: number;
   price_per_seat: number;
   status: "draft" | "published" | "closed";
-  supply: { name: string } | null;
+  supply: { name: string } | { name: string }[] | null;
+  origin: LocationRel | LocationRel[] | null;
+  destination: LocationRel | LocationRel[] | null;
+  seat_offers: { seat_count: number; status: string }[] | null;
+  matches: { id: string; status: string | null }[] | null;
 };
 
-async function loadTrips(): Promise<Row[]> {
+function locationLabel(rel: LocationRel | LocationRel[] | null, fallback: string): string {
+  const loc = one(rel);
+  return loc?.label ?? loc?.address ?? fallback;
+}
+
+async function loadTrips(): Promise<TripRow[]> {
   const db = createAdminClient();
   const { data } = await db
     .from("trips")
     .select(
-      "id, direction, departure_at, capacity, price_per_seat, status, supply:regions!operator_region_id(name)",
+      `id, direction, departure_at, capacity, price_per_seat, status,
+       supply:regions!operator_region_id(name),
+       origin:region_locations!origin_location_id(label, address),
+       destination:region_locations!destination_location_id(label, address),
+       seat_offers(seat_count, status),
+       matches(id, status)`,
     )
     .order("departure_at", { ascending: true });
-  return (data as Row[] | null) ?? [];
+
+  const rows = (data as QueryRow[] | null) ?? [];
+  return rows.map((t): TripRow => {
+    const openSeats = (t.seat_offers ?? [])
+      .filter((o) => o.status === "open")
+      .reduce((s, o) => s + (o.seat_count ?? 0), 0);
+    const active = (t.matches ?? []).filter((m) =>
+      ACTIVE_MATCH.includes(m.status ?? ""),
+    ).length;
+    return {
+      id: t.id,
+      direction: t.direction,
+      departureAt: t.departure_at,
+      capacity: t.capacity,
+      remaining: Math.max(0, openSeats - active),
+      pricePerSeat: t.price_per_seat,
+      status: t.status,
+      regionName: one(t.supply)?.name ?? null,
+      originLabel: locationLabel(t.origin, "출발지"),
+      destLabel: locationLabel(t.destination, "도착지"),
+    };
+  });
 }
 
-/** UTC ISO → 'MM/DD HH:mm' (KST). */
 export default async function AdminTripsPage() {
   const trips = await loadTrips();
 
@@ -35,43 +76,12 @@ export default async function AdminTripsPage() {
     <main className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">전체 차량</h1>
-        <p className="text-muted-foreground mt-1 text-sm">전국 운행 {trips.length}건 · 출발 임박순 (읽기)</p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          전국 운행 {trips.length}건 · 출발 임박순 (읽기)
+        </p>
       </div>
 
-      {trips.length === 0 ? (
-        <p className="text-muted-foreground text-sm">등록된 차량이 없습니다.</p>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-[640px] text-sm">
-            <thead className="bg-muted/50 text-muted-foreground text-left">
-              <tr>
-                <th className="px-4 py-2 font-medium whitespace-nowrap">공급 지구</th>
-                <th className="px-4 py-2 font-medium whitespace-nowrap">방향</th>
-                <th className="px-4 py-2 font-medium whitespace-nowrap">출발</th>
-                <th className="px-4 py-2 font-medium whitespace-nowrap">정원</th>
-                <th className="px-4 py-2 font-medium whitespace-nowrap">요금</th>
-                <th className="px-4 py-2 font-medium whitespace-nowrap">상태</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trips.map((t) => (
-                <tr key={t.id} className="border-t">
-                  <td className="px-4 py-2 font-medium whitespace-nowrap">{t.supply?.name ?? "—"}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{DIRECTION_SHORT[t.direction]}</td>
-                  <td className="px-4 py-2 whitespace-nowrap tabular-nums">{formatKstShort(t.departure_at)}</td>
-                  <td className="px-4 py-2 tabular-nums whitespace-nowrap">{t.capacity}석</td>
-                  <td className="px-4 py-2 tabular-nums whitespace-nowrap">{t.price_per_seat.toLocaleString("ko-KR")}원</td>
-                  <td className="px-4 py-2">
-                    <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${TRIP_STATUS_COLOR[t.status]}`}>
-                      {TRIP_STATUS_LABEL[t.status]}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <TripsSearch rows={trips} />
     </main>
   );
 }
