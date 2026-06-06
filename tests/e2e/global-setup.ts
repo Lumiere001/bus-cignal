@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { db } from "./support/db";
 import { assertLocalSupabase } from "./support/env";
 import { E2E_MASTER_PASSWORD } from "./master-auth.fixtures";
-import { E2E_CRON_SECRET } from "./support/secrets";
+import { E2E_CRON_SECRET } from "./support/cron-fixture";
 
 /**
  * E2E 사전 점검 + 결정적 마스터 해시 주입.

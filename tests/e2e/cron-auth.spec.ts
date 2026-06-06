@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { E2E_CRON_SECRET } from "./support/secrets";
+import { E2E_CRON_SECRET } from "./support/cron-fixture";
 
 // cron 엔드포인트(돈·PII·알림 트리거) 인증 경계 — Bearer CRON_SECRET 없으면 401.
 // global-setup이 dev 서버에 결정적 CRON_SECRET을 주입 → 정상 경로(200)도 검증.
