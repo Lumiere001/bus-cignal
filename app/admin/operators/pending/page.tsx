@@ -50,17 +50,17 @@ export default async function AdminOperatorsPendingPage() {
               key={op.id}
               className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4"
             >
-              <div className="space-y-0.5 text-sm">
+              <div className="min-w-0 flex-1 space-y-0.5 text-sm">
                 <div className="font-medium">
                   {op.name ?? "(이름 미상)"}
                   <span className="text-muted-foreground ml-2 font-normal">
                     {op.requested?.name ?? "지구 미지정"} 신청
                   </span>
                 </div>
-                <div className="text-muted-foreground">
+                <div className="text-muted-foreground break-words">
                   {[op.campus, op.phone, op.email].filter(Boolean).join(" · ") || "추가 정보 없음"}
                 </div>
-                <div className="text-muted-foreground text-xs tabular-nums">
+                <div className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
                   신청일 {op.created_at.slice(0, 10)}
                 </div>
               </div>

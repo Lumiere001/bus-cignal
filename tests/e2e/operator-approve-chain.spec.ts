@@ -32,10 +32,15 @@ test("간사 승인 사슬: 대기 큐 → 원자 승인(B3) → 입금 확인 �
   ).toBeVisible(); // 모달 경고문
   await page.getByRole("button", { name: "승인 확정" }).click();
 
-  // 매칭 현황에 입금 확인 버튼 등장 → 클릭 → paid + 예약번호 발급
+  // 매칭 현황에 입금 확인 버튼 등장 → 클릭 → "취소 불가" 확인 모달(K1) → 확정 → paid
   const confirm = page.getByRole("button", { name: "입금 확인" }).first();
   await expect(confirm).toBeVisible();
   await confirm.click();
 
-  await expect(page.getByText(/예약번호\s+\S+/)).toBeVisible();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText(/취소할 수 없습니다/)).toBeVisible();
+  await dialog.getByRole("button", { name: "입금 확인" }).click();
+
+  // 예약번호(BUS-XXXX) 발급 확인 — 매칭 현황 표의 예약번호 칼럼
+  await expect(page.getByText(/BUS-[A-Z0-9]{4}/).first()).toBeVisible();
 });

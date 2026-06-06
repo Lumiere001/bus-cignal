@@ -121,26 +121,26 @@ export default async function AdminOperatorsPage() {
         <p className="text-muted-foreground text-sm">활성 간사가 없습니다.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[680px] text-sm">
             <thead className="bg-muted/50 text-muted-foreground text-left">
               <tr>
-                <th className="px-4 py-2 font-medium">이름</th>
-                <th className="px-4 py-2 font-medium">지구</th>
-                <th className="px-4 py-2 font-medium">가입일</th>
-                <th className="px-4 py-2 font-medium">입장 링크</th>
-                <th className="px-4 py-2 font-medium">액션</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">이름</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">지구</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">가입일</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">입장 링크</th>
+                <th className="px-4 py-2 font-medium whitespace-nowrap">액션</th>
               </tr>
             </thead>
             <tbody>
               {operators.map((op) => (
                 <tr key={op.id} className="border-t">
-                  <td className="px-4 py-2">{op.name ?? "—"}</td>
-                  <td className="px-4 py-2">{op.regions?.name ?? "미배정"}</td>
-                  <td className="px-4 py-2 tabular-nums">
+                  <td className="px-4 py-2 whitespace-nowrap">{op.name ?? "—"}</td>
+                  <td className="px-4 py-2 whitespace-nowrap">{op.regions?.name ?? "미배정"}</td>
+                  <td className="px-4 py-2 tabular-nums whitespace-nowrap">
                     {op.created_at.slice(0, 10)}
                   </td>
                   <td className="px-4 py-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 whitespace-nowrap">
                       <MagicLinkCell
                         url={
                           op.login_token
@@ -160,7 +160,7 @@ export default async function AdminOperatorsPage() {
                       </form>
                     </div>
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2 whitespace-nowrap">
                     <RevokeButton operatorId={op.id} name={op.name ?? "이 간사"} />
                   </td>
                 </tr>

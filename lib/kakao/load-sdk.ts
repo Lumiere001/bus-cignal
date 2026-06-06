@@ -1,11 +1,48 @@
 // Client-only. Never call from server components or server modules.
 // Safe to import — loadKakaoMapSdk() guards with typeof window check before any DOM access.
 
+// SDK 객체 인스턴스 타입 (생성자 반환값) — 외부에서 핸들로 다룰 때 사용
+export type KakaoLatLng = object;
+
+export type KakaoMap = {
+  setBounds(bounds: KakaoLatLngBounds): void;
+  setCenter(latlng: KakaoLatLng): void;
+  setLevel(level: number): void;
+};
+
+export type KakaoMarker = {
+  setMap(map: KakaoMap | null): void;
+  getPosition(): KakaoLatLng;
+};
+
+export type KakaoLatLngBounds = {
+  extend(latlng: KakaoLatLng): void;
+  isEmpty(): boolean;
+};
+
+export type KakaoInfoWindow = {
+  open(map: KakaoMap, marker: KakaoMarker): void;
+  close(): void;
+};
+
 type KakaoMapsApi = {
   load(callback: () => void): void;
-  Map: new (container: HTMLElement, options: object) => object;
-  LatLng: new (lat: number, lng: number) => object;
-  Marker: new (options: { position: object }) => { setMap(map: object): void };
+  Map: new (container: HTMLElement, options: object) => KakaoMap;
+  LatLng: new (lat: number, lng: number) => KakaoLatLng;
+  Marker: new (options: { position: KakaoLatLng; title?: string }) => KakaoMarker;
+  LatLngBounds: new () => KakaoLatLngBounds;
+  InfoWindow: new (options: {
+    content: string | HTMLElement;
+    removable?: boolean;
+    zIndex?: number;
+  }) => KakaoInfoWindow;
+  event: {
+    addListener(
+      target: KakaoMap | KakaoMarker,
+      type: string,
+      handler: () => void,
+    ): void;
+  };
 };
 
 declare global {

@@ -1,84 +1,9 @@
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildSettlement } from "@/lib/settlement";
-import type { SettlementMatch, LedgerEntry } from "@/lib/settlement";
+import type { SettlementMatch } from "@/lib/settlement";
 import { one } from "@/lib/supabase/relation";
-import { SettlementCsvButton } from "./SettlementCsvButton";
-
-function won(n: number): string {
-  return `${n.toLocaleString()}원`;
-}
-
-function LedgerTable({
-  title,
-  emptyText,
-  entries,
-  confirmedTotal,
-  pendingTotal,
-}: {
-  title: string;
-  emptyText: string;
-  entries: LedgerEntry[];
-  confirmedTotal: number;
-  pendingTotal: number;
-}) {
-  return (
-    <section className="rounded-xl border bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-base font-semibold">{title}</h2>
-      {entries.length === 0 ? (
-        <p className="py-8 text-center text-sm text-gray-400">{emptyText}</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-xs text-gray-500">
-                <th className="py-2 pr-2 font-medium">지구</th>
-                <th className="py-2 px-2 text-right font-medium">확정 (입금완료)</th>
-                <th className="py-2 pl-2 text-right font-medium">진행중</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((e) => (
-                <tr key={e.counterpartRegionId} className="border-b last:border-0">
-                  <td className="py-2 pr-2 font-medium text-gray-800">
-                    {e.counterpartRegionName}
-                  </td>
-                  <td className="py-2 px-2 text-right">
-                    <span className="font-medium text-gray-900">
-                      {won(e.confirmedAmount)}
-                    </span>
-                    <span className="ml-1 text-xs text-gray-400">
-                      ({e.confirmedCount}명)
-                    </span>
-                  </td>
-                  <td className="py-2 pl-2 text-right text-gray-500">
-                    {e.pendingAmount > 0 ? (
-                      <>
-                        {won(e.pendingAmount)}
-                        <span className="ml-1 text-xs text-gray-400">
-                          ({e.pendingCount}명)
-                        </span>
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 text-sm font-semibold">
-                <td className="py-2 pr-2">합계</td>
-                <td className="py-2 px-2 text-right text-gray-900">{won(confirmedTotal)}</td>
-                <td className="py-2 pl-2 text-right text-gray-500">{won(pendingTotal)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
+import { SettlementList } from "./SettlementList";
 
 export default async function Page() {
   const session = await requireOperator();
@@ -158,32 +83,14 @@ export default async function Page() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">정산</h1>
-          <p className="mt-1 text-xs text-gray-400">
-            본인 지구 관련 매칭만 · 사후 처리는 지구 간 자율 (시스템은 표만 제공)
-          </p>
-        </div>
-        <SettlementCsvButton ledger={ledger} />
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold">정산</h1>
+        <p className="mt-1 text-xs text-gray-400">
+          본인 지구 관련 매칭만 · 사후 처리는 지구 간 자율 (시스템은 표만 제공)
+        </p>
       </div>
 
-      <div className="space-y-4">
-        <LedgerTable
-          title="받을 돈 (우리 차량을 탄 지구)"
-          emptyText="받을 정산 내역이 없습니다."
-          entries={ledger.receivable}
-          confirmedTotal={ledger.totals.receivableConfirmed}
-          pendingTotal={ledger.totals.receivablePending}
-        />
-        <LedgerTable
-          title="보낼 돈 (우리가 신청해 탄 차량)"
-          emptyText="보낼 정산 내역이 없습니다."
-          entries={ledger.payable}
-          confirmedTotal={ledger.totals.payableConfirmed}
-          pendingTotal={ledger.totals.payablePending}
-        />
-      </div>
+      <SettlementList ledger={ledger} />
     </div>
   );
 }

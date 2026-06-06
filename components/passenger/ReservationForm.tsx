@@ -29,7 +29,7 @@ export function ReservationForm({ code, error, action }: Props) {
       <div className="bg-card flex flex-col gap-6 rounded-2xl border p-6 shadow-sm">
         <div className="text-center">
           <p className="text-muted-foreground text-xs font-medium">예약번호</p>
-          <h1 className="mt-0.5 font-mono text-2xl font-extrabold tracking-wider text-blue-700">
+          <h1 className="mt-0.5 font-mono text-2xl font-extrabold tracking-wider text-blue-700 whitespace-nowrap tabular-nums">
             {code}
           </h1>
         </div>

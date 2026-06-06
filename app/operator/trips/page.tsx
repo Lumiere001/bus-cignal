@@ -1,4 +1,5 @@
 import { requireOperator } from "@/lib/auth/operator";
+import { getOperatorRegionName } from "@/lib/auth/operator-region";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
@@ -15,6 +16,7 @@ const ACTIVE_MATCH_STATUSES = ["awaiting_payment", "payment_reported", "paid"] a
 
 export default async function Page() {
   const session = await requireOperator();
+  const regionName = await getOperatorRegionName(session.regionId);
   const supabase = createAdminClient();
 
   const { data: trips } = await supabase
@@ -34,15 +36,15 @@ export default async function Page() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">내 Trip 목록</h1>
+        <h1 className="text-xl font-semibold">{regionName} 공급 차량</h1>
         <Link href="/operator/trips/new" className={cn(buttonVariants())}>
-          + 새 Trip 등록
+          + 차량 등록
         </Link>
       </div>
 
       {!trips || trips.length === 0 ? (
         <div className="rounded-xl border border-dashed py-16 text-center text-sm text-gray-400">
-          등록된 Trip이 없습니다.
+          {regionName} 공급 차량이 없습니다.
         </div>
       ) : (
         <ul className="space-y-3">

@@ -8,42 +8,39 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: CC 세션 (2026-06-05 심야 — 전 영역 인수·출시 블로커/감사 소진)
+From: CC 세션 (2026-06-06 — UI/UX 대개편 + Phase 2 + 현실 더미, 멀티에이전트)
 To: CC 다음 세션 (⭐ 여기부터)
-목적: ① 운영 TODO ② E2E 테스트 환경 구축(신규) ③ 디자인 개선 검토(신규)
+목적: Phase 2 남은 하위 → Phase 3(마스터) → Phase 4(학생) → Phase 5(공개) 순 진행
 ```
 
-### ✅ 직전 세션 결과 (요약)
-- **PR #56~#70 머지(15건)**, **prod 마이그 000002~000006 전부 적용**, 열린 PR 0.
-- 라이브: 매직링크 간사 로그인 · 좌석 race 원자 RPC(B3) · 약관/방침(PIPA) · 푸시 배너 v2 · 출발 리마인더(GitHub Actions) · 학생 rate-limit · partial_match · region 스코핑 · operator UX 픽스.
-- CCC 인증 = **B1 해제**(일회용 코드+검증 API, 그쪽 API 주말 도착) · **마스터 승인 제거** 결정. 채팅 = Firebase 커스텀 토큰 브리지 **설계 결정(빌드 보류, 에뮬레이터 개발)**.
-- 상세: WORKLOG "심야" 엔트리 · `docs/AUDIT-2026-06-05-production-readiness.md` · `docs/decisions/`(8건, README 인덱스).
+### ✅ 이번 세션 결과 (push+PR 완료 — 사용자 예외 허용)
+- **PR #79** `feat/admin-ops-monitoring` 마스터 운영 모니터링(/admin/system).
+- **PR #80** `fix/operator-cookie-render` requireOperator 렌더 중 쿠키삭제 버그 픽스.
+- **PR(신규) `feat/operator-screen-cleanup`** = ⭐ 대개편 8커밋(간사 1-A/1-C·1-B 대시보드·UI견고화·수정들·Phase 2 위저드·**현실 더미시드**).
+- `chore/realistic-dummy` = feat에 동일 시드 포함 → **폐기(삭제)**.
+- 완료/결정/다음할일 **전부 WORKLOG 맨 위 "2026-06-06" 엔트리** 에 상세.
 
-### 🔜 다음 세션 할 일
+### 🔜 다음 세션 할 일 (우선순위)
+1. **Phase 2 남은 하위**: 신청 목록 상/하행 분리+옵시디언 그래프뷰·노드 클릭 정보/수정 · **신청 취소** · 신규 "우리 버스 탄 타지구 학생 모아보기 + 간사 채팅".
+2. **Phase 3 마스터**: Trip 검색 · 매칭 그래프뷰(노드=지구·간선=매칭·요청량=노드크기·클릭→지구상황) · 정산 매트릭스 UI개선+검색 · CCC 연결 예외/해지 큐.
+3. **Phase 4 학생**: 지도(배포 후 카카오 도메인 등록)·문의 연락처 총무 추가·**그룹 채팅(같은 버스+간사)+읽음 수**.
+4. **Phase 5 공개**: 전국 지구별 잔여석·신청인원 뷰(무로그인·무PII).
+5. **Phase 6**: CCC consumer(외부 API 대기) + 지구코드 매핑.
+6. 운영: 약관 「확정 필요」 4개(운영주체·보호책임자·연락처·시행일, 대기) · iPad QA(배포 또는 Tailscale HTTPS).
 
-**A. 운영 TODO (코드 밖 — 사용자/Cowork)**
-1. 저장소 Settings→Secrets→Actions에 **`CRON_SECRET` 등록**(Vercel과 동일 값) — 출발 리마인더 워크플로 작동 필수.
-2. 약관/방침 **「확정 필요」 4개**(운영주체 법적명칭·보호책임자·연락처·시행일) → 받으면 CC가 `/privacy`·`/terms` 반영.
-3. **CCC 코드검증 API 도착 시(주말)** → CCC consumer 구현 (`docs/decisions/2026-06-05-ccc-operator-auth-confirmed.md`).
-
-**B. ⭐ E2E 테스트 환경 구축 (사용자 신규 요청)**
-- 참고 영상: https://www.youtube.com/watch?v=feognUBShqI
-- 요구: 영상 내용을 참고해 **우리 프로젝트에 맞는 E2E 환경을 세부까지** 구축. **더 발전시킬 부분 고민 + 실제 E2E 테스트 진행.**
-- 현황: Playwright 스캐폴드 존재(`tests/e2e/`, `playwright.config.ts`, master-auth 3케이스, `global-setup`). **핵심 사슬 E2E는 없음**(간사 등록→매칭→송금→예약→정산, 학생 예약→취소).
-- 방향(제안): seed + `/dev/login`(또는 매직링크 토큰) 기반으로 ① 마스터 간사 추가→입장링크 ② 간사 등록→공개→신청→**원자 승인(B3)**→입금확인→예약번호→정산 ③ 학생 `/r` 본인확인(**rate-limit 포함**)→/me→취소 ④ 푸시 옵트인 배너 분기. CI(GitHub Actions) 연동·트레이스·실패 아티팩트까지.
-
-**C. ⭐ 디자인 개선 검토 (사용자 신규 요청)**
-- 참고 영상: https://youtu.be/RnJkhxFMWDY
-- 요구: 영상 보고 서비스 디자인 개선안 탐색. **큰 변경 전 "느낌"만 먼저 사용자와 공유 + 예시 목업(본)까지 만들어** 합의 후 실제 적용.
-- 현황: shadcn/ui + Pretendard + 브랜드색 4종, 모바일 우선. 미해결 P3 = `/admin` 모바일 nav 가로스크롤.
+### ⚠️ 인계 주의
+- **카카오 지도**: 로컬은 빌린 키라 미표시(코드는 graceful 에러). **배포 후 카카오 콘솔에 도메인(localhost+Vercel) 등록 → 간사 결과지도 + 학생 지도 둘 다 검증.**
+- 타지구 신청 모델: **출발=공급지구 선택**(정정 완료). 권역 매핑은 `RequestWizard.tsx` 상수(regions.area→권역).
+- 머지 권장: `feat/operator-screen-cleanup`(대개편) → #79 → #80 (전부 main 기준 독립, 스택 아님). chore/realistic-dummy 머지 X.
+- 학생 전화 풀노출=간사 화면 한정(승인). 마스터=전용 비번(CCC 분리). 승인대기→CCC 자동입장+예외/해지 큐(미구현).
 
 ### ▶️ 다음 세션 시작 방법
-1. 터미널: `cd /Users/east_star/Projects/bus-cignal && claude`
-2. 첫 메시지: **"Bus Cignal 이어가자 — WORKLOG·SESSION-HANDOFF 읽고 B(E2E)·C(디자인)부터 시작"**
-3. CC가 WORKLOG·이 핸드오프 자동 로드 → 컨텍스트 복원.
+1. `cd /Users/east_star/Projects/bus-cignal && claude`
+2. 첫 메시지: **"Bus Cignal 이어가자 — WORKLOG·SESSION-HANDOFF 읽고 Phase 2 남은 하위부터"**
+3. 재개: `supabase start && supabase db reset && node scripts/load/seed-dummy.mjs --students 1000` → dev 서버(`/run`/preview) → `/dev/login`(간사 클릭). ⚠️ reseed 시 기존 세션 stale → 다시 클릭.
 
 ### 블로커
-- CCC consumer = 외부 API 대기(주말). 그 외엔 매직링크로 운영 가능.
+- CCC consumer = 외부 API 대기. 그 외엔 매직링크로 운영 가능. 카카오 지도는 배포 후 검증.
 
 ---
 

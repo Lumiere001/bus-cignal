@@ -1,54 +1,111 @@
 import Link from "next/link";
 import { requireOperator } from "@/lib/auth/operator";
+import { getOperatorRegionName } from "@/lib/auth/operator-region";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buttonVariants } from "@/components/ui/button";
-import { StatCard } from "@/components/ui/stat-card";
+import { DIRECTION_SHORT } from "@/lib/labels";
+import { formatKstDateTime } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-// 간사 대시보드 — 본인 지구 운영 현황 요약 + 바로가기 (SPEC §4.3).
+// 간사 대시보드 (1-B 통합) — 우리 지구 운영 현황을 한 화면에 인라인으로.
+// 공급 차량·보낸 신청을 클릭 없이 바로 보여주고, 카드 클릭 시 해당 화면으로 이동.
 
 const ACTIVE_MATCH = ["awaiting_payment", "payment_reported", "paid"];
 
-async function loadSummary(regionId: string) {
+type SupplyTrip = {
+  id: string;
+  direction: "up" | "down";
+  route: string;
+  departureAt: string;
+  capacity: number;
+  available: number;
+  queuedTeams: number; // 대기 신청(승인 필요) 팀 수 — 공급 역할
+  queuedPeople: number;
+  toConfirm: number; // 송금 보고됨 → 입금 확인 필요 건수 — 공급 역할
+};
+
+async function loadDashboard(regionId: string) {
   const db = createAdminClient();
 
-  // 본인 지구가 공급한 trip id 목록 (매칭/대기 집계에 사용)
-  const { data: myTrips } = await db
+  const { data: trips } = await db
     .from("trips")
-    .select("id, status")
-    .eq("operator_region_id", regionId);
-  const tripIds = (myTrips ?? []).map((t) => t.id);
-  const publishedTrips = (myTrips ?? []).filter((t) => t.status === "published").length;
+    .select(
+      `id, direction, departure_at, capacity, status,
+       origin:region_locations!origin_location_id(label, address),
+       destination:region_locations!destination_location_id(label, address),
+       seat_offers(seat_count, status),
+       matches(id, status)`,
+    )
+    .eq("operator_region_id", regionId)
+    .eq("status", "published")
+    .order("departure_at", { ascending: true });
 
-  const [incomingQueued, myRequests, activeMatches] = await Promise.all([
-    // 우리 차량으로 들어온 대기중 신청 (승인 처리 필요)
+  const tripIds = (trips ?? []).map((t) => t.id);
+
+  // 우리 차량별 대기(queued) 신청 — 팀(요청) 수 + 인원(좌석 합) 둘 다 집계.
+  // 한 요청(=한 팀)에 여러 학생이 들어가므로 "팀"과 "명"은 다르다.
+  const [queuedRows, sentRows, demandMatchesRes] = await Promise.all([
     tripIds.length
       ? db
           .from("seat_requests")
-          .select("*", { count: "exact", head: true })
+          .select("trip_id, seat_count")
           .in("trip_id", tripIds)
           .eq("status", "queued")
-      : Promise.resolve({ count: 0 }),
-    // 우리 지구가 보낸 신청
-    db.from("seat_requests").select("*", { count: "exact", head: true }).eq("region_id", regionId),
-    // 우리 차량 관련 진행중 매칭
-    tripIds.length
-      ? db
-          .from("matches")
-          .select("*", { count: "exact", head: true })
-          .in("trip_id", tripIds)
-          .in("status", ACTIVE_MATCH)
-      : Promise.resolve({ count: 0 }),
+      : Promise.resolve({ data: [] as { trip_id: string; seat_count: number }[] }),
+    db.from("seat_requests").select("status").eq("region_id", regionId),
+    // 수요 매칭 수 — /operator/matches와 동일 집합(우리 지구 신청의 매칭, 전 상태).
+    // inner join 필터로 카운트해 reqId .in() URI 한계를 피한다.
+    db
+      .from("matches")
+      .select("request:seat_requests!request_id!inner(region_id)", { count: "exact", head: true })
+      .eq("request.region_id", regionId),
   ]);
+  const demandMatches = demandMatchesRes.count ?? 0;
 
-  return {
-    publishedTrips,
-    incomingQueued: incomingQueued.count ?? 0,
-    myRequests: myRequests.count ?? 0,
-    activeMatches: activeMatches.count ?? 0,
-  };
+  const queuedByTrip = new Map<string, { teams: number; people: number }>();
+  for (const r of (queuedRows.data ?? []) as { trip_id: string; seat_count: number }[]) {
+    const cur = queuedByTrip.get(r.trip_id) ?? { teams: 0, people: 0 };
+    queuedByTrip.set(r.trip_id, { teams: cur.teams + 1, people: cur.people + (r.seat_count ?? 0) });
+  }
+
+  const one = <T,>(v: T | T[]): T | undefined => (Array.isArray(v) ? v[0] : v);
+  const supplyTrips: SupplyTrip[] = (trips ?? []).map((t) => {
+    const origin = one(t.origin) as { label: string | null; address: string | null } | undefined;
+    const dest = one(t.destination) as { label: string | null; address: string | null } | undefined;
+    const openSeats = (t.seat_offers ?? [])
+      .filter((o) => o.status === "open")
+      .reduce((s, o) => s + o.seat_count, 0);
+    const active = (t.matches ?? []).filter((m) => ACTIVE_MATCH.includes(m.status ?? "")).length;
+    const toConfirm = (t.matches ?? []).filter((m) => m.status === "payment_reported").length;
+    return {
+      id: t.id,
+      direction: t.direction as "up" | "down",
+      route: `${origin?.label ?? origin?.address ?? "출발지"} → ${dest?.label ?? dest?.address ?? "도착지"}`,
+      departureAt: t.departure_at,
+      capacity: t.capacity,
+      available: Math.max(0, openSeats - active),
+      queuedTeams: queuedByTrip.get(t.id)?.teams ?? 0,
+      queuedPeople: queuedByTrip.get(t.id)?.people ?? 0,
+      toConfirm,
+    };
+  });
+
+  const sent = { total: 0, queued: 0, matched: 0, done: 0, rejected: 0 };
+  for (const r of (sentRows.data ?? []) as { status: string }[]) {
+    sent.total++;
+    if (r.status === "queued") sent.queued++;
+    else if (r.status === "matched") sent.matched++;
+    else if (r.status === "rejected") sent.rejected++;
+    else sent.done++;
+  }
+
+  const totalQueuedTeams = [...queuedByTrip.values()].reduce((a, b) => a + b.teams, 0);
+  const totalQueuedPeople = [...queuedByTrip.values()].reduce((a, b) => a + b.people, 0);
+  const totalToConfirm = supplyTrips.reduce((a, t) => a + t.toConfirm, 0);
+
+  return { supplyTrips, sent, demandMatches, totalQueuedTeams, totalQueuedPeople, totalToConfirm };
 }
 
 export default async function OperatorDashboardPage() {
@@ -59,66 +116,164 @@ export default async function OperatorDashboardPage() {
       <main className="mx-auto max-w-3xl px-4 py-8">
         <h1 className="text-xl font-semibold">간사 대시보드</h1>
         <p className="text-destructive mt-4 rounded-lg border px-3 py-2 text-sm">
-          소속 지구가 아직 배정되지 않았습니다. 마스터 승인 후 이용할 수 있습니다.
+          소속 지구가 아직 배정되지 않았습니다.
         </p>
       </main>
     );
   }
 
-  const s = await loadSummary(session.regionId);
+  const [regionName, d] = await Promise.all([
+    getOperatorRegionName(session.regionId),
+    loadDashboard(session.regionId),
+  ]);
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">간사 대시보드</h1>
-        <p className="text-muted-foreground mt-1 text-sm">본인 지구 운영 현황</p>
+      {/* 헤더 + 진입점 통일 */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{regionName} 운영 현황</h1>
+          <p className="text-muted-foreground mt-1 text-sm">간사 대시보드</p>
+        </div>
+        <div className="flex gap-2">
+          <Link
+            href="/operator/trips/new"
+            className={cn(buttonVariants({ size: "sm" }), "h-10 px-4")}
+          >
+            ＋ 차량 등록
+          </Link>
+          <Link
+            href="/operator/requests/new"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-card h-10 px-4")}
+          >
+            ＋ 타지구 신청
+          </Link>
+        </div>
       </div>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard
-          label="공개중 차량"
-          value={s.publishedTrips}
-          href="/operator/trips"
-          icon="🚌"
-          tone="info"
-        />
-        <StatCard
-          label="대기중 신청"
-          value={s.incomingQueued}
-          href="/operator/trips"
-          icon="⏳"
-          tone={s.incomingQueued > 0 ? "warning" : "neutral"}
-          hint={s.incomingQueued > 0 ? "승인 대기 →" : undefined}
-        />
-        <StatCard
-          label="보낸 신청"
-          value={s.myRequests}
-          href="/operator/requests"
-          icon="📤"
-          tone="neutral"
-        />
-        <StatCard
-          label="진행중 매칭"
-          value={s.activeMatches}
-          href="/operator/matches"
-          icon="✅"
-          tone={s.activeMatches > 0 ? "success" : "neutral"}
-          hint={s.activeMatches > 0 ? "정산까지 순항" : undefined}
-        />
+      {/* ① 우리 지구 공급 차량 — 인라인, 카드 클릭 시 상세로 */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold">
+            공개 차량 <span className="text-muted-foreground">{d.supplyTrips.length}</span>
+            {d.totalQueuedTeams > 0 && (
+              <span className="ml-2 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-amber-800">
+                대기 {d.totalQueuedTeams}팀 · {d.totalQueuedPeople}명
+              </span>
+            )}
+            {d.totalToConfirm > 0 && (
+              <span className="ml-2 rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-blue-800">
+                입금확인 {d.totalToConfirm}
+              </span>
+            )}
+          </h2>
+          <Link href="/operator/trips" className="text-primary text-xs font-medium hover:underline">
+            전체 차량 →
+          </Link>
+        </div>
+
+        {d.supplyTrips.length === 0 ? (
+          <Link
+            href="/operator/trips/new"
+            className="text-muted-foreground hover:border-primary/40 hover:text-foreground block rounded-xl border border-dashed py-10 text-center text-sm transition-colors"
+          >
+            아직 공개한 차량이 없습니다. ＋ 차량 등록하기
+          </Link>
+        ) : (
+          <ul className="space-y-2">
+            {d.supplyTrips.map((t) => (
+              <li key={t.id}>
+                <Link
+                  href={`/operator/trips/${t.id}`}
+                  className="bg-card hover:border-primary/50 flex items-center justify-between gap-3 rounded-xl border p-4 shadow-sm transition-colors"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
+                          t.direction === "up"
+                            ? "bg-blue-50 text-blue-700"
+                            : "bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        {DIRECTION_SHORT[t.direction]}
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        {formatKstDateTime(t.departureAt)} 출발
+                      </span>
+                    </div>
+                    <p className="mt-1 truncate text-sm font-semibold">{t.route}</p>
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                      정원 {t.capacity}석 · 잔여 {t.available}석
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    {t.queuedTeams > 0 && (
+                      <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-bold whitespace-nowrap text-amber-800">
+                        대기 {t.queuedTeams}팀·{t.queuedPeople}명
+                      </span>
+                    )}
+                    {t.toConfirm > 0 && (
+                      <span className="rounded-lg bg-blue-100 px-2.5 py-1 text-xs font-bold whitespace-nowrap text-blue-800">
+                        입금확인 {t.toConfirm}
+                      </span>
+                    )}
+                    {t.queuedTeams === 0 && t.toConfirm === 0 && (
+                      <span className="text-muted-foreground/60 text-xs whitespace-nowrap">할 일 없음</span>
+                    )}
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
-      <section className="flex flex-wrap gap-2">
+      {/* ② 우리 지구가 보낸 신청 — 인라인 요약, 클릭 시 신청 목록 */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold">
+            보낸 신청 <span className="text-muted-foreground">{d.sent.total}</span>
+          </h2>
+          <Link href="/operator/requests" className="text-primary text-xs font-medium hover:underline">
+            신청 목록 →
+          </Link>
+        </div>
         <Link
-          href="/operator/trips/new"
-          className={cn(buttonVariants({ size: "lg" }), "h-11 px-5")}
+          href="/operator/requests"
+          className="bg-card hover:border-primary/50 grid grid-cols-4 gap-2 rounded-xl border p-4 shadow-sm transition-colors"
         >
-          ＋ 차량 등록
+          {[
+            { label: "대기", value: d.sent.queued, tone: "text-amber-700" },
+            { label: "매칭", value: d.sent.matched, tone: "text-emerald-700" },
+            { label: "완료", value: d.sent.done, tone: "text-foreground" },
+            { label: "거절", value: d.sent.rejected, tone: "text-muted-foreground" },
+          ].map((c) => (
+            <div key={c.label} className="text-center">
+              <p className={`text-xl font-bold tabular-nums ${c.tone}`}>{c.value}</p>
+              <p className="text-muted-foreground mt-0.5 text-xs">{c.label}</p>
+            </div>
+          ))}
+        </Link>
+      </section>
+
+      {/* ③ 진행 요약 — 매칭·정산 바로가기 */}
+      <section className="grid grid-cols-2 gap-3">
+        <Link
+          href="/operator/matches"
+          className="bg-card hover:border-primary/50 rounded-xl border p-4 shadow-sm transition-colors"
+        >
+          <p className="text-muted-foreground text-xs">우리 학생 매칭 (수요)</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums">{d.demandMatches}</p>
+          <p className="text-primary mt-1 text-xs font-medium">송금 보고·예약 →</p>
         </Link>
         <Link
-          href="/operator/requests/new"
-          className={cn(buttonVariants({ variant: "outline", size: "lg" }), "bg-card h-11 px-5")}
+          href="/operator/settlement"
+          className="bg-card hover:border-primary/50 rounded-xl border p-4 shadow-sm transition-colors"
         >
-          ＋ 타지구 차량 신청
+          <p className="text-muted-foreground text-xs">정산</p>
+          <p className="mt-1 text-2xl font-bold">🧾</p>
+          <p className="text-primary mt-1 text-xs font-medium">받을·보낼 정산표 →</p>
         </Link>
       </section>
     </main>

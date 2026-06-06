@@ -9,7 +9,7 @@ import { approveRequest, rejectRequest } from "./actions";
 type QueuePassenger = {
   id: string;
   name: string;
-  phoneTail: string;
+  phone: string;
   schoolOrRole: string | null;
   priority: number;
   note: string | null;
@@ -19,6 +19,8 @@ type QueueRequest = {
   id: string;
   requestedAt: string;
   regionName: string;
+  operatorName: string | null;
+  operatorPhone: string | null;
   passengers: QueuePassenger[];
 };
 
@@ -126,9 +128,25 @@ function RequestCard({
 
   return (
     <li className="rounded-xl border bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-900">{req.regionName}</span>
-        <span className="text-xs text-gray-400">{formatKstDateTime(req.requestedAt)} 신청</span>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <span className="text-sm font-medium text-gray-900">{req.regionName}</span>
+          {/* 신청 지구 담당 간사 연락처 — 운영 연락용 (팀장 승인) */}
+          <span className="ml-2 text-xs text-gray-500">
+            담당 간사 {req.operatorName ?? "미지정"}
+            {req.operatorPhone && (
+              <a
+                href={`tel:${req.operatorPhone}`}
+                className="ml-1 text-blue-600 hover:underline"
+              >
+                {req.operatorPhone}
+              </a>
+            )}
+          </span>
+        </div>
+        <span className="shrink-0 text-xs text-gray-400">
+          {formatKstDateTime(req.requestedAt)} 신청
+        </span>
       </div>
 
       {/* 선택 도구 — 승인은 선택한 학생만 매칭(부분 승인 가능). priority는 힌트(순서)일 뿐. */}
@@ -170,7 +188,14 @@ function RequestCard({
                 {p.schoolOrRole && (
                   <span className="text-gray-400">{p.schoolOrRole}</span>
                 )}
-                <span className="ml-auto text-xs text-gray-400">···{p.phoneTail}</span>
+                {/* 전화번호 풀 노출 — 간사 운영 연락용 (팀장 승인, 마스킹 금지) */}
+                <a
+                  href={`tel:${p.phone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="ml-auto text-xs text-blue-600 hover:underline"
+                >
+                  {p.phone}
+                </a>
               </label>
               {p.note && (
                 <p className="mt-1 pl-9 text-xs text-gray-400">메모: {p.note}</p>

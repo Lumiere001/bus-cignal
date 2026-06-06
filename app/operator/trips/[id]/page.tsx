@@ -6,12 +6,11 @@ import {
   DIRECTION_SHORT,
   TRIP_STATUS_LABEL,
   TRIP_STATUS_COLOR,
-  MATCH_STATUS_LABEL,
 } from "@/lib/labels";
 import { one } from "@/lib/supabase/relation";
 import { formatKstDateTime } from "@/lib/datetime";
 import { MatchingQueue } from "./MatchingQueue";
-import { MatchActions } from "./MatchActions";
+import { MatchTable, type MatchRow } from "./MatchTable";
 
 // 매칭으로 자리를 점유하는 상태 (잔여 계산 시 차감)
 const ACTIVE_MATCH_STATUSES = ["awaiting_payment", "payment_reported", "paid"] as const;
@@ -32,7 +31,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       seat_offers(seat_count, status),
       matches(
         id, status, payment_due_at, matched_at, reservation_code, passenger_id,
-        passenger:request_passengers!passenger_id(name, school_or_role),
+        passenger:request_passengers!passenger_id(name, phone, school_or_role),
         request:seat_requests!request_id(region:regions!region_id(name))
       )
     `,
@@ -48,7 +47,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     .from("seat_requests")
     .select(
       `
-      id, requested_at, seat_count, status,
+      id, requested_at, seat_count, status, operator_id,
       region:regions!region_id(name, code),
       request_passengers(id, name, phone, school_or_role, priority, note)
     `,
@@ -56,6 +55,22 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     .eq("trip_id", id)
     .eq("status", "queued")
     .order("requested_at", { ascending: true });
+
+  // 신청 지구 담당 간사 연락처 — 큐 헤더에 "담당 간사 ○○○ 010-…" 표기용.
+  // 각 신청의 operator_id를 한 번에 묶어 조회(중복 제거) → 맵으로 룩업. (운영 연락 목적, 팀장 승인)
+  const requestOperatorIds = [
+    ...new Set((requests ?? []).map((r) => r.operator_id).filter(Boolean)),
+  ];
+  const operatorContacts = new Map<string, { name: string | null; phone: string | null }>();
+  if (requestOperatorIds.length > 0) {
+    const { data: operators } = await supabase
+      .from("operators")
+      .select("id, name, phone")
+      .in("id", requestOperatorIds);
+    for (const op of operators ?? []) {
+      operatorContacts.set(op.id, { name: op.name, phone: op.phone });
+    }
+  }
 
   const origin = one(trip.origin);
   const dest = one(trip.destination);
@@ -75,25 +90,47 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     activeMatches.map((m) => m.passenger_id).filter(Boolean),
   );
 
-  // 신청 큐 → 클라이언트 컴포넌트용 직렬화 (전화번호는 뒤 4자리만 — 개인정보 최소, §2.4)
+  // 신청 큐 → 클라이언트 컴포넌트용 직렬화.
+  // 전화번호는 풀 노출(간사 운영 연락 목적, 팀장 승인) — 학생·신청 지구 담당 간사 모두.
   const queue = (requests ?? [])
-    .map((r) => ({
-      id: r.id,
-      requestedAt: r.requested_at,
-      regionName: one(r.region)?.name ?? "타지구",
-      passengers: (r.request_passengers ?? [])
-        .filter((p) => !matchedPassengerIds.has(p.id))
-        .sort((a, b) => a.priority - b.priority)
-        .map((p) => ({
-          id: p.id,
-          name: p.name,
-          phoneTail: p.phone.slice(-4),
-          schoolOrRole: p.school_or_role,
-          priority: p.priority,
-          note: p.note,
-        })),
-    }))
+    .map((r) => {
+      const contact = r.operator_id ? operatorContacts.get(r.operator_id) : undefined;
+      return {
+        id: r.id,
+        requestedAt: r.requested_at,
+        regionName: one(r.region)?.name ?? "타지구",
+        operatorName: contact?.name ?? null,
+        operatorPhone: contact?.phone ?? null,
+        passengers: (r.request_passengers ?? [])
+          .filter((p) => !matchedPassengerIds.has(p.id))
+          .sort((a, b) => a.priority - b.priority)
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            phone: p.phone,
+            schoolOrRole: p.school_or_role,
+            priority: p.priority,
+            note: p.note,
+          })),
+      };
+    })
     .filter((r) => r.passengers.length > 0); // 남은 학생 없는 신청 카드는 숨김
+
+  // 매칭 현황 표 행 — 최근 매칭순. 전화 풀 노출(간사 운영 연락용, 팀장 승인).
+  const matchRows: MatchRow[] = (trip.matches ?? [])
+    .slice()
+    .sort((a, b) => new Date(b.matched_at).getTime() - new Date(a.matched_at).getTime())
+    .map((m) => {
+      const p = one(m.passenger);
+      return {
+        id: m.id,
+        name: p?.name ?? "학생",
+        schoolOrRole: p?.school_or_role ?? null,
+        phone: p?.phone ?? null,
+        status: m.status ?? "",
+        reservationCode: m.reservation_code ?? null,
+      };
+    });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -158,53 +195,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       {/* 매칭 현황 */}
       <section>
         <h2 className="mb-3 text-lg font-semibold">매칭 현황</h2>
-        {(trip.matches ?? []).length === 0 ? (
+        {matchRows.length === 0 ? (
           <p className="rounded-xl border border-dashed py-12 text-center text-sm text-gray-400">
             아직 매칭된 학생이 없습니다.
           </p>
         ) : (
-          <ul className="space-y-2">
-            {(trip.matches ?? [])
-              .slice()
-              .sort(
-                (a, b) =>
-                  new Date(b.matched_at).getTime() - new Date(a.matched_at).getTime(),
-              )
-              .map((m) => {
-                const p = one(m.passenger);
-                const region = one(one(m.request)?.region);
-                return (
-                  <li
-                    key={m.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border bg-white px-4 py-3 text-sm"
-                  >
-                    <div>
-                      <span className="font-medium text-gray-900">
-                        {p?.name ?? "학생"}
-                      </span>
-                      {p?.school_or_role && (
-                        <span className="ml-2 text-gray-400">{p.school_or_role}</span>
-                      )}
-                      {region?.name && (
-                        <span className="ml-2 text-xs text-gray-400">
-                          · {region.name}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                        {MATCH_STATUS_LABEL[m.status ?? ""] ?? m.status}
-                      </span>
-                      <MatchActions
-                        matchId={m.id}
-                        status={m.status ?? ""}
-                        reservationCode={m.reservation_code ?? null}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-          </ul>
+          <MatchTable rows={matchRows} />
         )}
       </section>
     </div>
