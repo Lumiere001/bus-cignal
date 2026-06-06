@@ -89,3 +89,11 @@ tests/e2e/.auth/
 
 # agent
 .claude/
+
+# firebase emulator
+*-debug.log
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+/firebase-export-*/
+.firebase/
