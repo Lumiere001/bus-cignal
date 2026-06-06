@@ -43,7 +43,7 @@ export default async function Page() {
         direction, departure_at, price_per_seat,
         origin:region_locations!origin_location_id(label, address),
         destination:region_locations!destination_location_id(label, address),
-        supply:regions!operator_region_id(name, bank_name, bank_account, account_holder)
+        supply:regions!operator_region_id(name)
       )
     `,
           )
@@ -75,9 +75,6 @@ export default async function Page() {
       departure,
       pricePerSeat: trip?.price_per_seat ?? null,
       supplyName: supply?.name ?? null,
-      bankName: supply?.bank_name ?? null,
-      bankAccount: supply?.bank_account ?? null,
-      accountHolder: supply?.account_holder ?? null,
     };
   });
 

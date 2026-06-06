@@ -34,7 +34,7 @@ export default async function Page() {
       id, direction, departure_at, price_per_seat,
       origin:region_locations!origin_location_id(label, address, lat, lng),
       destination:region_locations!destination_location_id(label, address, lat, lng),
-      region:regions!operator_region_id(name),
+      region:regions!operator_region_id(name, area),
       seat_offers(seat_count, status),
       matches(id, status)
     `,
@@ -61,6 +61,7 @@ export default async function Page() {
       departureAt: t.departure_at,
       pricePerSeat: t.price_per_seat,
       regionName: one(t.region)?.name ?? "타지구",
+      regionArea: one(t.region)?.area ?? null,
       originLabel: origin?.label ?? origin?.address ?? "출발지",
       destinationLabel: dest?.label ?? dest?.address ?? "도착지",
       pyeongchangLabel: pyeongchang?.label ?? pyeongchang?.address ?? "평창 픽업",
@@ -70,6 +71,13 @@ export default async function Page() {
     };
   });
 
+  // 출발 지구 선택지 = 타지구 공급 차량이 있는 지구들(중복 제거, 가나다순).
+  const regionOptions = Array.from(
+    new Map(
+      wizardTrips.map((t) => [t.regionName, { name: t.regionName, area: t.regionArea }]),
+    ).values(),
+  ).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <Link
@@ -78,9 +86,10 @@ export default async function Page() {
       >
         ← 신청 목록
       </Link>
-      <h1 className="mb-6 text-xl font-semibold">타지구 차량 신청</h1>
+      <h1 className="mb-1 text-xl font-semibold">타지구 차량 신청</h1>
+      <p className="mb-6 text-xs text-gray-400">신청 주체: {myRegionName} (수요)</p>
 
-      <RequestWizard trips={wizardTrips} myRegionName={myRegionName} />
+      <RequestWizard trips={wizardTrips} regionOptions={regionOptions} />
     </div>
   );
 }

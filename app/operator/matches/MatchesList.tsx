@@ -17,9 +17,6 @@ export type MatchRow = {
   departure: string;
   pricePerSeat: number | null;
   supplyName: string | null;
-  bankName: string | null;
-  bankAccount: string | null;
-  accountHolder: string | null;
 };
 
 export function MatchesList({ matches }: { matches: MatchRow[] }) {
@@ -89,16 +86,6 @@ export function MatchesList({ matches }: { matches: MatchRow[] }) {
                       </span>
                     )}
                   </div>
-                  {/* 송금 정보 (공급 지구 계좌) — awaiting_payment일 때 안내 */}
-                  {m.status === "awaiting_payment" && m.bankAccount && (
-                    <div className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                      송금 계좌:{" "}
-                      <span className="whitespace-nowrap tabular-nums">
-                        {m.bankName} {m.bankAccount}
-                      </span>
-                      {m.accountHolder ? ` (${m.accountHolder})` : ""}
-                    </div>
-                  )}
                 </div>
 
                 <div className="shrink-0">

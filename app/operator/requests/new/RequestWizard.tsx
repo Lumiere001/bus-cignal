@@ -14,6 +14,7 @@ export type WizardTrip = {
   departureAt: string; // ISO (UTC)
   pricePerSeat: number;
   regionName: string;
+  regionArea: string | null;
   originLabel: string;
   destinationLabel: string;
   pyeongchangLabel: string;
@@ -21,6 +22,8 @@ export type WizardTrip = {
   pyeongchangLng: number | null;
   availableSeats: number;
 };
+
+type RegionOption = { name: string; area: string | null };
 
 type Step = 1 | 2 | 3;
 
@@ -36,16 +39,43 @@ function toKstDateKey(iso: string): string {
   return k.slice(0, 10);
 }
 
+// 시도(area) → 권역. 근처 권역 추천에 사용. 미매핑(특수·해외 등)은 권역 없음(추천 X).
+const AREA_TO_KWONYEOK: Record<string, string> = {
+  서울: "수도권",
+  경기: "수도권",
+  인천: "수도권",
+  강원: "강원",
+  충남: "충청",
+  충북: "충청",
+  대전: "충청",
+  세종: "충청",
+  전북: "호남",
+  전남: "호남",
+  광주: "호남",
+  경북: "영남",
+  경남: "영남",
+  부산: "영남",
+  대구: "영남",
+  울산: "영남",
+  제주: "제주",
+};
+function kwonyeokOf(area: string | null): string | null {
+  return area ? (AREA_TO_KWONYEOK[area] ?? null) : null;
+}
+
 export function RequestWizard({
   trips,
-  myRegionName,
+  regionOptions,
 }: {
   trips: WizardTrip[];
-  myRegionName: string;
+  regionOptions: RegionOption[];
 }) {
   const [step, setStep] = useState<Step>(1);
 
-  // Step1: 조회 조건. direction = 본인지구 → 평창(상행) 이 기본. 스왑하면 하행.
+  // Step1: 조회 조건.
+  //  - regionName = 어느 지구의 차량을 탈지(공급 지구). 예) 부산.
+  //  - direction = 상행(선택지구→평창) / 하행(평창→선택지구). 스왑으로 전환.
+  const [regionName, setRegionName] = useState<string>(regionOptions[0]?.name ?? "");
   const [direction, setDirection] = useState<"up" | "down">("up");
   const [date, setDate] = useState<string>(""); // "YYYY-MM-DD" (KST), 비우면 전체
   const [headcount, setHeadcount] = useState<number>(1);
@@ -60,24 +90,34 @@ export function RequestWizard({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // 출발/도착 라벨 (방향 토글에 따라 본인지구 ⇄ 평창)
-  const fromLabel = direction === "up" ? myRegionName : "평창";
-  const toLabel = direction === "up" ? "평창" : myRegionName;
+  const selectedArea = regionOptions.find((o) => o.name === regionName)?.area ?? null;
+  const selectedKwon = kwonyeokOf(selectedArea);
 
-  // 조회 조건에 맞는 차량만. (방향 일치 + 날짜 지정 시 같은 KST일 일치)
-  const results = useMemo(() => {
-    return trips.filter((t) => {
+  // 출발/도착 라벨 (방향 토글에 따라 선택지구 ⇄ 평창)
+  const fromLabel = direction === "up" ? regionName : "평창";
+  const toLabel = direction === "up" ? "평창" : regionName;
+
+  // 방향·날짜로 1차 필터 → 정확 일치(선택지구)와 권역 추천으로 분리.
+  const { exact, recommended } = useMemo(() => {
+    const byDir = trips.filter((t) => {
       if (t.direction !== direction) return false;
       if (date && toKstDateKey(t.departureAt) !== date) return false;
       return true;
     });
-  }, [trips, direction, date]);
+    return {
+      exact: byDir.filter((t) => t.regionName === regionName),
+      recommended: byDir.filter(
+        (t) => t.regionName !== regionName && selectedKwon && kwonyeokOf(t.regionArea) === selectedKwon,
+      ),
+    };
+  }, [trips, direction, date, regionName, selectedKwon]);
 
-  const selectedTrip = results.find((t) => t.id === selectedId) ?? null;
+  const allResults = useMemo(() => [...exact, ...recommended], [exact, recommended]);
+  const selectedTrip = allResults.find((t) => t.id === selectedId) ?? null;
 
   // 지도 핀 — 평창 픽업 좌표가 있는 차량만. title=공급지구명, subtitle=노선/시각.
   const pins: MapPin[] = useMemo(() => {
-    return results
+    return allResults
       .filter((t) => t.pyeongchangLat !== null && t.pyeongchangLng !== null)
       .map((t) => ({
         id: t.id,
@@ -86,13 +126,7 @@ export function RequestWizard({
         title: `${t.regionName} (${t.pyeongchangLabel})`,
         subtitle: `[${DIRECTION_SHORT[t.direction]}] ${t.originLabel} → ${t.destinationLabel} · ${formatKstDateTime(t.departureAt)}`,
       }));
-  }, [results]);
-
-  function swapDirection() {
-    setDirection((d) => (d === "up" ? "down" : "up"));
-    // 방향이 바뀌면 이전 선택은 무효 (결과 목록이 바뀜)
-    setSelectedId(null);
-  }
+  }, [allResults]);
 
   function runSearch() {
     setError(null);
@@ -120,7 +154,7 @@ export function RequestWizard({
     setStep(3);
   }
 
-  // ── Step3 명단 편집 (기존 NewRequestForm UI 재사용) ──
+  // ── Step3 명단 편집 ──
   const nextKey = () => rows.reduce((max, r) => Math.max(max, r.key), 0) + 1;
   function updateRow(key: number, field: keyof PassengerInput, value: string) {
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, [field]: value } : r)));
@@ -161,6 +195,63 @@ export function RequestWizard({
     });
   }
 
+  // 결과 카드 1장 (정확/추천 공용)
+  function tripCard(t: WizardTrip) {
+    const waitlist = isWaitlist(t);
+    const active = selectedId === t.id;
+    return (
+      <li key={t.id}>
+        <div
+          className={`rounded-lg border transition-colors ${
+            active ? "border-blue-400 bg-blue-50" : "border-gray-200"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => setSelectedId(t.id)}
+            aria-pressed={active}
+            className="flex w-full items-start justify-between gap-2 px-3 py-3 text-left"
+          >
+            <span className="min-w-0">
+              <span className="block font-medium text-gray-900">
+                [{DIRECTION_SHORT[t.direction]}] {t.originLabel} → {t.destinationLabel}
+              </span>
+              <span className="mt-0.5 block text-xs text-gray-500">
+                {t.regionName} · {formatKstDateTime(t.departureAt)} 출발 · {formatWon(t.pricePerSeat)}/인
+              </span>
+            </span>
+            <span
+              className={`shrink-0 rounded-full px-2 py-0.5 text-xs whitespace-nowrap ${
+                t.availableSeats > 0 ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+              }`}
+            >
+              잔여 {t.availableSeats}석
+            </span>
+          </button>
+
+          {active && (
+            <div className="border-t px-3 pt-3 pb-3">
+              {waitlist && (
+                <p className="mb-2 text-xs text-amber-600">
+                  자리가 없어 대기열에 들어갑니다. (요청 {headcount}명 / 잔여 {t.availableSeats}석)
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => selectAndContinue(t)}
+                className={`inline-flex h-9 w-full items-center justify-center rounded-lg text-sm font-medium text-white ${
+                  waitlist ? "bg-amber-500 hover:bg-amber-600" : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                {waitlist ? "대기 신청" : "신청"}
+              </button>
+            </div>
+          )}
+        </div>
+      </li>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <StepHeader step={step} />
@@ -168,30 +259,45 @@ export function RequestWizard({
       {/* ───────── Step 1: 조회 ───────── */}
       {step === 1 && (
         <div className="space-y-5">
-          {/* 출발 ⇄ 도착 */}
+          {/* 출발 ⇄ 도착 — 한 쪽은 선택 지구, 한 쪽은 평창 */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">가는 방향</label>
+            <label className="text-sm font-medium text-gray-700">어디 차량을 탈까요?</label>
             <div className="flex items-stretch gap-2">
-              <div className="flex-1 rounded-lg border border-gray-200 px-3 py-3 text-center">
-                <div className="text-xs text-gray-400">출발</div>
-                <div className="font-medium text-gray-900">{fromLabel}</div>
-              </div>
+              <RegionOrPyeongchang
+                role="출발"
+                isRegion={direction === "up"}
+                regionName={regionName}
+                options={regionOptions}
+                onChange={(v) => {
+                  setRegionName(v);
+                  setSelectedId(null);
+                }}
+              />
               <button
                 type="button"
-                onClick={swapDirection}
+                onClick={() => {
+                  setDirection((d) => (d === "up" ? "down" : "up"));
+                  setSelectedId(null);
+                }}
                 aria-label="출발·도착 바꾸기"
                 className="shrink-0 rounded-lg border border-gray-200 px-3 text-lg text-gray-500 hover:bg-gray-50"
               >
                 ⇄
               </button>
-              <div className="flex-1 rounded-lg border border-gray-200 px-3 py-3 text-center">
-                <div className="text-xs text-gray-400">도착</div>
-                <div className="font-medium text-gray-900">{toLabel}</div>
-              </div>
+              <RegionOrPyeongchang
+                role="도착"
+                isRegion={direction === "down"}
+                regionName={regionName}
+                options={regionOptions}
+                onChange={(v) => {
+                  setRegionName(v);
+                  setSelectedId(null);
+                }}
+              />
             </div>
             <p className="text-xs text-gray-400">
-              {DIRECTION_SHORT[direction]} — {fromLabel}에서 {toLabel}로 이동하는 타지구 차량을
-              조회합니다.
+              {DIRECTION_SHORT[direction]} — {fromLabel} → {toLabel}. 선택한 지구의 공급 차량을
+              먼저 보여주고, 근처 권역 차량도 추천합니다.
             </p>
           </div>
 
@@ -236,9 +342,7 @@ export function RequestWizard({
                 min={1}
                 max={45}
                 value={headcount}
-                onChange={(e) =>
-                  setHeadcount(Math.min(45, Math.max(1, Number(e.target.value) || 1)))
-                }
+                onChange={(e) => setHeadcount(Math.min(45, Math.max(1, Number(e.target.value) || 1)))}
                 className="w-16 rounded-lg border border-gray-300 px-3 py-2 text-center text-sm focus:border-blue-500 focus:outline-none"
               />
               <button
@@ -267,7 +371,7 @@ export function RequestWizard({
             </span>
           </label>
 
-          <Button onClick={runSearch} disabled={!consent} className="w-full">
+          <Button onClick={runSearch} disabled={!consent || !regionName} className="w-full">
             버스 조회
           </Button>
         </div>
@@ -281,85 +385,46 @@ export function RequestWizard({
             {date ? ` · ${date}` : " · 전체 날짜"} · {headcount}명
           </div>
 
-          {results.length === 0 ? (
+          {allResults.length === 0 ? (
             <div className="rounded-xl border border-dashed py-16 text-center text-sm text-gray-400">
-              조건에 맞는 타지구 공급 차량이 없습니다.
+              {regionName}의 {DIRECTION_SHORT[direction]} 공급 차량이 없고, 근처 권역 추천도
+              없습니다.
               <br />
-              방향·날짜를 바꿔 다시 조회해보세요.
+              지구·방향·날짜를 바꿔 다시 조회해보세요.
             </div>
           ) : (
             <>
               {/* 평창 픽업 위치 지도 */}
-              <KakaoMultiMap
-                pins={pins}
-                selectedId={selectedId}
-                onSelect={(id) => setSelectedId(id)}
-              />
+              <KakaoMultiMap pins={pins} selectedId={selectedId} onSelect={(id) => setSelectedId(id)} />
 
-              {/* 차량 카드 목록 */}
-              <ul className="space-y-2">
-                {results.map((t) => {
-                  const waitlist = isWaitlist(t);
-                  const active = selectedId === t.id;
-                  return (
-                    <li key={t.id}>
-                      <div
-                        className={`rounded-lg border transition-colors ${
-                          active ? "border-blue-400 bg-blue-50" : "border-gray-200"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setSelectedId(t.id)}
-                          aria-pressed={active}
-                          className="flex w-full items-start justify-between gap-2 px-3 py-3 text-left"
-                        >
-                          <span className="min-w-0">
-                            <span className="block font-medium text-gray-900">
-                              [{DIRECTION_SHORT[t.direction]}] {t.originLabel} → {t.destinationLabel}
-                            </span>
-                            <span className="mt-0.5 block text-xs text-gray-500">
-                              {t.regionName} · {formatKstDateTime(t.departureAt)} 출발 ·{" "}
-                              {formatWon(t.pricePerSeat)}/인
-                            </span>
-                          </span>
-                          <span
-                            className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                              t.availableSeats > 0
-                                ? "bg-green-100 text-green-700"
-                                : "bg-amber-100 text-amber-700"
-                            }`}
-                          >
-                            잔여 {t.availableSeats}석
-                          </span>
-                        </button>
+              {/* 정확 일치 — 선택한 지구 차량 */}
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-gray-700">
+                  {regionName} 차량{" "}
+                  <span className="font-normal text-gray-400">({exact.length})</span>
+                </h3>
+                {exact.length === 0 ? (
+                  <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-gray-400">
+                    {regionName}의 {DIRECTION_SHORT[direction]} 공급 차량이 아직 없어요. 아래 권역
+                    추천을 확인해보세요.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">{exact.map(tripCard)}</ul>
+                )}
+              </div>
 
-                        {active && (
-                          <div className="border-t px-3 pt-3 pb-3">
-                            {waitlist && (
-                              <p className="mb-2 text-xs text-amber-600">
-                                자리가 없어 대기열에 들어갑니다. (요청 {headcount}명 / 잔여{" "}
-                                {t.availableSeats}석)
-                              </p>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => selectAndContinue(t)}
-                              className={`inline-flex h-9 w-full items-center justify-center rounded-lg text-sm font-medium text-white ${
-                                waitlist
-                                  ? "bg-amber-500 hover:bg-amber-600"
-                                  : "bg-blue-600 hover:bg-blue-700"
-                              }`}
-                            >
-                              {waitlist ? "대기 신청" : "신청"}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+              {/* 권역 추천 */}
+              {recommended.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-gray-700">
+                    🔁 근처 권역 추천{" "}
+                    <span className="font-normal text-gray-400">
+                      ({selectedKwon ?? "권역"} · {recommended.length})
+                    </span>
+                  </h3>
+                  <ul className="space-y-2">{recommended.map(tripCard)}</ul>
+                </div>
+              )}
             </>
           )}
 
@@ -382,16 +447,19 @@ export function RequestWizard({
               {selectedTrip.regionName} · {formatKstDateTime(selectedTrip.departureAt)} 출발 ·{" "}
               {formatWon(selectedTrip.pricePerSeat)}/인 · 잔여 {selectedTrip.availableSeats}석
             </div>
+            <div className="text-muted-foreground mt-1 text-xs">
+              탑승 위치: {selectedTrip.pyeongchangLabel} (공급 지구 지정)
+            </div>
           </div>
 
           {isWaitlist(selectedTrip) && (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
-              ⚠ 잔여 {selectedTrip.availableSeats}석보다 많은 {headcount}명을 신청합니다. 자리가
-              없어 일부 인원은 이용이 어려울 수 있습니다. (대기열 등록)
+              ⚠ 잔여 {selectedTrip.availableSeats}석보다 많은 {headcount}명을 신청합니다. 자리가 없어
+              일부 인원은 이용이 어려울 수 있습니다. (대기열 등록)
             </p>
           )}
 
-          {/* 학생 명단 (기존 NewRequestForm UI) */}
+          {/* 학생 명단 */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">
@@ -485,28 +553,54 @@ export function RequestWizard({
             </Button>
           </div>
 
-          {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
-          )}
+          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setStep(2)}
-              disabled={isPending}
-            >
+            <Button type="button" variant="outline" onClick={() => setStep(2)} disabled={isPending}>
               ← 차량 다시 선택
             </Button>
             <Button onClick={handleSubmit} disabled={isPending} className="flex-1">
-              {isPending
-                ? "신청중..."
-                : isWaitlist(selectedTrip)
-                  ? "대기 신청하기"
-                  : "신청하기"}
+              {isPending ? "신청중..." : isWaitlist(selectedTrip) ? "대기 신청하기" : "신청하기"}
             </Button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// 출발/도착 박스 — isRegion이면 지구 선택 <select>, 아니면 평창 고정.
+function RegionOrPyeongchang({
+  role,
+  isRegion,
+  regionName,
+  options,
+  onChange,
+}: {
+  role: "출발" | "도착";
+  isRegion: boolean;
+  regionName: string;
+  options: RegionOption[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-center">
+      <div className="text-xs text-gray-400">{role}</div>
+      {isRegion ? (
+        <select
+          value={regionName}
+          onChange={(e) => onChange(e.target.value)}
+          className="mt-0.5 w-full bg-transparent text-center font-medium text-gray-900 focus:outline-none"
+          aria-label="지구 선택"
+        >
+          {options.map((o) => (
+            <option key={o.name} value={o.name}>
+              {o.name}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <div className="mt-0.5 py-1 font-medium text-gray-900">평창</div>
       )}
     </div>
   );

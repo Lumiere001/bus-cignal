@@ -65,10 +65,6 @@ const phone = () => `010-${String(1000 + rand(9000))}-${String(1000 + rand(9000)
 // 한국 본토 대략 좌표(지도 표시용·정확 주소 아님)
 const krLat = () => 35.1 + Math.random() * 2.4;
 const krLng = () => 126.6 + Math.random() * 2.4;
-// 송금 안내용 은행 정보(공급 지구) — regions.bank_*. 식별위험 없는 무작위 더미.
-const BANKS = ["국민은행", "농협", "카카오뱅크", "신한은행", "우리은행", "토스뱅크"];
-const digits = (n) => Array.from({ length: n }, () => rand(10)).join("");
-const bankAccountNo = () => `${digits(3)}-${digits(2)}-${digits(6)}`;
 
 async function insertChunked(table, rows, size = 500) {
   for (let i = 0; i < rows.length; i += size) {
@@ -116,8 +112,6 @@ async function wipe() {
   const { error: locErr } = await db.from("region_locations").delete().like("label", "[LOAD]%");
   if (locErr) throw new Error(`region_locations 삭제 실패: ${locErr.message}`);
   if (opIds.length) await delIn("operators", "id", opIds);
-  // regions는 [LOAD] 마커가 없는 공용 마스터데이터 → 더미가 채운 송금정보를 null로 되돌림(로컬 전용).
-  await db.from("regions").update({ bank_name: null, bank_account: null, account_holder: null }).not("bank_name", "is", null);
   console.log(`   삭제: 간사 ${opIds.length} · trip ${tripIds.length}`);
 }
 
@@ -153,18 +147,6 @@ async function main() {
   // 2) 약 70% 지구가 버스 운영(공급). 나머지는 수요 전용.
   const supplyRegions = regions.filter(() => chance(0.7));
   if (supplyRegions.length === 0) supplyRegions.push(regions[0]);
-
-  // 공급 지구 송금 정보(regions.bank_*) — 수요 간사가 송금할 계좌. 화면 송금 안내에 노출.
-  for (const r of supplyRegions) {
-    await db
-      .from("regions")
-      .update({
-        bank_name: pick(BANKS),
-        bank_account: bankAccountNo(),
-        account_holder: `${r.name} 총무`,
-      })
-      .eq("id", r.id);
-  }
 
   // 3) 공급 지구별 상행+하행 trip + 평창/지구 위치 + 공개 좌석(offer)
   const locs = [];
