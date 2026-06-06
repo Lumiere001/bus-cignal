@@ -33,7 +33,12 @@ export async function requireOperator(): Promise<OperatorClaims> {
     .eq("id", session.operatorId)
     .maybeSingle();
   if (data?.approval_status !== "approved") {
-    await clearOperatorSession();
+    // 차단은 redirect로만 한다. 쿠키 삭제(clearOperatorSession)는 호출하지 않는다 —
+    // requireOperator는 서버 컴포넌트 렌더에서도 호출되는데, 렌더 컨텍스트에서 쿠키를
+    // 변경하면 Next.js 16이 "Cookies can only be modified in a Server Action or
+    // Route Handler" 예외를 던진다. 무상태 JWT 쿠키는 만료까지 남지만, 위 DB
+    // 재확인이 매 요청 차단하므로 기능상 안전. 실제 쿠키 정리는 로그아웃 server
+    // action(clearOperatorSession)에서 수행한다.
     redirect("/login");
   }
   return session;
