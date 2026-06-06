@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireOperator } from "@/lib/auth/operator";
+import { getOperatorRegionName } from "@/lib/auth/operator-region";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buttonVariants } from "@/components/ui/button";
 import { StatCard } from "@/components/ui/stat-card";
@@ -65,13 +66,16 @@ export default async function OperatorDashboardPage() {
     );
   }
 
-  const s = await loadSummary(session.regionId);
+  const [s, regionName] = await Promise.all([
+    loadSummary(session.regionId),
+    getOperatorRegionName(session.regionId),
+  ]);
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">간사 대시보드</h1>
-        <p className="text-muted-foreground mt-1 text-sm">본인 지구 운영 현황</p>
+        <h1 className="text-2xl font-bold tracking-tight">{regionName} 운영 현황</h1>
+        <p className="text-muted-foreground mt-1 text-sm">간사 대시보드</p>
       </div>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">

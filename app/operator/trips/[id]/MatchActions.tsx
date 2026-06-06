@@ -13,6 +13,7 @@ type Props = {
 export function MatchActions({ matchId, status, reservationCode }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [reason, setReason] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -22,6 +23,12 @@ export function MatchActions({ matchId, status, reservationCode }: Props) {
       const result = await fn();
       if ("error" in result) setError(result.error);
     });
+  }
+
+  // 입금 확인 확정 → 실제 서버액션 (모달의 [확인]에서 호출). 로직은 기존 confirmPayment 그대로.
+  function handleConfirmPayment() {
+    setConfirmingPayment(false);
+    run(() => confirmPayment(matchId));
   }
 
   // 입금 완료 = 예약번호 노출, 추가 액션 없음 (K1: 공급측 취소 불가)
@@ -78,7 +85,10 @@ export function MatchActions({ matchId, status, reservationCode }: Props) {
           {canConfirm && (
             <Button
               size="sm"
-              onClick={() => run(() => confirmPayment(matchId))}
+              onClick={() => {
+                setError(null);
+                setConfirmingPayment(true);
+              }}
               disabled={isPending}
             >
               {isPending ? "처리중..." : "입금 확인"}
@@ -105,6 +115,39 @@ export function MatchActions({ matchId, status, reservationCode }: Props) {
         </div>
       )}
       {error && <p className="text-xs text-red-500">{error}</p>}
+
+      {/* 입금 확인 게이트 — 확정 후 취소 불가(K1)이므로 한 번 더 확인 */}
+      {confirmingPayment && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setConfirmingPayment(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-5 text-left shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-gray-900">입금 확인</h3>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              입금 확인 시 취소할 수 없습니다. 계속할까요?
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmingPayment(false)}
+                disabled={isPending}
+              >
+                취소
+              </Button>
+              <Button size="sm" onClick={handleConfirmPayment} disabled={isPending}>
+                입금 확인
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

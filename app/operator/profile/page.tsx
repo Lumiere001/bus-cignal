@@ -17,7 +17,6 @@ const APPROVAL_LABEL: Record<string, string> = {
 type Profile = {
   name: string | null;
   phone: string | null;
-  campus: string | null;
   approval_status: string;
   region: { name: string } | null;
 };
@@ -26,7 +25,7 @@ async function loadProfile(operatorId: string): Promise<Profile | null> {
   const db = createAdminClient();
   const { data } = await db
     .from("operators")
-    .select("name, phone, campus, approval_status, region:regions!operators_region_id_fkey(name)")
+    .select("name, phone, approval_status, region:regions!operators_region_id_fkey(name)")
     .eq("id", operatorId)
     .maybeSingle();
   return (data as Profile | null) ?? null;
@@ -71,7 +70,6 @@ export default async function OperatorProfilePage() {
         <dl className="rounded-xl border px-4">
           <Field label="이름" value={p.name ?? "—"} />
           <Field label="연락처" value={p.phone ?? "—"} />
-          <Field label="캠퍼스" value={p.campus ?? "—"} />
           <Field label="소속 지구" value={one(p.region)?.name ?? "미배정"} />
           <Field label="권한 상태" value={APPROVAL_LABEL[p.approval_status] ?? p.approval_status} />
         </dl>
