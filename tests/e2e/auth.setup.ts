@@ -1,7 +1,11 @@
 import { test as setup } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
-import { MASTER_STATE, OPERATOR_GWANGJU_STATE } from "./support/auth-paths";
+import {
+  MASTER_STATE,
+  OPERATOR_GWANGJU_STATE,
+  OPERATOR_BUSAN_STATE,
+} from "./support/auth-paths";
 
 // dev-login(seed 기반 임시 진입점)으로 세션 쿠키를 받아 storageState로 저장한다.
 // 각 스펙은 test.use({ storageState })로 재사용 → 매 테스트 로그인 반복 제거.
@@ -19,4 +23,13 @@ setup("광주(공급) 간사 세션 저장", async ({ page }) => {
   await page.getByRole("button", { name: /김광주/ }).click();
   await page.waitForURL(/\/operator/);
   await page.context().storageState({ path: OPERATOR_GWANGJU_STATE });
+});
+
+// 부산(수요) 간사 — seed:dev의 박부산(dev-op-busan, 지구 2801). createApproveScenario가
+// 만드는 신청의 소유 지구라, 신청 취소·수정(신청 간사) 흐름을 이 세션으로 검증한다.
+setup("부산(수요) 간사 세션 저장", async ({ page }) => {
+  await page.goto("/dev/login");
+  await page.getByRole("button", { name: /박부산/ }).click();
+  await page.waitForURL(/\/operator/);
+  await page.context().storageState({ path: OPERATOR_BUSAN_STATE });
 });
