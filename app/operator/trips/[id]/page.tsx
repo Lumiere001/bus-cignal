@@ -7,11 +7,13 @@ import {
   TRIP_STATUS_LABEL,
   TRIP_STATUS_COLOR,
   MATCH_STATUS_ORDER,
+  type TripStatus,
 } from "@/lib/labels";
 import { one } from "@/lib/supabase/relation";
 import { formatKstDateTime } from "@/lib/datetime";
 import { MatchingQueue } from "./MatchingQueue";
 import { MatchTable, type MatchRow } from "./MatchTable";
+import { TripCancelButton } from "./TripCancelButton";
 
 // 매칭으로 자리를 점유하는 상태 (잔여 계산 시 차감)
 const ACTIVE_MATCH_STATUSES = ["awaiting_payment", "payment_reported", "paid"] as const;
@@ -27,6 +29,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     .select(
       `
       id, direction, departure_at, capacity, price_per_seat, status, note,
+      cancelled_at, cancellation_reason,
       origin:region_locations!origin_location_id(label, address),
       destination:region_locations!destination_location_id(label, address),
       seat_offers(seat_count, status),
@@ -75,7 +78,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   const origin = one(trip.origin);
   const dest = one(trip.destination);
-  const status = trip.status as "draft" | "published" | "closed";
+  const status = trip.status as TripStatus;
   const direction = trip.direction as "up" | "down";
 
   const openSeats = (trip.seat_offers ?? [])
@@ -192,6 +195,24 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         >
           💬 버스 채팅 ({DIRECTION_SHORT[direction]})
         </Link>
+
+        {/* 차량 취소 — draft/published 에서만. 활성 매칭이 있으면 비활성(사유 표시). */}
+        {(status === "draft" || status === "published") && (
+          <TripCancelButton
+            tripId={trip.id}
+            blockedReason={
+              activeMatches.length > 0
+                ? "매칭된 학생이 있어 취소할 수 없어요. 매칭을 정리(자리 풀기·취소)한 뒤 취소할 수 있어요."
+                : null
+            }
+          />
+        )}
+        {status === "cancelled" && (
+          <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            이 차량은 취소되었습니다
+            {trip.cancellation_reason ? ` — ${trip.cancellation_reason}` : ""}.
+          </p>
+        )}
       </div>
 
       {/* 대기 큐 */}

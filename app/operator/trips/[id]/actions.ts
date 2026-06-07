@@ -12,6 +12,8 @@ type ActionResult = { error: string } | { ok: true };
 const PAYMENT_DUE_HOURS = 24;
 // 예약번호 unique 충돌 시 재생성 횟수
 const MAX_CODE_RETRIES = 5;
+// 매칭으로 자리를 점유하는 상태 (이게 하나라도 있으면 차량 취소 불가)
+const ACTIVE_MATCH_STATUSES = ["awaiting_payment", "payment_reported", "paid"] as const;
 
 function firstOf<T>(rel: T | T[] | null | undefined): T | null {
   return Array.isArray(rel) ? (rel[0] ?? null) : (rel ?? null);
@@ -372,5 +374,117 @@ export async function cancelMatch(matchId: string, reason: string): Promise<Acti
   }
 
   revalidatePath(`/operator/trips/${match.trip_id}`);
+  return { ok: true };
+}
+
+// ─── 차량(Trip) 취소 — 공급 간사 (사용자 요청 2026-06-07) ─────────────────────
+/**
+ * 공개/임시 차량을 취소한다. **활성 매칭(자리 점유)이 하나도 없을 때만** 가능.
+ *   - 매칭이 있었다가 전부 해제/취소돼 활성 0이 되면 다시 취소 가능.
+ *   - 취소 시: status='cancelled' + 좌석 공급 마감 + 대기(queued) 신청 취소 + 신청 지구에 재신청 추천.
+ * 사유는 선택(빈 값 허용). draft/published 에서만(closed·cancelled는 불가).
+ */
+export async function cancelTrip(
+  tripId: string,
+  reason: string,
+): Promise<ActionResult> {
+  const session = await requireOperator();
+  if (!session.regionId) return { error: "소속 지구 정보가 없습니다." };
+
+  const trimmed = reason.trim();
+  if (trimmed.length > 500) return { error: "취소 사유는 500자 이하로 입력해주세요." };
+
+  const db = createAdminClient();
+  const trip = await loadOwnedTrip(db, tripId, session.regionId);
+  if (!trip) return { error: "차량을 찾을 수 없습니다." };
+  if (trip.status !== "draft" && trip.status !== "published") {
+    return { error: "공개·임시저장 상태의 차량만 취소할 수 있습니다." };
+  }
+
+  // 활성 매칭(자리 점유)이 하나라도 있으면 취소 불가.
+  const { data: pre } = await db
+    .from("matches")
+    .select("id")
+    .eq("trip_id", tripId)
+    .in("status", [...ACTIVE_MATCH_STATUSES])
+    .limit(1);
+  if (pre && pre.length > 0) {
+    return {
+      error:
+        "매칭된(자리 점유) 학생이 있어 취소할 수 없습니다. 먼저 매칭을 정리(자리 풀기·취소)한 뒤 다시 시도해주세요.",
+    };
+  }
+
+  // 상태 가드 UPDATE로 취소를 선점 — 그 사이 매칭/상태가 바뀌었으면 0행 → 중단.
+  const { data: claimed } = await db
+    .from("trips")
+    .update({
+      status: "cancelled",
+      cancelled_at: new Date().toISOString(),
+      cancellation_reason: trimmed || null,
+    })
+    .eq("id", tripId)
+    .eq("operator_region_id", session.regionId)
+    .in("status", ["draft", "published"])
+    .select("id")
+    .maybeSingle();
+  if (!claimed) {
+    return { error: "취소할 수 없는 상태입니다. 새로고침 후 다시 확인해주세요." };
+  }
+
+  // 선점 후 재확인 — 윈도우 사이 승인이 들어와 활성 매칭이 생겼으면 되돌리고 중단(race 가드).
+  const { data: race } = await db
+    .from("matches")
+    .select("id")
+    .eq("trip_id", tripId)
+    .in("status", [...ACTIVE_MATCH_STATUSES])
+    .limit(1);
+  if (race && race.length > 0) {
+    await db
+      .from("trips")
+      .update({
+        status: trip.status,
+        cancelled_at: null,
+        cancellation_reason: null,
+      })
+      .eq("id", tripId);
+    return {
+      error: "방금 매칭이 진행되어 취소할 수 없습니다. 새로고침 후 확인해주세요.",
+    };
+  }
+
+  // 좌석 공급 마감(더 이상 매칭 대상 아님).
+  await db.from("seat_offers").update({ status: "closed" }).eq("trip_id", tripId);
+
+  // 대기(queued) 신청 취소 + 신청 지구 간사에게 재신청 추천 알림(다른 차량 찾도록).
+  const { data: queued } = await db
+    .from("seat_requests")
+    .select("id, operator_id")
+    .eq("trip_id", tripId)
+    .eq("status", "queued");
+  const queuedIds = (queued ?? []).map((r) => r.id);
+  if (queuedIds.length > 0) {
+    await db
+      .from("seat_requests")
+      .update({ status: "cancelled" })
+      .in("id", queuedIds);
+    const operatorIds = [
+      ...new Set((queued ?? []).map((r) => r.operator_id).filter(Boolean)),
+    ] as string[];
+    if (operatorIds.length > 0) {
+      try {
+        await emit(
+          "reapply_recommended",
+          { requestOperatorIds: operatorIds },
+          { tripId },
+        );
+      } catch {
+        /* 알림 실패 무시 */
+      }
+    }
+  }
+
+  revalidatePath(`/operator/trips/${tripId}`);
+  revalidatePath("/operator/trips");
   return { ok: true };
 }

@@ -8,6 +8,7 @@ import {
   DIRECTION_SHORT,
   TRIP_STATUS_LABEL,
   TRIP_STATUS_COLOR,
+  type TripStatus,
 } from "@/lib/labels";
 import { formatKstDateTime } from "@/lib/datetime";
 import { PublishTripButton } from "./PublishTripButton";
@@ -58,7 +59,7 @@ export default async function Page() {
               .filter((m) => (ACTIVE_MATCH_STATUSES as readonly string[]).includes(m.status ?? ""))
               .length;
             const availableSeats = Math.max(0, openSeats - activeMatches);
-            const status = trip.status as "draft" | "published" | "closed";
+            const status = trip.status as TripStatus;
             const direction = trip.direction as "up" | "down";
 
             return (

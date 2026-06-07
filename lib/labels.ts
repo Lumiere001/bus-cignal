@@ -10,16 +10,20 @@ export const DIRECTION_SHORT: Record<"up" | "down", string> = {
   down: "하행",
 };
 
-export const TRIP_STATUS_LABEL: Record<"draft" | "published" | "closed", string> = {
+export type TripStatus = "draft" | "published" | "closed" | "cancelled";
+
+export const TRIP_STATUS_LABEL: Record<TripStatus, string> = {
   draft: "임시저장",
   published: "공개중",
   closed: "마감",
+  cancelled: "취소됨",
 };
 
-export const TRIP_STATUS_COLOR: Record<"draft" | "published" | "closed", string> = {
+export const TRIP_STATUS_COLOR: Record<TripStatus, string> = {
   draft: "bg-gray-100 text-gray-600",
   published: "bg-green-100 text-green-700",
   closed: "bg-red-100 text-red-600",
+  cancelled: "bg-rose-100 text-rose-700",
 };
 
 export const MATCH_STATUS_LABEL: Record<string, string> = {
