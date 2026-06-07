@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { confirmPayment, releaseSeat, cancelMatch } from "./actions";
+import { confirmPayment, releaseSeat } from "./actions";
 
 type Props = {
   matchId: string;
@@ -12,10 +12,8 @@ type Props = {
 
 export function MatchActions({ matchId, status, reservationCode }: Props) {
   const [error, setError] = useState<string | null>(null);
-  const [canceling, setCanceling] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
-  const [confirmingRelease, setConfirmingRelease] = useState(false);
-  const [reason, setReason] = useState("");
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function run(fn: () => Promise<{ error: string } | { ok: true }>) {
@@ -32,9 +30,9 @@ export function MatchActions({ matchId, status, reservationCode }: Props) {
     run(() => confirmPayment(matchId));
   }
 
-  // 매칭 해제 확정 → releaseSeat (모달의 [매칭 해제]에서 호출). 실수 클릭 방지용 확인 게이트(#7).
-  function handleRelease() {
-    setConfirmingRelease(false);
+  // 매칭 취소 확정 → releaseSeat (모달의 [매칭 취소]에서 호출). 실수 클릭 방지용 확인 게이트.
+  function handleCancel() {
+    setConfirmingCancel(false);
     run(() => releaseSeat(matchId));
   }
 
@@ -51,79 +49,34 @@ export function MatchActions({ matchId, status, reservationCode }: Props) {
   if (status === "expired" || status === "cancelled") return null;
 
   const canConfirm = status === "awaiting_payment" || status === "payment_reported";
-  const canCancel = status === "payment_reported"; // Phase 2
 
   return (
     <div className="flex shrink-0 flex-col items-end gap-1">
-      {canceling ? (
-        <div className="flex flex-col items-end gap-1">
-          <input
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="취소 사유 (5자+)"
-            maxLength={500}
-            disabled={isPending}
-            className="w-44 rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
-          />
-          <div className="flex gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setCanceling(false);
-                setReason("");
-                setError(null);
-              }}
-              disabled={isPending}
-            >
-              닫기
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => run(() => cancelMatch(matchId, reason))}
-              disabled={isPending || reason.trim().length < 5}
-            >
-              취소 확정
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex gap-1">
-          {canConfirm && (
-            <Button
-              size="sm"
-              onClick={() => {
-                setError(null);
-                setConfirmingPayment(true);
-              }}
-              disabled={isPending}
-            >
-              {isPending ? "처리중..." : "입금 확인"}
-            </Button>
-          )}
+      <div className="flex gap-1">
+        {canConfirm && (
           <Button
-            variant="outline"
             size="sm"
             onClick={() => {
               setError(null);
-              setConfirmingRelease(true);
+              setConfirmingPayment(true);
             }}
             disabled={isPending}
           >
-            매칭 해제
+            {isPending ? "처리중..." : "입금 확인"}
           </Button>
-          {canCancel && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCanceling(true)}
-              disabled={isPending}
-            >
-              매칭 취소
-            </Button>
-          )}
-        </div>
-      )}
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setError(null);
+            setConfirmingCancel(true);
+          }}
+          disabled={isPending}
+        >
+          매칭 취소
+        </Button>
+      </div>
       {error && <p className="text-xs text-red-500">{error}</p>}
 
       {/* 입금 확인 게이트 — 확정 후 취소 불가(K1)이므로 한 번 더 확인 */}
@@ -159,34 +112,34 @@ export function MatchActions({ matchId, status, reservationCode }: Props) {
         </div>
       )}
 
-      {/* 매칭 해제 게이트 — 실수 클릭 방지 + 무엇을 하는지 설명(#6·#7) */}
-      {confirmingRelease && (
+      {/* 매칭 취소 게이트 — 실수 클릭 방지 + 무엇을 하는지 설명 */}
+      {confirmingCancel && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           role="dialog"
           aria-modal="true"
-          onClick={() => setConfirmingRelease(false)}
+          onClick={() => setConfirmingCancel(false)}
         >
           <div
             className="w-full max-w-sm rounded-xl bg-white p-5 text-left shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-semibold text-gray-900">매칭 해제</h3>
+            <h3 className="text-base font-semibold text-gray-900">매칭 취소</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">
-              이 학생과의 매칭을 해제하고 좌석을 다시 비웁니다. 신청 지구는 다시 대기
+              이 학생과의 매칭을 취소하고 좌석을 다시 비웁니다. 신청 지구는 다시 대기
               상태로 돌아가요(재매칭 가능). 입금 전 잘못 승인했을 때 사용하세요.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setConfirmingRelease(false)}
+                onClick={() => setConfirmingCancel(false)}
                 disabled={isPending}
               >
                 닫기
               </Button>
-              <Button size="sm" onClick={handleRelease} disabled={isPending}>
-                매칭 해제
+              <Button size="sm" onClick={handleCancel} disabled={isPending}>
+                매칭 취소
               </Button>
             </div>
           </div>

@@ -20,10 +20,10 @@ test("거절: 신청 전체 거절(사유 필수) → 큐에서 사라짐", asyn
   }
 });
 
-// #6·#7: 승인 매칭 '매칭 해제'는 실수 방지 확인 모달 + 무엇을 하는지 설명을 띄운다.
-//   (해제 후 신청을 대기열로 되돌리는 #5 재큐잉 로직은 lib 레벨에서 검증됨 — 동일 loadOwnedMatch를
+// 승인 매칭 '매칭 취소'는 실수 방지 확인 모달 + 무엇을 하는지 설명을 띄운다.
+//   (취소 후 신청을 대기열로 되돌리는 재큐잉 로직은 lib 레벨에서 검증됨 — 동일 loadOwnedMatch를
 //    쓰는 confirmPayment(approve-chain)가 통과해 prod 경로가 건전함을 보장.)
-test("매칭 해제: 승인 매칭에 실수 방지 확인 모달 + 설명", async ({ page }) => {
+test("매칭 취소: 승인 매칭에 실수 방지 확인 모달 + 설명", async ({ page }) => {
   const scn = await createApproveScenario({ passengers: 1 });
   try {
     await page.goto(`/operator/trips/${scn.tripId}`);
@@ -31,15 +31,15 @@ test("매칭 해제: 승인 매칭에 실수 방지 확인 모달 + 설명", asy
     await page.getByRole("button", { name: /1명 승인/ }).click();
     await page.getByRole("button", { name: "승인 확정" }).click();
 
-    await page.getByRole("button", { name: "매칭 해제", exact: true }).first().click();
+    await page.getByRole("button", { name: "매칭 취소", exact: true }).first().click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-    // 무엇을 하는 동작인지 설명(자리 풀림 용어 모호성 해소 #6)
+    // 무엇을 하는 동작인지 설명(용어 모호성 해소)
     await expect(dialog.getByText(/좌석을 다시 비웁니다/)).toBeVisible();
     await expect(
-      dialog.getByRole("button", { name: "매칭 해제", exact: true }),
+      dialog.getByRole("button", { name: "매칭 취소", exact: true }),
     ).toBeVisible();
-    // 닫기로 취소 가능(실수 방지 #7)
+    // 닫기로 취소 가능(실수 방지)
     await dialog.getByRole("button", { name: "닫기" }).click();
     await expect(dialog).toHaveCount(0);
   } finally {

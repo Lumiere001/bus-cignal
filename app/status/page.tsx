@@ -172,11 +172,8 @@ export default async function StatusPage() {
           전국 지구별 잔여석 현황
         </h1>
         <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-          CCC 전국 여름 수련회 — 각 공급 지구가 공개한 차량의 잔여석과 그 차량을
-          기다리는 대기 신청 현황을 실시간으로 요약합니다. 잔여석과 대기 인원 모두
-          &ldquo;해당 지구 버스&rdquo; 기준이라 같은 기준으로 비교할 수 있습니다.
-          숫자(차량 수·정원·잔여석·대기 인원)만 보여주며, 학생·간사 등 개인정보는
-          일절 표시하지 않습니다.
+          CCC 전국 여름수련회 버스 현황. 각 지구가 내놓은 차량의 남은 자리와 그 차량을
+          기다리는 신청 인원을 실시간으로 보여줍니다.
         </p>
         <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-2 text-xs leading-relaxed">
           좌석 신청·예약 상세 확인은{" "}
