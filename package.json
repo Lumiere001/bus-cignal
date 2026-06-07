@@ -18,6 +18,7 @@
     "test:e2e:reset": "supabase db reset && playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
+    "verify:prod": "node scripts/verify-prod-db.mjs",
     "load:seed": "node scripts/load/seed-dummy.mjs",
     "load:test": "node scripts/load/load-test.mjs",
     "load:wipe": "node scripts/load/seed-dummy.mjs --wipe"
