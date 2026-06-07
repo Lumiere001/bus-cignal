@@ -211,6 +211,30 @@ async function loadOwnedMatch(
 }
 
 /**
+ * 매칭이 풀린(해제·취소) 뒤, 그 신청을 다시 대기열(queued)로 되돌린다.
+ *   '전원 매칭'이 아니게 됐으니 신청 지구 화면에 '매칭됨'이 잘못 남지 않게 함(이미 queued/거절/취소면 무시).
+ *   request_id는 별도 스칼라 조회로 얻는다(loadOwnedMatch의 임베드와 같은 FK라 한 select에 합치면
+ *   타입드 클라이언트에서 결과가 비어 매칭을 못 찾는 문제 → 분리).
+ */
+async function requeueRequestOfMatch(
+  db: ReturnType<typeof createAdminClient>,
+  matchId: string,
+): Promise<void> {
+  const { data: link } = await db
+    .from("matches")
+    .select("request_id")
+    .eq("id", matchId)
+    .maybeSingle();
+  const requestId = link?.request_id;
+  if (!requestId) return;
+  await db
+    .from("seat_requests")
+    .update({ status: "queued" })
+    .eq("id", requestId)
+    .eq("status", "matched");
+}
+
+/**
  * 입금 확인 → paid + 예약번호 발급 + 학생 검증 레코드(match_passengers) 생성 (SPEC §S4 step3).
  * awaiting_payment·payment_reported에서만. 상태 가드 UPDATE로 원자적(중복 발급 방지).
  */
@@ -291,8 +315,9 @@ export async function confirmPayment(matchId: string): Promise<ActionResult> {
 }
 
 /**
- * [자리 풀기] — 송금 지연 등 간사 수동 해제 (SPEC §7 release_seat).
- * awaiting_payment·payment_reported만 → expired. 자동 cron 아님. 자리 회수는 상태변경으로 자동.
+ * [매칭 해제] — 송금 지연·오승인 등으로 간사가 매칭을 수동 해제하고 좌석을 다시 비운다
+ * (구 '자리 풀기' · SPEC §7 release_seat). awaiting_payment·payment_reported만 → expired.
+ * 신청 지구는 다시 대기열(queued)로 되돌려 '매칭됨'이 잘못 남지 않게 한다(재매칭 가능).
  */
 export async function releaseSeat(matchId: string): Promise<ActionResult> {
   const session = await requireOperator();
@@ -309,10 +334,14 @@ export async function releaseSeat(matchId: string): Promise<ActionResult> {
     .in("status", ["awaiting_payment", "payment_reported"])
     .select("id")
     .maybeSingle();
-  if (error) return { error: "자리 풀기 중 오류가 발생했습니다." };
+  if (error) return { error: "매칭 해제 중 오류가 발생했습니다." };
   if (!data) return { error: "이미 처리된 매칭입니다." };
 
-  // 알림: 자리 풀림 → 신청 지구 (paid 전이라 학생 검증 레코드 없음 → passenger null). SPEC §S8.
+  // ★ 신청 상태 되돌리기 — 매칭이 풀렸으니 신청은 더 이상 '전원 매칭'이 아님.
+  //   신청 지구 화면에 '매칭됨'이 잘못 남는 버그 방지(이미 queued/거절/취소면 건드리지 않음).
+  await requeueRequestOfMatch(db, matchId);
+
+  // 알림: 매칭 해제 → 신청 지구 (paid 전이라 학생 검증 레코드 없음 → passenger null). SPEC §S8.
   try {
     await emit(
       "seat_freed",
@@ -362,6 +391,9 @@ export async function cancelMatch(matchId: string, reason: string): Promise<Acti
     return { error: "송금 보고된 매칭만 취소할 수 있습니다 (입금 완료분은 취소 불가)." };
   }
 
+  // ★ 신청 상태 되돌리기 — 매칭 취소로 더 이상 '전원 매칭'이 아님(요청 화면 '매칭됨' 잔존 방지).
+  await requeueRequestOfMatch(db, matchId);
+
   // 알림: 매칭 취소(Phase 2) → 신청 지구. SPEC §S8.
   try {
     await emit(
@@ -374,6 +406,73 @@ export async function cancelMatch(matchId: string, reason: string): Promise<Acti
   }
 
   revalidatePath(`/operator/trips/${match.trip_id}`);
+  return { ok: true };
+}
+
+// ─── 공개 인원수 변경 — 공급 간사 (사용자 요청 2026-06-07) ─────────────────────
+/**
+ * 타지구에 공개한 좌석 수(seat_offers.seat_count)를 조정한다.
+ *   예: 15명 공개 → 7명 타지구 확정 → 본인 지구용 3석 확보 위해 12로 축소.
+ * 가드: draft/published 차량만. 이미 매칭(자리 점유)된 인원 미만으로는 못 줄이고, 정원 초과 불가.
+ * 확정 인원수 자체는 못 바꾼다(매칭은 그대로) — 공개 좌석 한도만 조정.
+ */
+export async function editSeatOffer(
+  tripId: string,
+  newCount: number,
+): Promise<ActionResult> {
+  const session = await requireOperator();
+  if (!session.regionId) return { error: "소속 지구 정보가 없습니다." };
+
+  if (!Number.isInteger(newCount) || newCount < 1) {
+    return { error: "공개 인원수는 1명 이상이어야 합니다." };
+  }
+
+  const db = createAdminClient();
+
+  const { data: trip } = await db
+    .from("trips")
+    .select("id, status, capacity")
+    .eq("id", tripId)
+    .eq("operator_region_id", session.regionId)
+    .single();
+  if (!trip) return { error: "차량을 찾을 수 없습니다." };
+  if (trip.status !== "draft" && trip.status !== "published") {
+    return { error: "공개·임시저장 상태의 차량만 인원을 변경할 수 있습니다." };
+  }
+  if (newCount > trip.capacity) {
+    return { error: `정원(${trip.capacity}석)을 초과할 수 없습니다.` };
+  }
+
+  // 이미 매칭(자리 점유)된 인원보다 적게 줄일 수 없음.
+  const { count: activeCount } = await db
+    .from("matches")
+    .select("id", { count: "exact", head: true })
+    .eq("trip_id", tripId)
+    .in("status", [...ACTIVE_MATCH_STATUSES]);
+  const matched = activeCount ?? 0;
+  if (newCount < matched) {
+    return {
+      error: `이미 매칭된 ${matched}명보다 적게 줄일 수 없습니다. (매칭을 먼저 정리하세요)`,
+    };
+  }
+
+  // 공개(open) 좌석 공급 행 갱신. (V1: trip당 open offer 1개)
+  const { data: offer } = await db
+    .from("seat_offers")
+    .select("id")
+    .eq("trip_id", tripId)
+    .eq("status", "open")
+    .maybeSingle();
+  if (!offer) return { error: "공개된 좌석 정보가 없습니다." };
+
+  const { error: updErr } = await db
+    .from("seat_offers")
+    .update({ seat_count: newCount })
+    .eq("id", offer.id);
+  if (updErr) return { error: "인원 변경 중 오류가 발생했습니다." };
+
+  revalidatePath(`/operator/trips/${tripId}`);
+  revalidatePath("/operator/trips");
   return { ok: true };
 }
 
@@ -411,7 +510,7 @@ export async function cancelTrip(
   if (pre && pre.length > 0) {
     return {
       error:
-        "매칭된(자리 점유) 학생이 있어 취소할 수 없습니다. 먼저 매칭을 정리(자리 풀기·취소)한 뒤 다시 시도해주세요.",
+        "매칭된(자리 점유) 학생이 있어 취소할 수 없습니다. 먼저 매칭을 정리(매칭 해제·취소)한 뒤 다시 시도해주세요.",
     };
   }
 

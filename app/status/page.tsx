@@ -167,7 +167,6 @@ export default async function StatusPage() {
           <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-700">
             <span aria-hidden>●</span> 실시간 공개 현황
           </span>
-          <span className="text-muted-foreground text-xs">로그인 불필요</span>
         </div>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
           전국 지구별 잔여석 현황
@@ -208,7 +207,7 @@ export default async function StatusPage() {
           </div>
         ))}
         <p className="text-muted-foreground col-span-3 mt-1 text-center text-[11px] leading-relaxed">
-          대기 인원 = 해당 지구 버스를 기다리는(승인 대기) 신청 인원입니다.
+          대기 인원 = 각 지구의 승인을 기다리는 신청 인원입니다.
         </p>
       </section>
 

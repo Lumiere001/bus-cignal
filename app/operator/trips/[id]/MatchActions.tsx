@@ -14,6 +14,7 @@ export function MatchActions({ matchId, status, reservationCode }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [confirmingRelease, setConfirmingRelease] = useState(false);
   const [reason, setReason] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -29,6 +30,12 @@ export function MatchActions({ matchId, status, reservationCode }: Props) {
   function handleConfirmPayment() {
     setConfirmingPayment(false);
     run(() => confirmPayment(matchId));
+  }
+
+  // 매칭 해제 확정 → releaseSeat (모달의 [매칭 해제]에서 호출). 실수 클릭 방지용 확인 게이트(#7).
+  function handleRelease() {
+    setConfirmingRelease(false);
+    run(() => releaseSeat(matchId));
   }
 
   // 입금 완료 = 예약번호 노출, 추가 액션 없음 (K1: 공급측 취소 불가)
@@ -97,10 +104,13 @@ export function MatchActions({ matchId, status, reservationCode }: Props) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => run(() => releaseSeat(matchId))}
+            onClick={() => {
+              setError(null);
+              setConfirmingRelease(true);
+            }}
             disabled={isPending}
           >
-            자리 풀기
+            매칭 해제
           </Button>
           {canCancel && (
             <Button
@@ -143,6 +153,40 @@ export function MatchActions({ matchId, status, reservationCode }: Props) {
               </Button>
               <Button size="sm" onClick={handleConfirmPayment} disabled={isPending}>
                 입금 확인
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 매칭 해제 게이트 — 실수 클릭 방지 + 무엇을 하는지 설명(#6·#7) */}
+      {confirmingRelease && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setConfirmingRelease(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-5 text-left shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-gray-900">매칭 해제</h3>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              이 학생과의 매칭을 해제하고 좌석을 다시 비웁니다. 신청 지구는 다시 대기
+              상태로 돌아가요(재매칭 가능). 입금 전 잘못 승인했을 때 사용하세요.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmingRelease(false)}
+                disabled={isPending}
+              >
+                닫기
+              </Button>
+              <Button size="sm" onClick={handleRelease} disabled={isPending}>
+                매칭 해제
               </Button>
             </div>
           </div>

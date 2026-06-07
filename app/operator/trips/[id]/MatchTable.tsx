@@ -1,5 +1,6 @@
 import { MATCH_STATUS_LABEL } from "@/lib/labels";
 import { MatchActions } from "./MatchActions";
+import { ReservationLink } from "./ReservationLink";
 
 export type MatchRow = {
   id: string;
@@ -53,7 +54,7 @@ export function MatchTable({ rows }: { rows: MatchRow[] }) {
               </td>
               <td className="px-4 py-3 whitespace-nowrap text-gray-700">
                 {m.reservationCode ? (
-                  <span className="font-mono">{m.reservationCode}</span>
+                  <ReservationLink code={m.reservationCode} />
                 ) : (
                   <span className="text-gray-400">—</span>
                 )}

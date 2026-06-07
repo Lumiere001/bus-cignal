@@ -30,7 +30,7 @@ export const MATCH_STATUS_LABEL: Record<string, string> = {
   awaiting_payment: "송금 대기",
   payment_reported: "송금 보고됨",
   paid: "입금 확인",
-  expired: "자리 풀림",
+  expired: "매칭 해제됨",
   cancelled: "취소",
 };
 
