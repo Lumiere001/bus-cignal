@@ -12,6 +12,8 @@ const seatRequestsIn = vi.fn();
 const matchesStatusEq = vi.fn();
 // match_passengers: select("id").in("match_id") → resolves
 const matchPassengersIn = vi.fn();
+// chat_mutes: select("operator_id, passenger_id").eq("trip_id").eq("muted", true) → resolves
+const chatMutesEq = vi.fn();
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
@@ -34,6 +36,11 @@ vi.mock("@/lib/supabase/admin", () => ({
       if (table === "match_passengers") {
         return {
           select: () => ({ in: matchPassengersIn }),
+        };
+      }
+      if (table === "chat_mutes") {
+        return {
+          select: () => ({ eq: () => ({ eq: chatMutesEq }) }),
         };
       }
       return {};
@@ -70,6 +77,7 @@ function seedHappyPath() {
   matchPassengersIn.mockResolvedValue({
     data: [{ id: "mp-1" }, { id: "mp-2" }],
   });
+  chatMutesEq.mockResolvedValue({ data: [] }); // 음소거 없음(기본)
 }
 
 describe("resolveChatRecipients", () => {
@@ -78,6 +86,7 @@ describe("resolveChatRecipients", () => {
     seatRequestsIn.mockReset();
     matchesStatusEq.mockReset();
     matchPassengersIn.mockReset();
+    chatMutesEq.mockReset();
     seedHappyPath();
   });
 
@@ -90,17 +99,28 @@ describe("resolveChatRecipients", () => {
     expect(recipients).toContainEqual({
       kind: "supplyOperator",
       operatorId: "op-supply",
+      muted: false,
     });
     expect(recipients).toContainEqual({
       kind: "requestOperator",
       operatorId: "op-a",
+      muted: false,
     });
     expect(recipients).toContainEqual({
       kind: "requestOperator",
       operatorId: "op-b",
+      muted: false,
     });
-    expect(recipients).toContainEqual({ kind: "passenger", passengerId: "mp-1" });
-    expect(recipients).toContainEqual({ kind: "passenger", passengerId: "mp-2" });
+    expect(recipients).toContainEqual({
+      kind: "passenger",
+      passengerId: "mp-1",
+      muted: false,
+    });
+    expect(recipients).toContainEqual({
+      kind: "passenger",
+      passengerId: "mp-2",
+      muted: false,
+    });
 
     // op-a 중복 신청은 한 번만
     const opACount = recipients.filter(
@@ -134,10 +154,12 @@ describe("resolveChatRecipients", () => {
     expect(recipients).toContainEqual({
       kind: "requestOperator",
       operatorId: "op-b",
+      muted: false,
     });
     expect(recipients).toContainEqual({
       kind: "supplyOperator",
       operatorId: "op-supply",
+      muted: false,
     });
   });
 
@@ -149,7 +171,11 @@ describe("resolveChatRecipients", () => {
     expect(
       recipients.some((r) => r.kind === "passenger" && r.passengerId === "mp-1"),
     ).toBe(false);
-    expect(recipients).toContainEqual({ kind: "passenger", passengerId: "mp-2" });
+    expect(recipients).toContainEqual({
+      kind: "passenger",
+      passengerId: "mp-2",
+      muted: false,
+    });
     // 간사들은 학생이 보내도 그대로 받음
     expect(
       recipients.some((r) => r.kind === "supplyOperator"),
@@ -190,6 +216,37 @@ describe("resolveChatRecipients", () => {
     });
     expect(recipients.some((r) => r.kind === "supplyOperator")).toBe(false);
   });
+
+  it("음소거(chat_mutes)한 수신자만 muted=true, 나머지는 false", async () => {
+    chatMutesEq.mockResolvedValue({
+      data: [{ operator_id: "op-a", passenger_id: null }, { operator_id: null, passenger_id: "mp-2" }],
+    });
+    const recipients = await resolveChatRecipients(TRIP_ID, {
+      role: "operator",
+      subjectId: "outsider",
+    });
+    expect(recipients).toContainEqual({
+      kind: "requestOperator",
+      operatorId: "op-a",
+      muted: true,
+    });
+    expect(recipients).toContainEqual({
+      kind: "passenger",
+      passengerId: "mp-2",
+      muted: true,
+    });
+    // 음소거 안 한 수신자는 false
+    expect(recipients).toContainEqual({
+      kind: "supplyOperator",
+      operatorId: "op-supply",
+      muted: false,
+    });
+    expect(recipients).toContainEqual({
+      kind: "requestOperator",
+      operatorId: "op-b",
+      muted: false,
+    });
+  });
 });
 
 describe("notifyChatRecipients (emit fan-out)", () => {
@@ -199,9 +256,9 @@ describe("notifyChatRecipients (emit fan-out)", () => {
   });
 
   const recipients: ChatRecipient[] = [
-    { kind: "supplyOperator", operatorId: "op-supply" },
-    { kind: "requestOperator", operatorId: "op-a" },
-    { kind: "passenger", passengerId: "mp-2" },
+    { kind: "supplyOperator", operatorId: "op-supply", muted: false },
+    { kind: "requestOperator", operatorId: "op-a", muted: false },
+    { kind: "passenger", passengerId: "mp-2", muted: false },
   ];
 
   it("수신자마다 chat_message 한 번씩, 슬롯 하나만 채움(나머지 null)", async () => {
@@ -212,16 +269,39 @@ describe("notifyChatRecipients (emit fan-out)", () => {
       "chat_message",
       { supplyOperatorId: "op-supply", requestOperatorId: null, passengerId: null },
       { tripId: TRIP_ID },
+      { push: true },
     );
     expect(emit).toHaveBeenCalledWith(
       "chat_message",
       { supplyOperatorId: null, requestOperatorId: "op-a", passengerId: null },
       { tripId: TRIP_ID },
+      { push: true },
     );
     expect(emit).toHaveBeenCalledWith(
       "chat_message",
       { supplyOperatorId: null, requestOperatorId: null, passengerId: "mp-2" },
       { tripId: TRIP_ID },
+      { push: true },
+    );
+  });
+
+  it("음소거(muted) 수신자는 push:false 로 emit — 인앱은 유지", async () => {
+    await notifyChatRecipients(TRIP_ID, [
+      { kind: "supplyOperator", operatorId: "op-supply", muted: true },
+      { kind: "passenger", passengerId: "mp-2", muted: false },
+    ]);
+
+    expect(emit).toHaveBeenCalledWith(
+      "chat_message",
+      { supplyOperatorId: "op-supply", requestOperatorId: null, passengerId: null },
+      { tripId: TRIP_ID },
+      { push: false },
+    );
+    expect(emit).toHaveBeenCalledWith(
+      "chat_message",
+      { supplyOperatorId: null, requestOperatorId: null, passengerId: "mp-2" },
+      { tripId: TRIP_ID },
+      { push: true },
     );
   });
 

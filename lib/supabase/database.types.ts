@@ -34,6 +34,58 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_mutes: {
+        Row: {
+          created_at: string
+          id: string
+          muted: boolean
+          operator_id: string | null
+          passenger_id: string | null
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          muted?: boolean
+          operator_id?: string | null
+          passenger_id?: string | null
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          muted?: boolean
+          operator_id?: string | null
+          passenger_id?: string | null
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_mutes_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_mutes_passenger_id_fkey"
+            columns: ["passenger_id"]
+            isOneToOne: false
+            referencedRelation: "match_passengers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_mutes_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_passengers: {
         Row: {
           access_token_hash: string | null
