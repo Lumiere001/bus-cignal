@@ -10,8 +10,9 @@
 
 - ✅ **코드 완료·main 머지**: Phase 2(간사)·Phase 3(마스터)·Phase 5(공개)·지도 방식B·동적 매칭 그래프·신청 취소/수정·매칭 정렬·채팅(카톡식+KCCC·읽음 수·멤버 프로필)·보안 점검(GO-with-fixes, 수정 완료).
 - ✅ **검증**: E2E 35 passed + 채팅 로컬 에뮬레이터 E2E(간사↔학생 실시간).
-- ⚠️ **prod 미활성(아래 단계 필요)**: regions 시드 · 카카오 지도 도메인 검증 · 채팅 Firebase 분리/배포 · 약관 org 정보 · 실험 더미 삭제.
-- ⛔ **외부 대기**: CCC consumer/지구코드, CCC 연결 예외·해지 큐 (CCC IT API 도착 후).
+- ✅ **prod 활성 완료(2026-06-07)**: prod 마이그 db push(regions·chat_mutes·trips_cancellable 등 Local==Remote) · **firestore.rules 최신본 배포** · 카카오 지도 도메인 등록.
+- ⏳ **남은 출시 전 작업**: 약관 org 4항목(값 대기) · 카카오 프리뷰 핀 배포 후 확인 · **🏁 최종 시퀀스(보안 테스트→데이터 삭제→배포)**.
+- ⛔ **외부 대기(출시 차단 아님)**: CCC consumer/지구코드, CCC 연결 예외·해지 큐 (CCC IT API 도착 후 — 그 전엔 매직링크로 운영).
 
 배포: https://bus-cignal.vercel.app (main 머지 시 Vercel 자동 배포). prod Supabase = `bus-cignal-prod`.
 
@@ -83,26 +84,48 @@ Bus Cignal 지도(방식 B) 실배포 검증.
 
 ---
 
-## ⑤ 실험 더미 삭제 (최종 배포 전)
+## 🏁 최종 마무리 시퀀스 (사용자 확정 — 순서대로)
 
-prod에서 실험용으로 만든 **간사/차량/학생/매칭**은 출시 전 삭제(regions·약관 등 실데이터는 유지). prod 대상 wipe:
+> **모든 기능/문구 작업 완료 → ① 보안 테스트 → ② 실배포 데이터 전체 삭제(채팅 포함) → ③ 최종 배포.**
+> 데이터 삭제는 되돌릴 수 없으니 반드시 이 순서(테스트 통과 후 삭제).
+
+### ① 보안 테스트 (기능 훼손 없이)
+- **회귀(기능 보존)**: `pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:e2e` 전부 green 확인(읽기 전용, 기능 안 건드림).
+- **보안 리뷰**: `/security-review`(현재 diff) 또는 코드베이스 보안 점검 1회 — IDOR·RLS·세션·인젝션·시크릿 노출·채팅 규칙 재확인. (이전 점검 = GO-with-fixes, Finding 전부 반영됨.)
+- **채팅 규칙**: `pnpm test:rules`(firebase-tools@14 에뮬레이터) 22 pass 재확인.
+
+### ② 실배포 데이터 전체 삭제 — '클린 슬레이트'
+실험용으로 쌓인 간사·차량·신청·매칭·학생·장소·알림·음소거 전부 삭제. **보존: regions(53지구) · system_config.**
 ```bash
-# prod 연결로(.env에 prod service_role 지정) — 더미만 삭제
-node scripts/load/seed-dummy.mjs --wipe
+# (a) Supabase 운영 데이터 — 로컬에서 검증된 스크립트(scripts/load/wipe-prod.mjs)
+#     1) DRY RUN(행 수만 확인, 안 지움):
+SUPABASE_URL=<prod-url> SUPABASE_SERVICE_ROLE_KEY=<prod-service-role> node scripts/load/wipe-prod.mjs
+#     2) 실제 삭제:
+SUPABASE_URL=<prod-url> SUPABASE_SERVICE_ROLE_KEY=<prod-service-role> node scripts/load/wipe-prod.mjs --confirm
 ```
-> ⚠️ prod 대상 실행 시 연결 환경변수가 prod를 가리키는지 반드시 확인. 더미 식별 로직이 지운다(regions 등 reference 데이터는 보존).
+> ⚠️ `--confirm` 없으면 안 지움. URL/키는 **prod 값**을 명시해야 함(Supabase 대시보드 > Settings > API/Database, 1Password). FK 순서·regions 보존은 로컬에서 검증 완료.
+
+```
+# (b) 채팅(Firestore) 메시지/멤버 — Firebase 콘솔
+#     console.firebase.google.com > bus-cignal > Firestore Database > 'channels' 컬렉션 삭제
+#     (chat_mutes는 위 (a) Supabase 삭제에 포함됨)
+```
+
+### ③ 최종 배포
+- main이 최신·CI green이면 Vercel이 이미 Production에 자동 반영(추가 배포 불필요).
+- 라이브 스모크: 마스터 로그인 · 간사 매직링크 입장 · 학생 `/r`(입금확인된 코드) · 정산 · 공개 `/status` · 채팅 입퇴장.
 
 ---
 
-## ⑥ 최종 배포 체크리스트
+## ⑥ 출시 전 체크리스트
 
-- [ ] ① prod regions 시드 완료
-- [ ] ② 카카오 지도 배포 검증 OK (Cowork)
-- [ ] ③ 채팅 Firebase 분리+규칙 배포+env, 실배포 스모크 OK (또는 채팅 비활성으로 출시 후 별도 켜기)
-- [ ] ④ 약관 org 4항목 반영
-- [ ] ⑤ 실험 더미 삭제
+- [x] ① prod regions 시드 (db push 적용 완료, 53지구)
+- [ ] ② 카카오 지도 배포 검증 (Cowork) — 프리뷰 핀 버그 #118 수정됨, 배포 후 1회 확인
+- [x] ③ 채팅 firestore.rules 배포 완료 + chat_mutes/trips_cancellable 마이그 push 완료
+- [ ] ④ 약관 org 4항목 반영 (값 대기)
+- [ ] ⑤ 보안 테스트 → 데이터 삭제 → 최종 배포 (위 🏁 시퀀스)
 - [ ] main 최신 + CI green + Vercel Production 정상
-- [ ] 마스터 로그인·간사 매직링크·학생 /r·정산·공개 /status 라이브 스모크
+- [ ] 라이브 스모크 (마스터·간사·학생·정산·/status·채팅)
 
 ---
 
