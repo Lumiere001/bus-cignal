@@ -8,6 +8,8 @@ export type KakaoMap = {
   setBounds(bounds: KakaoLatLngBounds): void;
   setCenter(latlng: KakaoLatLng): void;
   setLevel(level: number): void;
+  /** 컨테이너 크기·위치 변경 후 지도/마커 레이어 재계산 (레이아웃 이동 시 필요). */
+  relayout(): void;
 };
 
 export type KakaoMarker = {
