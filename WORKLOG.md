@@ -8,6 +8,16 @@
 
 ## 🔄 현재 작업 (Active)
 
+- 📍 **CC 세션 (2026-06-07 밤2 — ⭐ 채팅 버그픽스 + 차량취소 기능 + Firebase 진단)**: **Cowork 인계 처리(커밋·출발시각버그) + 신규 기능(지구 차량 취소) + 채팅 재입장 오류 진단. #110~#112 머지(열린 PR 0).**
+  - ✅ **머지 (#110~#112, 전부 gate+playwright green · 단위255 · E2E48)**:
+    - **#110** Cowork prod 점검 결과 커밋 + `scripts/verify-prod-db.mjs`(`pnpm verify:prod`, 읽기전용).
+    - **#111** 🐛 **채팅 헤더 출발시각 KST 교정** — `app/chat/[tripId]/page.tsx`의 `formatDeparture`가 `getHours()`(서버 로컬 TZ)라 Vercel(UTC)서 차량 상세(KST)와 **9시간** 달랐음 → `formatKstDateShort`로 교체. (ChatRoom 메시지 시각은 클라 렌더라 정상이었음.)
+    - **#112** 🆕 **지구 차량 취소**(사용자 요청) — 활성 매칭(자리 점유) 0일 때만 취소. 마이그 `20260607000002`(status+='cancelled'·cancelled_at·reason) + `cancelTrip`(가드+race되돌림+좌석마감+대기신청 취소+재신청추천) + TripCancelButton + E2E2.
+  - 🔬 **채팅 "재입장 오류·잘 안불려옴" 진단 = 거의 확실히 prod 배포된 firestore.rules가 코드보다 옛 버전**: 메시지 기본은 되지만 멤버/읽음(#100)·입퇴장(#108) 규칙이 미배포면 그 쓰기들이 PERMISSION_DENIED → 옵티미스틱 추가→롤백 깜빡임("안 불려옴" 체감) + 콘솔 오류. → **최신 `firestore.rules` 재배포가 핵심 픽스**(코드 변경 아님). 규칙 자체는 로컬 `test:rules` 22 pass로 검증됨.
+  - ⚠️ **여러명(멀티유저) 라이브 테스트 = 미실시(정직)**: 규칙 에뮬레이터(다중 인증)+단위까지만 함. 라이브 2인 브라우저 입퇴장/읽음수는 dev+Firebase 에뮬레이터로 권장(규칙 배포 후 prod에서도). CC가 로컬 에뮬레이터로 대행 가능.
+  - 🧩 **Firebase prod = "프로젝트·env·Vercel은 이미 됨"**(공유 `bus-cignal` 프로젝트로 prod 채팅 동작 중). **빠진 조각 = 최신 rules 배포** + (선택) dev/prod 프로젝트 분리. 상세 절차 = PROD-ACTIVATION ③ / 이 세션 응답의 rules-deploy 프롬프트.
+  - ⛔ **남은 것**: ① **firestore.rules 최신본 배포**(채팅 오류 해결+입퇴장 활성화, 팀장 승인 게이트) ② 차량취소 마이그 `20260607000002` prod `db push` ③ Cowork 보고 [low] `/operator/profile` 새 장소 프리뷰 핀 미표시(KakaoSearchPicker/LocationManager, 미수정) ④ 약관 org 4항목 ⑤ 실험 더미는 사용자 지시로 **보존**(삭제 보류).
+
 - 📍 **Cowork 세션 (2026-06-07 — prod DB 마이그 시각 점검 ✅ 3/3 정상 + 카카오 지도 배포 검증 진행)**:
   - ✅ **prod DB 점검 (Supabase 대시보드 `bus-cignal-prod`, 시각 확인)**: ① 프로젝트 Healthy·Last Migration=`chat_mutes` ② `regions` **53 records** (시드 정상, 이전 빈 상태→해소. PROD-ACTIVATION ① 완료) ③ `chat_mutes` 테이블 신규 존재·**0 records** (정상, #104 마이그 prod 적용 확인. PROD-ACTIVATION ③의 DB 부분 완료).
   - 🆕 **CC 재현용 스크립트**: `scripts/verify-prod-db.mjs` (`pnpm verify:prod`) — 읽기 전용, regions=53·chat_mutes 존재 검증. .env.local 키 사용. **미커밋 — CC에서 브랜치 만들어 PR로 반영할 것.**

@@ -8,17 +8,21 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: Cowork 세션 (2026-06-07 — prod DB 점검 + 카카오 지도 실배포 검증)
-To: CC (버그 픽스 + 스크립트 커밋)
-결과: ① prod DB 마이그 3/3 정상(regions 53행·chat_mutes 존재 0행, PROD-ACTIVATION ① + ③DB부분 완료) ② 카카오 지도 배포 검증 통과(렌더·검색·핀·저장. PROD-ACTIVATION ② 완료) — 상세 WORKLOG 최상단.
-CC가 할 일:
-  1. [버그/low] /operator/profile 새 장소 추가: 검색 결과 선택 직후 프리뷰 핀 미표시.
-     - 재현(운영): 내 정보 > 새 장소 추가 > "평창 대관령" 검색 > 결과 선택 → 지도 줌·센터 이동은 정상, "선택한 위치" 핀만 안 보임. 저장(추가) 후 saved 핀은 정상. 콘솔 에러 0.
-     - 관찰: marker.png img 3개가 DOM에 있으나 전부 0x0 + 조상 div display:none (kakao 마커 레이어 숨김 상태).
-     - 대조: /operator/trips/new 는 동일 KakaoSearchPicker로 프리뷰 핀 정상 → 화면별 차이 의심.
-     - 의심 파일: components/kakao/KakaoSearchPicker.tsx (placePickMarker·마커 레이어 / relayout 누락?), app/operator/profile/LocationManager.tsx (래퍼 레이아웃·재렌더).
-     - 단위/E2E 재현 테스트 추가 권장. 수정 후 Cowork 배포 재검증 1회.
-  2. [커밋] 미커밋 작업 브랜치로 PR: scripts/verify-prod-db.mjs(신규)·package.json(verify:prod)·WORKLOG.md·본 파일. prod 점검 재현 = pnpm verify:prod --env <prod env 파일> (읽기 전용).
+From: CC 세션 (2026-06-07 밤2 — Cowork 인계 처리 + 채팅 버그픽스 + 차량취소 기능 + Firebase 진단)
+To: 사용자/Cowork (firestore.rules 배포 + 차량취소 마이그 push) / CC 다음 세션
+결과(#110~#112 머지, 열린 PR 0 · gate+playwright green · 단위255 · E2E48):
+  - #110 Cowork 점검 결과 커밋 + scripts/verify-prod-db.mjs (pnpm verify:prod, 읽기전용).
+  - #111 🐛 채팅 헤더 출발시각 KST 교정(서버 로컬 TZ → formatKstDateShort). Vercel서 9시간 어긋나던 버그 해소.
+  - #112 🆕 지구 차량 취소(활성 매칭 0일 때만) — 마이그 20260607000002 + cancelTrip + TripCancelButton + E2E2.
+진단: 채팅 "재입장 오류·잘 안불려옴" = prod 배포된 firestore.rules가 코드보다 옛 버전일 가능성 매우 큼
+  (멤버/읽음[#100]·입퇴장[#108] 규칙 미배포 → 그 쓰기 PERMISSION_DENIED → 옵티미스틱 롤백 깜빡임+콘솔오류).
+  → 핵심 픽스 = **최신 firestore.rules 재배포**(코드 아님). 규칙은 test:rules 22 pass.
+멀티유저 라이브 테스트: 미실시(정직) — 규칙 에뮬레이터+단위까지. 라이브 2인은 규칙 배포 후/로컬 에뮬레이터로.
+사용자/Cowork 할 일:
+  1. [핵심] firestore.rules 최신본 배포 (firebase login + deploy, 팀장 승인 게이트) → 채팅 오류 해소 + 입퇴장 활성화.
+  2. 차량취소 마이그 20260607000002 prod 적용 (supabase db push).
+미처리(다음): [low] /operator/profile 새 장소 프리뷰 핀 미표시(KakaoSearchPicker/LocationManager) — Cowork 보고, 미수정.
+실험 더미: 사용자 지시로 **보존**(삭제 보류).
 ```
 
 ### (이전 인계 — CC 2026-06-07 밤)
