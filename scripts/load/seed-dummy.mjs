@@ -1,10 +1,14 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { SUPABASE_URL, SERVICE_KEY, assertLocal, arg } from "./_env.mjs";
+import { SUPABASE_URL as LOCAL_URL, SERVICE_KEY as LOCAL_KEY, arg } from "./_env.mjs";
 
-// 부하·QA용 더미데이터 생성기 (로컬 전용) — 현실적 시나리오.
-//   node scripts/load/seed-dummy.mjs --students 1000 --regions 20
-//   node scripts/load/seed-dummy.mjs --wipe        # 이전 더미만 삭제
+// 부하·QA용 더미데이터 생성기 — 현실적 시나리오.
+//   로컬:      node scripts/load/seed-dummy.mjs --students 1000 --regions 20
+//   wipe:      node scripts/load/seed-dummy.mjs --wipe        # 이전 더미만 삭제
+//   운영(QA):  SUPABASE_URL=<prod-url> SUPABASE_SERVICE_ROLE_KEY=<prod-key> \
+//                node scripts/load/seed-dummy.mjs --confirm --regions 5 --buses 3 --students 50
+//              → 공급 간사 입장 링크 + 샘플 학생 예약번호를 출력(QA 공유용).
+//              ⚠️ --confirm 없으면 운영 DB엔 안 들어감. 끝나면 wipe-prod.mjs로 정리.
 //
 // 현실 모델 (2026-06 합의):
 //   - 지구당 간사 1명(공급·수요 통합).
@@ -15,14 +19,33 @@ import { SUPABASE_URL, SERVICE_KEY, assertLocal, arg } from "./_env.mjs";
 //   - 승인 대기 0(CCC 자동입장 모델). 거절·알림 일부 동반.
 // 마커: operators.ccc_id LIKE 'load-%', trips.note LIKE '[LOAD]%', region_locations.label LIKE '[LOAD]%'
 
-assertLocal();
-const db = createClient(SUPABASE_URL, SERVICE_KEY, {
+// 키: 운영은 환경변수(SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY), 로컬은 .env.development.local.
+const URL = process.env.SUPABASE_URL ?? LOCAL_URL;
+const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? LOCAL_KEY;
+const isLocal = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?/.test(URL);
+const CONFIRM = !!arg("confirm", false);
+// 운영 DB로 보이면 실수 방지 — --confirm 명시 강제(wipe-prod와 같은 안전장치).
+if (!isLocal && !CONFIRM) {
+  throw new Error(
+    `운영 DB로 보입니다 (${URL}). 더미를 넣으려면 --confirm 을 붙이세요.`,
+  );
+}
+if (!KEY) throw new Error("SUPABASE_SERVICE_ROLE_KEY 없음 (env 또는 .env.development.local).");
+
+const db = createClient(URL, KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
 const STUDENTS = Number(arg("students", 1000));
 const REGIONS = arg("regions", "all");
+const BUSES = Math.max(1, Number(arg("buses", 1))); // 공급지구당 방향별 버스 수
+const baseArg = arg("base-url", null);
+const BASE_URL =
+  (typeof baseArg === "string" ? baseArg : null) ??
+  process.env.APP_BASE_URL ??
+  (isLocal ? "http://localhost:3000" : "https://bus-cignal.vercel.app");
 const WIPE = !!arg("wipe", false);
+const loginToken = () => randomBytes(32).toString("base64url");
 
 const rand = (n) => Math.floor(Math.random() * n);
 const pick = (a) => a[rand(a.length)];
@@ -125,18 +148,22 @@ async function main() {
   if (!regions?.length) throw new Error("regions 없음 — supabase db reset 먼저");
   console.log(`🌱 더미 생성: 지구 ${regions.length} · 목표 학생 ${STUDENTS}`);
 
-  // 1) 간사: 지구당 1명(공급·수요 통합)
+  // 1) 간사: 지구당 1명(공급·수요 통합). QA용 입장 링크(login_token) 부여.
   const operators = [];
   const opOf = {};
+  const opTokenOf = {}; // region.id → login_token (입장 링크 출력용)
   for (const r of regions) {
     const id = randomUUID();
+    const token = loginToken();
     opOf[r.id] = id;
+    opTokenOf[r.id] = token;
     operators.push({
       id,
       region_id: r.id,
       ccc_id: `load-op-${r.code}`,
       name: `[LOAD]${r.name} 간사`,
       phone: phone(),
+      login_token: token,
       approval_status: "approved",
       approved_at: new Date().toISOString(),
       role: "operator",
@@ -173,20 +200,23 @@ async function main() {
       { id: downDest, region_id: r.id, direction: "down", location_type: "destination", address: `${r.name} 집결지`, label: `[LOAD]${r.name} 도착`, lat: rLat, lng: rLng, is_default: true, created_by: opOf[r.id] },
     );
 
-    // 상행(지구→평창)
-    const upId = randomUUID();
-    trips.push({ id: upId, operator_region_id: r.id, direction: "up", origin_location_id: upOrigin, destination_location_id: upDest, departure_at: at(UP_DAY, 6 + rand(4), pick([0, 30])), capacity, price_per_seat: price, note: `[LOAD] ${r.name}→평창 입소차량`, status: "published", created_by: opOf[r.id] });
-    // 하행(평창→지구)
-    const downId = randomUUID();
-    trips.push({ id: downId, operator_region_id: r.id, direction: "down", origin_location_id: downOrigin, destination_location_id: downDest, departure_at: at(DOWN_DAY, 10 + rand(4), pick([0, 30])), capacity, price_per_seat: price, note: `[LOAD] 평창→${r.name} 퇴소차량`, status: "published", created_by: opOf[r.id] });
+    // 공급지구당 방향별 BUSES대(현실: 큰 지구는 시간대별 여러 대 운영).
+    for (let b = 0; b < BUSES; b++) {
+      // 상행(지구→평창)
+      const upId = randomUUID();
+      trips.push({ id: upId, operator_region_id: r.id, direction: "up", origin_location_id: upOrigin, destination_location_id: upDest, departure_at: at(UP_DAY, 6 + rand(4), pick([0, 30])), capacity, price_per_seat: price, note: `[LOAD] ${r.name}→평창 입소차량`, status: "published", created_by: opOf[r.id] });
+      // 하행(평창→지구)
+      const downId = randomUUID();
+      trips.push({ id: downId, operator_region_id: r.id, direction: "down", origin_location_id: downOrigin, destination_location_id: downDest, departure_at: at(DOWN_DAY, 10 + rand(4), pick([0, 30])), capacity, price_per_seat: price, note: `[LOAD] 평창→${r.name} 퇴소차량`, status: "published", created_by: opOf[r.id] });
 
-    // 공개 좌석(여유분) — 정원의 일부만 타지구에 오픈
-    const upSpare = 8 + rand(Math.max(1, capacity - 12));
-    const downSpare = 8 + rand(Math.max(1, capacity - 12));
-    offers.push({ id: randomUUID(), trip_id: upId, seat_count: upSpare, status: "open" });
-    offers.push({ id: randomUUID(), trip_id: downId, seat_count: downSpare, status: "open" });
-    tripMeta.push({ id: upId, regionId: r.id, direction: "up", remaining: upSpare });
-    tripMeta.push({ id: downId, regionId: r.id, direction: "down", remaining: downSpare });
+      // 공개 좌석(여유분) — 정원의 일부만 타지구에 오픈
+      const upSpare = 8 + rand(Math.max(1, capacity - 12));
+      const downSpare = 8 + rand(Math.max(1, capacity - 12));
+      offers.push({ id: randomUUID(), trip_id: upId, seat_count: upSpare, status: "open" });
+      offers.push({ id: randomUUID(), trip_id: downId, seat_count: downSpare, status: "open" });
+      tripMeta.push({ id: upId, regionId: r.id, direction: "up", remaining: upSpare });
+      tripMeta.push({ id: downId, regionId: r.id, direction: "down", remaining: downSpare });
+    }
   }
   await insertChunked("region_locations", locs);
   await insertChunked("trips", trips);
@@ -286,13 +316,19 @@ async function main() {
   console.log("✅ 완료(현실 모델):");
   console.log(`   간사 ${operators.length} · 공급지구 ${supplyRegions.length} · trip ${trips.length}(상행+하행)`);
   console.log(`   신청 ${requests.length}(대기 ${queuedCount}) · 학생 ${passengers.length} · 매칭 ${matches.length}(paid ${paidCount}) · 거절 ${rejections.length}`);
-  console.log("   QA 샘플 예약번호(학생 /r):");
+  console.log("   QA 공급 간사 입장 링크(/login/o — 카톡 전달용):");
+  supplyRegions.forEach((r) => {
+    console.log(`     ${r.name}: ${BASE_URL}/login/o/${opTokenOf[r.id]}`);
+  });
+  console.log("   QA 샘플 예약번호(학생 /r — 이름·전화끝4로 본인확인):");
   matches
     .filter((m) => m.reservation_code)
     .slice(0, 5)
     .forEach((m) => {
       const p = mpax.find((x) => x.match_id === m.id);
-      console.log(`     ${m.reservation_code}  (이름=${p.name}, 끝4=${p.phone.slice(-4)})`);
+      console.log(
+        `     ${BASE_URL}/r/${m.reservation_code}  (이름=${p.name}, 끝4=${p.phone.slice(-4)})`,
+      );
     });
 }
 
