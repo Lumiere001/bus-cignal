@@ -6,21 +6,46 @@
  */
 
 /**
- * 사람이 읽는 긴 형식 — 예) "6월 5일 오후 2:30", year 옵션 시 "2026년 6월 5일 오후 2:30".
+ * KST(UTC+9) 시각 구성요소 — 결정적(deterministic) 파싱.
+ *
+ * ⚠️ `toLocaleString`/`getHours()`는 실행 환경(Node ICU vs 브라우저 ICU/로컬 TZ)에 따라
+ *    문자열이 미세하게 달라져 **client 컴포넌트에서 hydration 불일치 경고**를 유발했다.
+ *    UTC instant에 +9h를 더한 뒤 ISO 필드를 잘라 쓰면 서버·브라우저가 항상 동일 결과를 낸다.
+ */
+function kstParts(iso: string): {
+  year: number;
+  month: number;
+  day: number;
+  hour24: number;
+  minute: string;
+} {
+  const k = new Date(new Date(iso).getTime() + 9 * 3_600_000).toISOString();
+  return {
+    year: Number(k.slice(0, 4)),
+    month: Number(k.slice(5, 7)),
+    day: Number(k.slice(8, 10)),
+    hour24: Number(k.slice(11, 13)),
+    minute: k.slice(14, 16),
+  };
+}
+
+/**
+ * 사람이 읽는 긴 형식 — 예) "6월 5일 오후 02:30", year 옵션 시 "2026년 6월 5일 오후 02:30".
  * operator 화면(운행·신청·매칭)에서 사용.
+ *
+ * 출력은 기존 `toLocaleString("ko-KR", …)` 결과와 동일(12시간 + 오전/오후 + 2자리 시·분,
+ * KST 자정=오전 12:00·정오=오후 12:00). 차이는 **결정적 계산**이라는 점뿐 — hydration 안전.
  */
 export function formatKstDateTime(
   iso: string,
   opts?: { year?: boolean },
 ): string {
-  return new Date(iso).toLocaleString("ko-KR", {
-    ...(opts?.year ? { year: "numeric" } : {}),
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Seoul",
-  });
+  const { year, month, day, hour24, minute } = kstParts(iso);
+  const ampm = hour24 < 12 ? "오전" : "오후";
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  const hh = String(hour12).padStart(2, "0");
+  const prefix = opts?.year ? `${year}년 ` : "";
+  return `${prefix}${month}월 ${day}일 ${ampm} ${hh}:${minute}`;
 }
 
 /**
@@ -35,17 +60,13 @@ export function formatKstShort(iso: string): string {
 /**
  * 학생 화면용 — 예) "7월 5일 14:30" (M월 D일 HH:MM, 24시간, KST 명시).
  * ⚠️ 기존 passenger 화면(MatchCard·me/trip)은 `new Date().getHours()`(서버 로컬 TZ)를 써서
- *    Vercel(UTC)에선 9시간 어긋난 시각을 표시하는 버그가 있었음 → 여기로 단일화하며 KST로 교정.
+ *    Vercel(UTC)에선 9시간 어긋난 시각을 표시하는 버그가 있었음 → KST 결정적 계산으로 교정.
+ *    (toLocaleString 제거 — server·client 동일 결과로 hydration 경고도 제거.)
  */
 export function formatKstDateShort(iso: string): string {
-  return new Date(iso).toLocaleString("ko-KR", {
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "Asia/Seoul",
-  });
+  const { month, day, hour24, minute } = kstParts(iso);
+  const hh = String(hour24).padStart(2, "0");
+  return `${month}월 ${day}일 ${hh}:${minute}`;
 }
 
 /** 금액 표시 — 예) 35000 → "35,000원". (여러 화면 중복 단일화) */
