@@ -171,6 +171,15 @@ export function KakaoSearchPicker({
     pickMarkerRef.current = marker;
     map.setCenter(position);
     map.setLevel(4);
+    // 검색 결과 목록이 접히며 지도가 위로 밀리는 등 컨테이너가 리플로우될 수 있다.
+    // 그러면 카카오 마커 레이어 크기 계산이 어긋나 '선택한 위치' 핀이 0×0로 숨는다(내 정보 화면 버그).
+    // 다음 프레임(레이아웃 확정 후)에 relayout + 재센터링으로 마커 레이어를 다시 그린다.
+    requestAnimationFrame(() => {
+      const m = mapRef.current;
+      if (!m) return;
+      m.relayout();
+      m.setCenter(position);
+    });
   }
 
   function runSearch(): void {
