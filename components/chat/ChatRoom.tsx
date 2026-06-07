@@ -8,6 +8,7 @@ import {
 import {
   chatDb,
   sendChatMessage,
+  sendSystemMessage,
   signInToChat,
   subscribeToMessages,
   type ChatMessage,
@@ -15,6 +16,7 @@ import {
 import {
   countUnread,
   markRead,
+  memberExists,
   subscribeToMembers,
   type ChatMember,
 } from "@/lib/chat/members";
@@ -182,6 +184,9 @@ export function ChatRoom({ tripId }: Props) {
     unsubscribersRef.current = { messages: null, members: null };
   }, []);
 
+  // 이 세션에서 "입장" 시스템 메시지를 게시했는지 — 떠날 때 "퇴장"을 1회만 짝지어 게시.
+  const announcedJoinRef = useRef(false);
+
   /** 본인 읽음 커서 upsert — best-effort(실패해도 채팅 흐름 안 막음). */
   const upsertRead = useCallback(() => {
     const id = identityRef.current;
@@ -274,6 +279,23 @@ export function ChatRoom({ tripId }: Props) {
           displayName: data.displayName,
         });
 
+        // 카톡식 입장 안내 — **최초 입장(member 문서 없음)일 때만** 1회 게시.
+        //   markRead가 member 문서를 만들기 전에 검사해야 하므로 upsertRead보다 먼저.
+        //   퇴장 안내는 입장을 게시한 세션에 한해 cleanup에서 짝지어 보낸다.
+        const firstJoin = !(await memberExists(
+          chatDb(),
+          tripId,
+          data.subjectId,
+        ));
+        if (!cancelled && firstJoin) {
+          announcedJoinRef.current = true;
+          void sendSystemMessage(tripId, {
+            senderId: data.subjectId,
+            displayName: data.displayName,
+            event: "join",
+          }).catch(() => {});
+        }
+
         // 입장 즉시 읽음 커서 upsert(입장 표시 + lastReadAt).
         upsertRead();
 
@@ -324,6 +346,18 @@ export function ChatRoom({ tripId }: Props) {
 
     return () => {
       cancelled = true;
+      // 입장을 게시한 세션은 떠날 때 퇴장 안내(best-effort) — auth는 유지되므로 전송 가능.
+      if (announcedJoinRef.current) {
+        announcedJoinRef.current = false;
+        const id = identityRef.current;
+        if (id) {
+          void sendSystemMessage(tripId, {
+            senderId: id.subjectId,
+            displayName: id.displayName,
+            event: "leave",
+          }).catch(() => {});
+        }
+      }
       if (unsubMessages) unsubMessages();
       if (unsubMembers) unsubMembers();
       unsubscribersRef.current = { messages: null, members: null };
@@ -527,13 +561,40 @@ export function ChatRoom({ tripId }: Props) {
             </div>
           ) : (
             messages.map((m, i) => {
-              const mine = mineOf(m);
               const prev = i > 0 ? messages[i - 1] : null;
-              const next = i < messages.length - 1 ? messages[i + 1] : null;
 
               // 날짜 구분선 — 이전 메시지와 날짜가 다르면 위에 삽입.
               const showDateDivider =
                 i === 0 || !isSameDay(prev?.createdAtMs ?? null, m.createdAtMs);
+
+              // 시스템 입장/퇴장 — 가운데 정렬 안내(말풍선·아바타·읽음 수 없음).
+              if (m.senderRole === "system") {
+                return (
+                  <div key={m.id}>
+                    {showDateDivider && (
+                      <div className="my-3 flex items-center justify-center">
+                        <span
+                          className="rounded-full px-3 py-1 text-[0.7rem]"
+                          style={{ backgroundColor: PANEL, color: MUTED }}
+                        >
+                          {formatDateDivider(m.createdAtMs)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="my-1.5 flex items-center justify-center">
+                      <span
+                        className="rounded-full px-3 py-1 text-center text-[0.72rem]"
+                        style={{ color: MUTED }}
+                      >
+                        {m.text}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              const mine = mineOf(m);
+              const next = i < messages.length - 1 ? messages[i + 1] : null;
 
               // 연속 그룹핑 — 같은 발신자가 연속이면 묶음.
               const sameSenderAsPrev =

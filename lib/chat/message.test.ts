@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { MAX_MESSAGE_LENGTH, validateMessageText } from "./message";
+import {
+  MAX_MESSAGE_LENGTH,
+  systemMessageText,
+  validateMessageText,
+} from "./message";
 
 describe("validateMessageText", () => {
   it("정상 텍스트 → ok + trim", () => {
@@ -46,5 +50,22 @@ describe("validateMessageText", () => {
   it("이모지(서로게이트 페어)는 보존", () => {
     const r = validateMessageText("출발해요 🚌");
     expect(r).toEqual({ ok: true, text: "출발해요 🚌" });
+  });
+});
+
+describe("systemMessageText (입장/퇴장)", () => {
+  it("join → '○○님이 들어왔어요'", () => {
+    expect(systemMessageText("이지은", "join")).toBe("이지은님이 들어왔어요");
+  });
+
+  it("leave → '○○님이 나갔어요'", () => {
+    expect(systemMessageText("김광주", "leave")).toBe("김광주님이 나갔어요");
+  });
+
+  it("firestore.rules (B) 분기 형식과 정확 일치 — displayName + 고정 접미사", () => {
+    // 규칙: text == displayName + '님이 들어왔어요' | '님이 나갔어요'
+    const name = "홍길동";
+    expect(systemMessageText(name, "join")).toBe(`${name}님이 들어왔어요`);
+    expect(systemMessageText(name, "leave")).toBe(`${name}님이 나갔어요`);
   });
 });

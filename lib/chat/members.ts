@@ -2,6 +2,7 @@
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   serverTimestamp,
   setDoc,
@@ -53,6 +54,25 @@ export async function markRead(
     },
     { merge: false },
   );
+}
+
+/**
+ * 본인 member 문서가 이미 존재하는지(= 과거에 입장한 적 있는지) 확인.
+ *   카톡식 "입장" 시스템 메시지를 **최초 입장에만** 1회 게시하기 위한 판정.
+ *   반드시 markRead(입장 시 member 문서 생성) **전에** 호출해야 한다.
+ *   조회 실패(권한·네트워크)는 false 취급 → 중복 입장 메시지보다 누락을 택함(best-effort).
+ */
+export async function memberExists(
+  db: Firestore,
+  tripId: string,
+  uid: string,
+): Promise<boolean> {
+  try {
+    const snap = await getDoc(doc(db, "channels", tripId, "members", uid));
+    return snap.exists();
+  } catch {
+    return false;
+  }
 }
 
 /**

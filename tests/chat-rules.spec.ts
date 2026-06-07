@@ -200,6 +200,78 @@ describe("Firestore Rules — channels/{tripId}/messages", () => {
     });
   });
 
+  describe("create — 시스템 입장/퇴장 (B)", () => {
+    function joinMsg(senderId: string, displayName: string) {
+      return {
+        text: `${displayName}님이 들어왔어요`,
+        senderRole: "system",
+        senderId,
+        displayName,
+        createdAt: serverTimestamp(),
+      };
+    }
+
+    it("본인 입장 안내(displayName 파생 텍스트) → 허용 (학생)", async () => {
+      const db = passengerP1();
+      await assertSucceeds(
+        addDoc(collection(db, "channels", TRIP_1, "messages"), joinMsg("p1", "이지은")),
+      );
+    });
+
+    it("본인 퇴장 안내 → 허용 (간사)", async () => {
+      const db = operatorOp1();
+      await assertSucceeds(
+        addDoc(collection(db, "channels", TRIP_1, "messages"), {
+          text: "김간사님이 나갔어요",
+          senderRole: "system",
+          senderId: "op1",
+          displayName: "김간사",
+          createdAt: serverTimestamp(),
+        }),
+      );
+    });
+
+    it("displayName 파생이 아닌 임의 시스템 텍스트 → 거부(위조 차단)", async () => {
+      const db = passengerP1();
+      await assertFails(
+        addDoc(collection(db, "channels", TRIP_1, "messages"), {
+          ...joinMsg("p1", "이지은"),
+          text: "공지: 운행이 취소되었습니다",
+        }),
+      );
+    });
+
+    it("senderId 위조한 시스템 메시지 → 거부", async () => {
+      const db = passengerP1();
+      await assertFails(
+        addDoc(collection(db, "channels", TRIP_1, "messages"), joinMsg("다른사람", "이지은")),
+      );
+    });
+
+    it("텍스트와 displayName 불일치(접두 이름 위조) → 거부", async () => {
+      const db = passengerP1();
+      await assertFails(
+        addDoc(collection(db, "channels", TRIP_1, "messages"), {
+          text: "이지은님이 들어왔어요",
+          senderRole: "system",
+          senderId: "p1",
+          displayName: "다른이름", // 규칙은 text == displayName+'님이…' 강제 → 불일치 거부
+          createdAt: serverTimestamp(),
+        }),
+      );
+    });
+
+    it("시스템 메시지에 추가 필드 → 거부", async () => {
+      const db = passengerP1();
+      await assertFails(
+        addDoc(collection(db, "channels", TRIP_1, "messages"), {
+          ...joinMsg("p1", "이지은"),
+          event: "join",
+        }),
+      );
+    });
+  });
+
   describe("update / delete", () => {
     it("메시지 수정 거부", async () => {
       await testEnv.withSecurityRulesDisabled(async (ctx) => {

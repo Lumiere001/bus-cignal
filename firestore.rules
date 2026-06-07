@@ -19,27 +19,43 @@ service cloud.firestore {
       allow read: if request.auth != null
         && request.auth.token.tripId == tripId;
 
-      // 생성: token claim과 문서 필드가 일치하고 본문/시각이 유효해야 함
+      // 생성: token claim과 문서 필드가 일치하고 본문/시각이 유효해야 함.
+      //   (A) 일반 메시지(passenger|operator) 또는 (B) 시스템 입장/퇴장(카톡식 "○○님이 들어왔어요").
       allow create: if request.auth != null
         && request.auth.token.tripId == tripId
-        // 보낸 사람 신원은 토큰에서만 결정 (클라이언트 위조 차단)
+        // 보낸 사람 신원은 토큰에서만 결정 (클라이언트 위조 차단). 시스템 메시지도 본인 것만.
         && request.resource.data.senderId == request.auth.token.subjectId
-        && request.resource.data.senderRole == request.auth.token.role
-        && (request.resource.data.senderRole == 'passenger'
-            || request.resource.data.senderRole == 'operator')
-        // 본문 1~500자
-        && request.resource.data.text is string
-        && request.resource.data.text.size() >= 1
-        && request.resource.data.text.size() <= 500
         // 표시명 문자열, 과도한 길이 차단
         && request.resource.data.displayName is string
         && request.resource.data.displayName.size() >= 1
         && request.resource.data.displayName.size() <= 100
+        && request.resource.data.text is string
         // 생성 시각은 서버 시간(serverTimestamp)만 허용 — 클라이언트 시간 위조 차단
         && request.resource.data.createdAt == request.time
-        // 위 6개 필드 외 추가 필드 금지
+        // 위 5개 필드 외 추가 필드 금지
         && request.resource.data.keys().hasOnly(
           ['text', 'senderRole', 'senderId', 'displayName', 'createdAt']
+        )
+        && (
+          // (A) 일반 메시지 — senderRole은 토큰 role과 일치, 본문 1~500자
+          (
+            request.resource.data.senderRole == request.auth.token.role
+            && (request.resource.data.senderRole == 'passenger'
+                || request.resource.data.senderRole == 'operator')
+            && request.resource.data.text.size() >= 1
+            && request.resource.data.text.size() <= 500
+          )
+          // (B) 시스템 입장/퇴장 — 본인(senderId==subjectId)만, 텍스트는 displayName 파생값으로
+          //     고정 → 임의 시스템 문구 위조 차단(자기 입퇴장 알림만 게시 가능).
+          || (
+            request.resource.data.senderRole == 'system'
+            && (
+              request.resource.data.text
+                == request.resource.data.displayName + '님이 들어왔어요'
+              || request.resource.data.text
+                == request.resource.data.displayName + '님이 나갔어요'
+            )
+          )
         );
 
       // 메시지는 수정·삭제 불가
