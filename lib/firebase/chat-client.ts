@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 import { firebaseClientApp } from "./client";
 import type { ChatRole } from "@/lib/chat/access";
+import { systemMessageText, type SystemEvent } from "@/lib/chat/message";
 
 /**
  * 채팅 클라이언트 helper — 기존 Firebase client app(lib/firebase/client.ts)을 재사용.
@@ -29,7 +30,8 @@ import type { ChatRole } from "@/lib/chat/access";
 export type ChatMessage = {
   id: string;
   text: string;
-  senderRole: ChatRole;
+  /** 'system' = 입장/퇴장 안내(카톡식). 일반 메시지는 passenger|operator. */
+  senderRole: ChatRole | "system";
   senderId: string;
   displayName: string;
   /** serverTimestamp 반영 전(pending write)에는 null일 수 있다. */
@@ -107,7 +109,12 @@ export function subscribeToMessages(
         return {
           id: doc.id,
           text: typeof data.text === "string" ? data.text : "",
-          senderRole: data.senderRole === "operator" ? "operator" : "passenger",
+          senderRole:
+            data.senderRole === "operator"
+              ? "operator"
+              : data.senderRole === "system"
+                ? "system"
+                : "passenger",
           senderId: typeof data.senderId === "string" ? data.senderId : "",
           displayName:
             typeof data.displayName === "string" ? data.displayName : "",
@@ -139,6 +146,25 @@ export async function sendChatMessage(
   await addDoc(col, {
     text: payload.text,
     senderRole: payload.senderRole,
+    senderId: payload.senderId,
+    displayName: payload.displayName,
+    createdAt: serverTimestamp(),
+  });
+}
+
+/**
+ * 입장/퇴장 시스템 메시지 전송(카톡식). 본문은 systemMessageText로 고정 —
+ * firestore.rules (B) 분기가 displayName 파생 형식과의 정확 일치를 강제한다.
+ * senderId는 토큰 subjectId(서버 권한) — 본인 것만 게시 가능.
+ */
+export async function sendSystemMessage(
+  tripId: string,
+  payload: { senderId: string; displayName: string; event: SystemEvent },
+): Promise<void> {
+  const col = collection(chatDb(), "channels", tripId, "messages");
+  await addDoc(col, {
+    text: systemMessageText(payload.displayName, payload.event),
+    senderRole: "system",
     senderId: payload.senderId,
     displayName: payload.displayName,
     createdAt: serverTimestamp(),
