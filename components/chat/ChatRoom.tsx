@@ -154,6 +154,8 @@ export function ChatRoom({ tripId }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [members, setMembers] = useState<ChatMember[]>([]);
   const [membersOpen, setMembersOpen] = useState(false);
+  // 방 푸시 음소거 상태. null = 미확정(로딩/권한없음) → 토글 숨김. (보안점검 Finding 3)
+  const [muted, setMuted] = useState<boolean | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -190,6 +192,41 @@ export function ChatRoom({ tripId }: Props) {
       role: id.role,
     }).catch(() => {
       // best-effort presence — 무시
+    });
+  }, [tripId]);
+
+  // 방 푸시 음소거 상태 로드 — 세션만으로 서버가 권한·신원 판단(/api/chat/mute GET).
+  //   Firebase와 독립 — 권한 없으면(403) muted=null 유지 → 토글 숨김.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/chat/mute?tripId=${encodeURIComponent(tripId)}`,
+        );
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { muted?: boolean };
+        if (!cancelled) setMuted(Boolean(data.muted));
+      } catch {
+        // best-effort — 음소거 상태 조회 실패는 채팅에 영향 없음.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tripId]);
+
+  // 음소거 토글 — 낙관적 갱신 후 POST(best-effort). 푸시만 끈다(인앱은 유지).
+  const toggleMute = useCallback(() => {
+    setMuted((prev) => {
+      if (prev === null) return prev; // 미확정이면 무시
+      const next = !prev;
+      void fetch("/api/chat/mute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tripId, muted: next }),
+      }).catch(() => {});
+      return next;
     });
   }, [tripId]);
 
@@ -435,6 +472,23 @@ export function ChatRoom({ tripId }: Props) {
               {membersOpen ? "▲" : "▼"}
             </span>
           </button>
+
+          {/* 푸시 음소거 토글 — 이 방 알림만 끔(인앱은 유지). 미확정 시 숨김. */}
+          {muted !== null && (
+            <button
+              type="button"
+              onClick={toggleMute}
+              className="flex items-center gap-1 rounded-full px-2 py-1 text-xs"
+              style={{ color: muted ? MUTED : VIOLET }}
+              aria-pressed={muted}
+              aria-label={
+                muted ? "이 채팅방 푸시 알림 켜기" : "이 채팅방 푸시 알림 끄기"
+              }
+            >
+              <span aria-hidden>{muted ? "🔕" : "🔔"}</span>
+              <span>{muted ? "알림 꺼짐" : "알림 켜짐"}</span>
+            </button>
+          )}
         </div>
 
         {/* 입장자(멤버) 패널 — 펼침 시 */}
