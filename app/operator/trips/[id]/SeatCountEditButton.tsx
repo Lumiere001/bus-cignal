@@ -5,33 +5,38 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { editSeatOffer } from "./actions";
 
-// 차량 좌석 수 상한 — 트립 생성(actions.ts)의 1~200 제한과 동일.
-const MAX_SEATS = 200;
-
 /**
- * 공개 인원수(= 이 차량이 내놓는 좌석 = 정원) 변경 — draft/published 차량에서만 렌더(page.tsx 가드).
- * 변경하면 정원도 함께 바뀐다. 이미 매칭된 인원(matched) 이상, 최대 200석까지 조정 가능.
+ * 공개 인원수(타지구에 공개하는 좌석) 변경 — draft/published 차량에서만 렌더(page.tsx 가드).
+ * 정원(capacity)은 그대로, 공개 인원만 조정한다. 이미 매칭된 인원(matched) 이상, 정원 이하.
+ * 잔여 = 공개 인원 − 활성 매칭 으로 다시 계산됨.
  */
 export function SeatCountEditButton({
   tripId,
   currentCount,
   matched,
+  capacity,
 }: {
   tripId: string;
   currentCount: number;
   matched: number;
+  capacity: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [count, setCount] = useState(currentCount);
+  // 문자열 상태 — 완전히 비울 수 있게(빈 값이 0으로 강제되지 않도록).
+  const [count, setCount] = useState<string>(String(currentCount));
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
   const min = Math.max(1, matched);
+  const num = count.trim() === "" ? NaN : Number(count);
+  const valid = Number.isInteger(num) && num >= min && num <= capacity;
 
   function submit() {
+    if (!valid) return;
     setError(null);
     startTransition(async () => {
-      const result = await editSeatOffer(tripId, count);
+      const result = await editSeatOffer(tripId, num);
       if ("error" in result) {
         setError(result.error);
         return;
@@ -49,7 +54,7 @@ export function SeatCountEditButton({
         size="sm"
         onClick={() => {
           setError(null);
-          setCount(currentCount);
+          setCount(String(currentCount));
           setOpen(true);
         }}
       >
@@ -70,9 +75,9 @@ export function SeatCountEditButton({
             <div>
               <h3 className="text-base font-semibold">공개 인원 변경</h3>
               <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                이 차량이 내놓는 좌석 수를 조정합니다.{" "}
-                <b>변경하면 정원도 함께 바뀌어요.</b> 이미 매칭된 {matched}명 이상,
-                최대 {MAX_SEATS}석까지 가능해요. (확정된 매칭 인원은 바뀌지 않습니다.)
+                타지구에 공개할 좌석 수를 조정합니다. 이미 매칭된 {matched}명 이상,
+                정원 {capacity}석 이하로만 가능해요. (정원과 확정된 매칭 인원은 바뀌지
+                않아요.)
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -84,9 +89,9 @@ export function SeatCountEditButton({
                 type="number"
                 inputMode="numeric"
                 min={min}
-                max={MAX_SEATS}
+                max={capacity}
                 value={count}
-                onChange={(e) => setCount(Number(e.target.value))}
+                onChange={(e) => setCount(e.target.value)}
                 disabled={isPending}
                 className="border-input bg-background focus-visible:ring-ring w-24 rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-2"
               />
@@ -114,7 +119,7 @@ export function SeatCountEditButton({
                 type="button"
                 size="sm"
                 onClick={submit}
-                disabled={isPending || count < min || count > MAX_SEATS}
+                disabled={isPending || !valid}
               >
                 {isPending ? "변경 중…" : "변경 저장"}
               </Button>
