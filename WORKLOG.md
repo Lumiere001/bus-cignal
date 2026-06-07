@@ -15,6 +15,8 @@
     - 🧰 **삭제 도구 준비·로컬 검증 완료**: `scripts/load/wipe-prod.mjs` — DRY RUN 기본, `--confirm`로 삭제, **regions·system_config 보존**, FK 순서대로 운영데이터 전부 삭제(로컬에서 55간사·65차량·131장소 삭제→regions 53 유지 확인). 채팅(Firestore)은 콘솔 'channels' 컬렉션 삭제(chat_mutes는 위 스크립트 포함).
   - ⛔ **남은 출시 전**: 약관 org 4항목(값 대기) · 위 🏁 시퀀스 실행. (CCC consumer·해지큐 = 외부, 출시 차단 아님.)
   - 👥 **팀원 공유**: `git pull` 후 본 WORKLOG + PR #104~#118 + `docs/PROD-ACTIVATION.md` 보면 이번 변경 전부 파악 가능.
+  - 🧹 **다음 세션 추가(사용자 요청)**: **repo 브랜치 정리** — 스테일 로컬(`feat/chat-kakao-kccc`·`fix/operator-cookie-render`) + 머지완료 원격 브랜치 + `git fetch --prune`.
+  - ℹ️ **참고(질문 답)**: 수요→공급 신청은 `requested_at` 기록됨 + 공급 대기 큐가 시간 오름차순(먼저 신청 순) 정렬·표시. 승인은 강제 FIFO 아님(공정성 힌트)·수정해도 순번 보존. 코드 정상(수정 불요).
 
 - 📍 **CC 세션 (2026-06-07 밤3 — 사용자 피드백 라운드 + 학생 링크 흐름 검증)**: **문구·예약링크·차량 인원변경·매칭 해제 용어/재큐잉/확인모달 + 학생 접근 링크 흐름 end-to-end 검증. #114~#115 머지(열린 PR 0).**
   - ✅ **머지 (#114~#115, gate+playwright green · E2E 49)**:
