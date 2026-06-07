@@ -43,4 +43,12 @@ test("간사 승인 사슬: 대기 큐 → 원자 승인(B3) → 입금 확인 �
 
   // 예약번호(BUS-XXXX) 발급 확인 — 매칭 현황 표의 예약번호 칼럼
   await expect(page.getByText(/BUS-[A-Z0-9]{4}/).first()).toBeVisible();
+
+  // #9 학생 개별 접근 링크: 예약번호가 /r/<code> 링크 + "링크 복사" 버튼으로 노출
+  const codeLink = page.getByRole("link", { name: /BUS-[A-Z0-9]{4}/ }).first();
+  await expect(codeLink).toBeVisible();
+  await expect(codeLink).toHaveAttribute("href", /^\/r\/BUS-[A-Z0-9]{4}$/);
+  await expect(
+    page.getByRole("button", { name: /학생 접근 링크 복사/ }).first(),
+  ).toBeVisible();
 });
