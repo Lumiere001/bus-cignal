@@ -729,6 +729,8 @@ export type Database = {
       }
       trips: {
         Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
           capacity: number
           created_at: string
           created_by: string | null
@@ -745,6 +747,8 @@ export type Database = {
           treasurer_phone: string | null
         }
         Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           capacity: number
           created_at?: string
           created_by?: string | null
@@ -761,6 +765,8 @@ export type Database = {
           treasurer_phone?: string | null
         }
         Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           capacity?: number
           created_at?: string
           created_by?: string | null
