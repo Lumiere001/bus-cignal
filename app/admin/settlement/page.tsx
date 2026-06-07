@@ -62,7 +62,7 @@ export default async function AdminSettlementPage() {
       </div>
       <SettlementMatrixView matrix={matrix} />
       <p className="text-muted-foreground text-xs">
-        확정 = 입금 완료(paid) · 진행중 = 송금 대기/보고(awaiting·reported). 자리 풀림·취소는 제외.
+        확정 = 입금 완료(paid) · 진행중 = 송금 대기/보고(awaiting·reported). 매칭 해제·취소는 제외.
         사후 정산(환불·노쇼)은 지구 간 자율 — 시스템은 집계 표만 제공합니다.
       </p>
     </main>

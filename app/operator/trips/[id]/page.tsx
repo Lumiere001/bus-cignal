@@ -14,6 +14,7 @@ import { formatKstDateTime } from "@/lib/datetime";
 import { MatchingQueue } from "./MatchingQueue";
 import { MatchTable, type MatchRow } from "./MatchTable";
 import { TripCancelButton } from "./TripCancelButton";
+import { SeatCountEditButton } from "./SeatCountEditButton";
 
 // 매칭으로 자리를 점유하는 상태 (잔여 계산 시 차감)
 const ACTIVE_MATCH_STATUSES = ["awaiting_payment", "payment_reported", "paid"] as const;
@@ -152,7 +153,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         href="/operator/trips"
         className="mb-4 inline-block text-sm text-gray-500 hover:text-gray-700"
       >
-        ← Trip 목록
+        ← 지구 차량 목록
       </Link>
 
       {/* Trip 헤더 */}
@@ -196,16 +197,26 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           💬 버스 채팅 ({DIRECTION_SHORT[direction]})
         </Link>
 
-        {/* 차량 취소 — draft/published 에서만. 활성 매칭이 있으면 비활성(사유 표시). */}
+        {/* 관리 — draft/published 에서만: 공개 인원 변경 + 차량 취소. */}
         {(status === "draft" || status === "published") && (
-          <TripCancelButton
-            tripId={trip.id}
-            blockedReason={
-              activeMatches.length > 0
-                ? "매칭된 학생이 있어 취소할 수 없어요. 매칭을 정리(자리 풀기·취소)한 뒤 취소할 수 있어요."
-                : null
-            }
-          />
+          <>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <SeatCountEditButton
+                tripId={trip.id}
+                currentCount={openSeats}
+                matched={activeMatches.length}
+                capacity={trip.capacity}
+              />
+            </div>
+            <TripCancelButton
+              tripId={trip.id}
+              blockedReason={
+                activeMatches.length > 0
+                  ? "매칭된 학생이 있어 취소할 수 없어요. 매칭을 정리(매칭 해제·취소)한 뒤 취소할 수 있어요."
+                  : null
+              }
+            />
+          </>
         )}
         {status === "cancelled" && (
           <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
