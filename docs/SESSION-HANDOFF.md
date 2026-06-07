@@ -16,7 +16,7 @@ To: CC 다음 세션 (⭐ 여기부터) — 상세는 WORKLOG 최상단 "2026-06
 로컬 채팅 재개: firebase-tools@14(=Java11 OK, @15는 Java21 필요) 에뮬레이터 + dev 에뮬모드 env. 상세 WORKLOG.
 ```
 
-### ✅ 이번 세션 결과 (#77~#81 전부 main 머지 완료 — 열린 PR 0)
+### ✅ (2026-06-06 시점 기록) 세션 결과 (#77~#81 머지 — 이후 #83~#102까지 추가 머지됨, 위 코드블록·WORKLOG 참조)
 - **PR #79** `feat/admin-ops-monitoring` 마스터 운영 모니터링(/admin/system).
 - **PR #80** `fix/operator-cookie-render` requireOperator 렌더 중 쿠키삭제 버그 픽스.
 - **PR #81 `feat/operator-screen-cleanup`** = ⭐ 대개편(간사 1-A/1-C·1-B 대시보드·UI견고화·여러 수정·Phase 2 위저드·**현실 더미시드**·지도 선택 시 핀 중심이동).
@@ -25,13 +25,14 @@ To: CC 다음 세션 (⭐ 여기부터) — 상세는 WORKLOG 최상단 "2026-06
 - `chore/realistic-dummy` = #81에 동일 시드 포함 → **폐기(삭제)**.
 - 완료/결정/다음할일 **전부 WORKLOG 맨 위 "2026-06-06" 엔트리** 에 상세.
 
-### 🔜 다음 세션 할 일 (우선순위)
-1. **Phase 2 남은 하위**: 신청 목록 상/하행 분리+옵시디언 그래프뷰·노드 클릭 정보/수정 · **신청 취소** · 신규 "우리 버스 탄 타지구 학생 모아보기 + 간사 채팅".
-2. **Phase 3 마스터**: Trip 검색 · 매칭 그래프뷰(노드=지구·간선=매칭·요청량=노드크기·클릭→지구상황) · 정산 매트릭스 UI개선+검색 · CCC 연결 예외/해지 큐.
-3. **Phase 4 학생**: 지도(배포 후 카카오 도메인 등록)·문의 연락처 총무 추가·**그룹 채팅(같은 버스+간사)+읽음 수**.
-4. **Phase 5 공개**: 전국 지구별 잔여석·신청인원 뷰(무로그인·무PII).
-5. **Phase 6**: CCC consumer(외부 API 대기) + 지구코드 매핑.
-6. 운영: 약관 「확정 필요」 4개(운영주체·보호책임자·연락처·시행일, 대기) · iPad QA(배포 또는 Tailscale HTTPS).
+### 🔜 다음 세션 할 일 (= prod 활성화 · 상세 `docs/PROD-ACTIVATION.md`)
+> Phase 2~5 빌드 + 지도B·동적 그래프·신청 취소/수정·채팅(카톡식+KCCC)·보안 점검은 **2026-06-07에 전부 완료·머지(#83~#102)**. 이제 prod 활성화 단계.
+1. **prod regions 시드**: Supabase Studio에 `supabase/seed.sql` 붙여넣기 또는 `supabase db push` — "지구 선택 안됨" 해소.
+2. **카카오 지도 배포 검증**: Cowork(프롬프트 = PROD-ACTIVATION ②).
+3. **채팅 prod 활성화**: prod 전용 Firebase 분리 + `firebase login` + `firestore.rules` 배포(CLAUDE.md §2.1 팀장 승인 게이트) + Vercel Firebase env.
+4. **약관 org 4항목**(운영주체·보호책임자·연락처·시행일) — 값 받으면 페이지 반영.
+5. **실험 더미 삭제** 후 최종 배포.
+6. (외부) CCC consumer·지구코드 + CCC 해지큐 — API 대기. 채팅 고급(입장 system 메시지·푸시 옵트인) = 향후.
 
 ### ⚠️ 인계 주의
 - **카카오 지도**: 로컬은 빌린 키라 미표시(코드는 graceful 에러). **배포 후 카카오 콘솔에 도메인(localhost+Vercel) 등록 → 간사 결과지도 + 학생 지도 둘 다 검증.**
@@ -41,9 +42,11 @@ To: CC 다음 세션 (⭐ 여기부터) — 상세는 WORKLOG 최상단 "2026-06
 - **알려진 비치명 issue(다음 정리거리)**: client 컴포넌트(`MatchingQueue.tsx` 등)의 `formatKstDateTime`=`toLocaleString`이 Node/브라우저 ICU 차이로 **hydration 경고** 발생(기능 영향 없음, 기존 issue·이번 변경 무관). 정리하려면 `lib/datetime`의 `formatKstShort`(결정적 ISO 슬라이스)로 교체.
 
 ### ▶️ 다음 세션 시작 방법
-1. `cd /Users/east_star/Projects/bus-cignal && claude`
-2. 첫 메시지: **"Bus Cignal 이어가자 — WORKLOG·SESSION-HANDOFF 읽고 Phase 2 남은 하위부터"**
-3. 재개: `supabase start && supabase db reset && node scripts/load/seed-dummy.mjs --students 1000` → dev 서버(`/run`/preview) → `/dev/login`(간사 클릭). ⚠️ reseed 시 기존 세션 stale → 다시 클릭.
+1. `cd /Users/east_star/Projects/bus-cignal && claude` (최신 main 기준 — 스택 금지)
+2. 첫 메시지(복사용):
+   > Bus Cignal 이어가자 — WORKLOG 최상단 "2026-06-07" 엔트리 + SESSION-HANDOFF(현재 인계) + docs/PROD-ACTIVATION.md 읽고 이어서 진행해줘. 현재 #83~#102 머지(열린 PR 0)·코드 완료·검증 끝(E2E 35 + 채팅 에뮬레이터), 남은 건 prod 활성화. 오늘 할 것: <원하는 것>
+3. (로컬 데이터 테스트) `supabase start && supabase db reset && node scripts/load/seed-dummy.mjs --students 1000` → `pnpm dev` → `/dev/login`(간사 클릭).
+4. (로컬 채팅 테스트) `npx firebase-tools@14 emulators:start --only firestore,auth --project demo-bus-cignal` + dev를 `NEXT_PUBLIC_FIREBASE_USE_EMULATOR=1 NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-bus-cignal FIRESTORE_EMULATOR_HOST=localhost:8080 FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 pnpm dev`. ⚠️ `pnpm build`는 `.next`를 공유해 실행 중 `pnpm dev`를 죽임(빌드 시 dev 중지).
 
 ### 블로커
 - CCC consumer = 외부 API 대기. 그 외엔 매직링크로 운영 가능. 카카오 지도는 배포 후 검증.
