@@ -8,7 +8,19 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **CC 세션 (2026-06-07 — ⭐ 다음 세션 여기부터 읽으세요)**: **지도B·동적 그래프·신청 취소/수정·매칭정렬·공개뷰 보강·regions 마이그·보안 점검·채팅 풀구현(카톡식+KCCC) 전부 main 머지. E2E 35 + 채팅 에뮬레이터 E2E 검증.**
+- 📍 **CC 세션 (2026-06-07 밤 — ⭐⭐ 다음 세션 여기부터 / 자율 폴리시 5종 완료)**: **신규기능 테스트 확충·채팅 입퇴장 시스템 메시지·채팅 푸시 음소거·hydration 결정화·신규화면 폴리시 = 5개 전부 main 머지(#104~#108, CI green). 멀티에이전트 병렬(테스트·디자인 백그라운드 에이전트 2 + 채팅/DB는 직접). 열린 PR 0.**
+  - ✅ **머지 완료 (#104~#108, 전부 typecheck·lint·test·build + playwright green)**:
+    - **#104** 채팅 **방별 푸시 음소거**(보안점검 Finding 3) — 마이그 `chat_mutes`(operator|passenger XOR·부분 unique·RLS deny+revoke) · `lib/chat/mutes`(get/set) · notify fan-out에서 음소거 수신자 `emit{push:false}`(인앱은 유지) · `/api/chat/mute` GET·POST(세션 권한, tripId만 신뢰) · ChatRoom 헤더 토글(🔔/🔕) · 단위테스트.
+    - **#105** **hydration 결정화** — `formatKstDateTime`/`formatKstDateShort` `toLocaleString`→UTC+9h ISO 슬라이스 결정적 계산(`kstParts`). **출력 문자열 동일**(byte-identical, 표시 무변경), server·client 동일 결과로 hydration 경고 제거.
+    - **#106** **신규기능 회귀 테스트** — `lib/chat/members.test.ts`(countUnread 11) + E2E 5종(chat-access 서버접근제어·신청 취소/수정·/status 무PII·매칭 그래프·지도B 폴백) + 부산(수요) storageState. **기존 35 E2E 유지 → 로컬 46 green.**
+    - **#107** **신규화면 폴리시**(기능 무변경) — 그래프(MatchesView·RequestGraph)·모아보기·신청수정·/status 만: th scope·터치타깃 44px·focus-visible·aria-label·sr-only label·SVG `<desc>` 대체텍스트·저대비 상향. 레이아웃·데이터·동작 불변.
+    - **#108** **카톡식 입장/퇴장 시스템 메시지**("○○님이 들어왔어요/나갔어요") — `senderRole='system'` 메시지 + firestore.rules system 분기(**본인 것만·텍스트=displayName 파생 고정**으로 위조 차단) · `systemMessageText`(규칙 형식과 일치) · ChatRoom 최초 입장 1회/세션 종료 시 퇴장(best-effort)·가운데 pill 렌더 · `vitest.rules.config` `.ts→.mts` 픽스(ERR_REQUIRE_ESM로 깨져있던 `test:rules` 복구).
+  - 🧪 **검증**: typecheck·lint(0 err)·**단위 255**·build·**E2E 46**(기존 35 포함) 전부 green. **채팅 규칙은 Firebase 에뮬레이터 `test:rules` 22 pass**(firebase-tools@14, Java11) — 일반 메시지 규칙 유지 + system 분기(허용/위조거부/추가필드거부) 검증.
+  - 🧰 **실행 방식**: 파일 분리 계약으로 5개를 4브랜치(파일 무겹침) + 채팅 ChatRoom 공유 때문에 음소거(#104)→입퇴장(#108) 순서화. 각 기능=1브랜치=1PR, 최신 main에서 분기(스택 X), CI green 시 `--squash --admin --delete-branch` 직접 머지. (이번 세션 한정 권한.)
+  - ⛔ **prod 활성화(여전히 사용자/Cowork 몫 — 코드는 main)**: `docs/PROD-ACTIVATION.md` 참조. ①prod regions 시드 ②카카오 지도 배포검증 ③**채팅 Firebase 분리+firestore.rules 배포(이제 system 분기 포함, 팀장 승인 게이트)+Vercel env**+**`chat_mutes` 마이그 prod 적용**(regions와 같은 `db push`/Studio 경로) ④약관 org 4항목 ⑤더미 삭제. CCC consumer·해지큐=외부 API 대기.
+  - 🔎 **남은 검증 권장(자동화 한계)**: 채팅 **UI 비주얼 스모크**(음소거 토글 렌더 + 입퇴장 라인)는 dev+Firebase 에뮬레이터로 사람/Cowork 1회 확인 권장 — Firebase 실시간 UI는 본 하니스에서 결정적 자동화 불가(규칙은 에뮬레이터 자동검증됨).
+
+- 📍 **CC 세션 (2026-06-07 — 지도B·동적 그래프·신청 취소/수정·매칭정렬·공개뷰 보강·regions 마이그·보안 점검·채팅 풀구현(카톡식+KCCC) 전부 main 머지. E2E 35 + 채팅 에뮬레이터 E2E 검증.)**
   - ✅ **머지 완료 (#89~#100, 전부 CI green)**:
     - **#89** 지도 방식 B(간사 차량등록·위치관리 검색→핀, createTrip 새장소 upsert, 지도 미가용 시 드롭다운/주소 폴백)
     - **#90** 마스터 차량 검색/필터 · **#91** 마스터 매칭 그래프뷰(노드=지구) · **#92** 정산 매트릭스 검색 · **#93** 공개 잔여석 뷰 `/status`

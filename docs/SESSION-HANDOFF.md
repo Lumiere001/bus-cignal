@@ -8,12 +8,14 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: CC 세션 (2026-06-07 — 지도B·동적그래프·신청취소/수정·정렬·공개뷰·regions·보안점검·채팅 풀구현(카톡+KCCC), #89~#100 머지)
-To: CC 다음 세션 (⭐ 여기부터) — 상세는 WORKLOG 최상단 "2026-06-07" 엔트리
-결과: #89~#100 전부 CI green·main 머지(열린 PR 0). E2E 35 + 채팅 에뮬레이터 E2E(간사↔학생 실시간·카톡 디자인) 검증. 보안 점검 GO-with-fixes(수정 완료).
-다음(=prod 활성화, 사용자/Cowork): ①prod regions 시드(seed.sql Studio 또는 #98 db push) ②채팅 prod(Firebase 분리+firebase login+firestore.rules 배포[팀장 승인]+Vercel env) ③카카오 지도 배포 검증(Cowork) ④약관 org 4항목 ⑤더미 삭제 후 최종 배포
-블로킹(외부): CCC consumer·지구코드 + CCC 해지큐(CCC API 대기). 채팅 고급(입장 system메시지)·푸시 옵트인=향후.
-로컬 채팅 재개: firebase-tools@14(=Java11 OK, @15는 Java21 필요) 에뮬레이터 + dev 에뮬모드 env. 상세 WORKLOG.
+From: CC 세션 (2026-06-07 밤 — 자율 폴리시 5종: 신규기능 테스트·채팅 입퇴장 시스템메시지·채팅 푸시 음소거·hydration 결정화·신규화면 폴리시. #104~#108 머지)
+To: CC 다음 세션 (⭐ 여기부터) — 상세는 WORKLOG 최상단 "2026-06-07 밤" 엔트리
+결과: #104~#108 전부 CI green·main 머지(열린 PR 0). typecheck·lint·단위255·build·E2E46(기존35 유지) green. 채팅 규칙은 Firebase 에뮬레이터 test:rules 22 pass(@14·Java11).
+  - #104 채팅 방별 푸시 음소거(chat_mutes 마이그+토글) · #105 hydration 결정화(표시 무변경) · #106 신규기능 테스트(members+E2E 5종) · #107 신규화면 모바일/접근성 폴리시(기능 무변경) · #108 카톡식 입장/퇴장 시스템 메시지(rules system 분기·위조차단)
+다음(=prod 활성화, 사용자/Cowork — 코드는 main): docs/PROD-ACTIVATION.md. ①prod regions 시드 ②채팅 prod(Firebase 분리+firebase login+firestore.rules 배포[이제 system 분기 포함, 팀장 승인]+Vercel env)+**chat_mutes 마이그 prod 적용** ③카카오 지도 배포검증(Cowork) ④약관 org 4항목 ⑤더미 삭제 후 최종 배포
+블로킹(외부): CCC consumer·지구코드 + CCC 해지큐(CCC API 대기).
+남은 검증 권장: 채팅 UI 비주얼 스모크(음소거 토글 + 입퇴장 라인 렌더)는 dev+Firebase 에뮬레이터로 사람/Cowork 1회 — 실시간 UI는 자동화 한계(규칙은 에뮬레이터 자동검증 완료).
+로컬 채팅 재개: firebase-tools@14(=Java11 OK, @15는 Java21 필요) 에뮬레이터 + dev 에뮬모드 env. test:rules도 @14 emulators:exec로. 상세 WORKLOG.
 ```
 
 ### ✅ (2026-06-06 시점 기록) 세션 결과 (#77~#81 머지 — 이후 #83~#102까지 추가 머지됨, 위 코드블록·WORKLOG 참조)
