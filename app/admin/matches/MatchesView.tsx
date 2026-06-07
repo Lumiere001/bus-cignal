@@ -51,7 +51,7 @@ function Segmented({
             type="button"
             aria-pressed={active}
             onClick={() => onChange(opt.value)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+            className={`rounded-md px-3 py-2 text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
               active
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
@@ -94,11 +94,11 @@ export function MatchesView({
           <table className="w-full min-w-[600px] text-sm">
             <thead className="bg-muted/50 text-muted-foreground text-left">
               <tr>
-                <th className="px-4 py-2 font-medium whitespace-nowrap">공급 지구</th>
-                <th className="px-4 py-2 font-medium whitespace-nowrap">신청 지구</th>
-                <th className="px-4 py-2 font-medium whitespace-nowrap">금액</th>
-                <th className="px-4 py-2 font-medium whitespace-nowrap">상태</th>
-                <th className="px-4 py-2 font-medium whitespace-nowrap">매칭 시각</th>
+                <th scope="col" className="px-4 py-2 font-medium whitespace-nowrap">공급 지구</th>
+                <th scope="col" className="px-4 py-2 font-medium whitespace-nowrap">신청 지구</th>
+                <th scope="col" className="px-4 py-2 font-medium whitespace-nowrap">금액</th>
+                <th scope="col" className="px-4 py-2 font-medium whitespace-nowrap">상태</th>
+                <th scope="col" className="px-4 py-2 font-medium whitespace-nowrap">매칭 시각</th>
               </tr>
             </thead>
             <tbody>
