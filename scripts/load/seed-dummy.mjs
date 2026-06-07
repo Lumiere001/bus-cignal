@@ -35,6 +35,8 @@ if (!KEY) throw new Error("SUPABASE_SERVICE_ROLE_KEY 없음 (env 또는 .env.dev
 const db = createClient(URL, KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+// 어느 DB에 들어가는지 항상 명시(로컬↔운영 혼동 방지).
+console.log(`📍 대상 DB: ${URL}${isLocal ? "  (로컬)" : "  ⚠️ 운영(deployed)"}`);
 
 const STUDENTS = Number(arg("students", 1000));
 const REGIONS = arg("regions", "all");
