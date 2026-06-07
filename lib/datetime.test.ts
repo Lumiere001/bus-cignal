@@ -1,5 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { formatKstDateShort, formatKstShort, formatWon } from "./datetime";
+import {
+  formatKstDateShort,
+  formatKstDateTime,
+  formatKstShort,
+  formatWon,
+} from "./datetime";
+
+describe("formatKstDateTime (operator 화면, KST 12h)", () => {
+  it("오후 시각을 2자리 12시간제 + 오전/오후로 표시 (KST)", () => {
+    // 2026-03-05T05:30:00Z = KST 14:30 → 오후 02:30
+    expect(formatKstDateTime("2026-03-05T05:30:00.000Z")).toBe("3월 5일 오후 02:30");
+  });
+
+  it("오전 시각", () => {
+    // 2026-03-05T00:07:00Z = KST 09:07 → 오전 09:07
+    expect(formatKstDateTime("2026-03-05T00:07:00.000Z")).toBe("3월 5일 오전 09:07");
+  });
+
+  it("KST 자정 경계 — 오전 12:00 + 날짜 넘김", () => {
+    // 2026-03-05T15:00:00Z = KST 03-06 00:00 → 오전 12:00 (6일)
+    expect(formatKstDateTime("2026-03-05T15:00:00.000Z")).toBe("3월 6일 오전 12:00");
+  });
+
+  it("year 옵션 시 연도 접두", () => {
+    expect(formatKstDateTime("2026-03-05T05:30:00.000Z", { year: true })).toBe(
+      "2026년 3월 5일 오후 02:30",
+    );
+  });
+
+  it("결정적 — 같은 입력은 항상 같은 문자열(toLocaleString 미사용)", () => {
+    const iso = "2026-07-04T16:30:00Z";
+    expect(formatKstDateTime(iso)).toBe(formatKstDateTime(iso));
+    expect(formatKstDateTime(iso)).toBe("7월 5일 오전 01:30");
+  });
+});
 
 describe("formatKstDateShort (학생 화면, KST 24h)", () => {
   it("UTC instant을 KST로 변환해 표시 (TZ 교정)", () => {
