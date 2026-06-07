@@ -62,15 +62,16 @@ Bus Cignal 지도(방식 B) 실배포 검증.
 
 1. **dev/prod Firebase 분리** — 지금은 한 프로젝트 공유라 규칙을 열면 dev까지 전체공개 위험. **prod 전용 Firebase 프로젝트 생성** → prod용 웹 config + Admin 서비스계정 발급.
 2. **Vercel env(Production)** 설정: `NEXT_PUBLIC_FIREBASE_*`(prod 웹 config), `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY`(prod 서비스계정), `NEXT_PUBLIC_FIREBASE_VAPID_KEY`. (`NEXT_PUBLIC_FIREBASE_USE_EMULATOR`는 prod에 **설정하지 말 것**.)
-3. **Firestore 보안 규칙 배포** — ⚠️ **CLAUDE.md §2.1: Firebase 규칙=코어, 팀장 명시 승인 게이트**. `firestore.rules`는 main에 있음(messages + members + deny-default, claim 검증). 검토 후:
+3. **Firestore 보안 규칙 배포** — ⚠️ **CLAUDE.md §2.1: Firebase 규칙=코어, 팀장 명시 승인 게이트**. `firestore.rules`는 main에 있음(messages + members + deny-default, claim 검증). **2026-06-07 갱신: messages create에 `senderRole='system'` 입장/퇴장 분기 추가**(본인 것만·텍스트=displayName 파생 고정으로 위조 차단). 로컬 `pnpm test:rules`(firebase-tools@14, Java11) **22 pass**로 검증됨. 검토 후:
    ```bash
    firebase login              # 사용자 본인 구글 OAuth
    firebase use <prod-project>
    firebase deploy --only firestore:rules
    ```
-4. **실배포 채팅 스모크**: 간사1·학생2로 버스(상/하행)방 입장 → 메시지·읽음 수·멤버 표시 확인.
+4. **실배포 채팅 스모크**: 간사1·학생2로 버스(상/하행)방 입장 → 메시지·읽음 수·멤버·**입장/퇴장 안내·음소거 토글** 표시 확인.
 
-> 참고: 보안 점검 Finding 1(토큰 비회수)은 클라 주기적 재검증으로 보완됨. 더 강한 회수는 cancel/revoke 시 `revokeRefreshTokens` 추가가 향후 옵션.
+> **DB 마이그**: 채팅 푸시 음소거(#104)는 `chat_mutes` 테이블이 필요 → prod에 마이그 `20260607000001_chat_mutes.sql` 적용해야 한다(regions 마이그와 함께 `supabase db push` 한 번으로 처리되거나, 이미 db push했다면 포함됨). 미적용 시 음소거 토글이 500(테이블 없음) — 단 채팅 메시지 자체는 영향 없음.
+> 참고: 보안 점검 Finding 1(토큰 비회수)은 클라 주기적 재검증으로 보완됨. 더 강한 회수는 cancel/revoke 시 `revokeRefreshTokens` 추가가 향후 옵션. Finding 3(푸시 옵트인)은 #104 음소거로 **해소**.
 
 ---
 
