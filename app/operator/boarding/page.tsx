@@ -106,12 +106,14 @@ export default async function Page() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="mb-1 text-xl font-semibold">우리 버스 탄 타지구 학생</h1>
-      <p className="mb-2 text-xs text-gray-400">
+      <h1 className="mb-1 text-xl font-semibold tracking-tight sm:text-2xl">
+        우리 버스 탄 타지구 학생
+      </h1>
+      <p className="mb-2 text-xs leading-relaxed text-gray-600 sm:text-sm">
         {regionName} 차량에 매칭된 타지구 학생을 신청 지구별로 모았습니다 · 담당 간사와 연락해
         탑승을 조율하세요.
       </p>
-      <p className="mb-6 text-xs text-gray-400">
+      <p className="mb-6 text-xs leading-relaxed text-gray-600 sm:text-sm">
         채팅은 지구별이 아니라 차량(상/하행)별 방에서 진행됩니다 · 각 Trip 상세에서 입장하세요.
       </p>
 

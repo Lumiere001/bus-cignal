@@ -165,7 +165,7 @@ export default async function StatusPage() {
       <header className="mb-6 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-700">
-            ● 실시간 공개 현황
+            <span aria-hidden>●</span> 실시간 공개 현황
           </span>
           <span className="text-muted-foreground text-xs">로그인 불필요</span>
         </div>

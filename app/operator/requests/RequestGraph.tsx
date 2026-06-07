@@ -98,6 +98,7 @@ export function RequestGraph({
   emptyMessage: string;
 }) {
   const titleId = useId();
+  const descId = useId();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const nodes = useMemo(() => layout(requests), [requests]);
@@ -123,7 +124,7 @@ export function RequestGraph({
 
   if (requests.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed py-16 text-center text-sm text-gray-400">
+      <div className="rounded-xl border border-dashed py-16 text-center text-sm text-gray-500">
         {emptyMessage}
       </div>
     );
@@ -136,10 +137,15 @@ export function RequestGraph({
           viewBox={viewBox}
           role="group"
           aria-labelledby={titleId}
-          className="h-auto w-full touch-manipulation"
+          aria-describedby={descId}
+          className="h-auto w-full max-w-full touch-manipulation"
           style={{ maxHeight: "70vh" }}
         >
           <title id={titleId}>우리 지구 신청 그래프</title>
+          <desc id={descId}>
+            중앙 &ldquo;우리 지구&rdquo; 노드를 중심으로 신청 {nodes.length}건이 노드로
+            배치된 다이어그램입니다. 각 노드를 선택하면 신청 정보가 표시됩니다.
+          </desc>
 
           {/* 엣지: 중앙 → 각 신청 노드 */}
           <g stroke="#d1d5db" strokeWidth={1.5}>
@@ -218,7 +224,7 @@ export function RequestGraph({
 
         {/* 범례 */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 pt-2 pb-1 text-xs text-gray-500">
-          <span className="text-gray-400">노드 크기 = 인원 ·</span>
+          <span className="text-gray-500">노드 크기 = 인원 ·</span>
           {(["queued", "matched", "rejected", "cancelled"] as const).map((s) => (
             <span key={s} className="inline-flex items-center gap-1">
               <span
@@ -288,7 +294,7 @@ export function RequestGraph({
             </Link>
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed p-4 text-center text-sm text-gray-400">
+          <div className="rounded-xl border border-dashed p-4 text-center text-sm text-gray-500">
             노드를 선택하면 신청 정보가 표시됩니다.
           </div>
         )}

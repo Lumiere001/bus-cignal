@@ -96,14 +96,14 @@ export function BoardingGroups({ boarders }: { boarders: BoarderRow[] }) {
           placeholder="학생 · 지구 · 노선 · 상태 검색"
         />
         {totalStudents > 0 && (
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-500">
             총 {totalStudents}명 · 확정 {confirmedStudents}명
           </span>
         )}
       </div>
 
       {groups.length === 0 ? (
-        <div className="rounded-xl border border-dashed py-16 text-center text-sm text-gray-400">
+        <div className="rounded-xl border border-dashed py-16 text-center text-sm text-gray-500">
           {q.trim()
             ? "검색 결과가 없습니다."
             : "아직 우리 차량에 매칭된 타지구 학생이 없습니다."}
@@ -127,12 +127,13 @@ export function BoardingGroups({ boarders }: { boarders: BoarderRow[] }) {
                   {g.operatorPhone ? (
                     <a
                       href={`tel:${g.operatorPhone}`}
-                      className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                      aria-label={`담당 간사${g.operatorName ? ` ${g.operatorName}` : ""}에게 전화`}
+                      className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                     >
-                      📞 담당 간사{g.operatorName ? ` ${g.operatorName}` : ""}에게 연락
+                      <span aria-hidden>📞</span> 담당 간사{g.operatorName ? ` ${g.operatorName}` : ""}에게 연락
                     </a>
                   ) : (
-                    <span className="text-xs text-gray-400">담당 간사 연락처 없음</span>
+                    <span className="text-xs text-gray-500">담당 간사 연락처 없음</span>
                   )}
                 </div>
               </div>
@@ -172,12 +173,13 @@ export function BoardingGroups({ boarders }: { boarders: BoarderRow[] }) {
                       {b.phone ? (
                         <a
                           href={`tel:${b.phone}`}
-                          className="whitespace-nowrap tabular-nums text-blue-600 hover:underline"
+                          aria-label={`${b.studentName} 전화 ${b.phone}`}
+                          className="inline-flex min-h-[32px] items-center whitespace-nowrap rounded tabular-nums text-blue-600 hover:underline focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                         >
                           {b.phone}
                         </a>
                       ) : (
-                        <span className="text-gray-400">전화 없음</span>
+                        <span className="text-gray-500">전화 없음</span>
                       )}
                       {b.reservationCode && (
                         <span className="whitespace-nowrap font-mono text-gray-600">

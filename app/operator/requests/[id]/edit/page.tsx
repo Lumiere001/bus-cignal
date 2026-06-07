@@ -123,7 +123,7 @@ export default async function RequestEditPage({
         ) : (
           <p className="mt-1 text-xs text-gray-600">차량 정보를 불러올 수 없습니다.</p>
         )}
-        <p className="mt-1 text-xs text-gray-400">차량은 변경할 수 없습니다. 학생 명단만 수정됩니다.</p>
+        <p className="mt-1 text-xs text-gray-500">차량은 변경할 수 없습니다. 학생 명단만 수정됩니다.</p>
       </section>
 
       <RequestEditForm
