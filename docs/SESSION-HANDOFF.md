@@ -8,6 +8,22 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
+From: Cowork 세션 (2026-06-07 — prod DB 점검 + 카카오 지도 실배포 검증)
+To: CC (버그 픽스 + 스크립트 커밋)
+결과: ① prod DB 마이그 3/3 정상(regions 53행·chat_mutes 존재 0행, PROD-ACTIVATION ① + ③DB부분 완료) ② 카카오 지도 배포 검증 통과(렌더·검색·핀·저장. PROD-ACTIVATION ② 완료) — 상세 WORKLOG 최상단.
+CC가 할 일:
+  1. [버그/low] /operator/profile 새 장소 추가: 검색 결과 선택 직후 프리뷰 핀 미표시.
+     - 재현(운영): 내 정보 > 새 장소 추가 > "평창 대관령" 검색 > 결과 선택 → 지도 줌·센터 이동은 정상, "선택한 위치" 핀만 안 보임. 저장(추가) 후 saved 핀은 정상. 콘솔 에러 0.
+     - 관찰: marker.png img 3개가 DOM에 있으나 전부 0x0 + 조상 div display:none (kakao 마커 레이어 숨김 상태).
+     - 대조: /operator/trips/new 는 동일 KakaoSearchPicker로 프리뷰 핀 정상 → 화면별 차이 의심.
+     - 의심 파일: components/kakao/KakaoSearchPicker.tsx (placePickMarker·마커 레이어 / relayout 누락?), app/operator/profile/LocationManager.tsx (래퍼 레이아웃·재렌더).
+     - 단위/E2E 재현 테스트 추가 권장. 수정 후 Cowork 배포 재검증 1회.
+  2. [커밋] 미커밋 작업 브랜치로 PR: scripts/verify-prod-db.mjs(신규)·package.json(verify:prod)·WORKLOG.md·본 파일. prod 점검 재현 = pnpm verify:prod --env <prod env 파일> (읽기 전용).
+```
+
+### (이전 인계 — CC 2026-06-07 밤)
+
+```
 From: CC 세션 (2026-06-07 밤 — 자율 폴리시 5종: 신규기능 테스트·채팅 입퇴장 시스템메시지·채팅 푸시 음소거·hydration 결정화·신규화면 폴리시. #104~#108 머지)
 To: CC 다음 세션 (⭐ 여기부터) — 상세는 WORKLOG 최상단 "2026-06-07 밤" 엔트리
 결과: #104~#108 전부 CI green·main 머지(열린 PR 0). typecheck·lint·단위255·build·E2E46(기존35 유지) green. 채팅 규칙은 Firebase 에뮬레이터 test:rules 22 pass(@14·Java11).

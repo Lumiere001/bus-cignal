@@ -8,6 +8,17 @@
 
 ## 🔄 현재 작업 (Active)
 
+- 📍 **Cowork 세션 (2026-06-07 — prod DB 마이그 시각 점검 ✅ 3/3 정상 + 카카오 지도 배포 검증 진행)**:
+  - ✅ **prod DB 점검 (Supabase 대시보드 `bus-cignal-prod`, 시각 확인)**: ① 프로젝트 Healthy·Last Migration=`chat_mutes` ② `regions` **53 records** (시드 정상, 이전 빈 상태→해소. PROD-ACTIVATION ① 완료) ③ `chat_mutes` 테이블 신규 존재·**0 records** (정상, #104 마이그 prod 적용 확인. PROD-ACTIVATION ③의 DB 부분 완료).
+  - 🆕 **CC 재현용 스크립트**: `scripts/verify-prod-db.mjs` (`pnpm verify:prod`) — 읽기 전용, regions=53·chat_mutes 존재 검증. .env.local 키 사용. **미커밋 — CC에서 브랜치 만들어 PR로 반영할 것.**
+  - ✅ **카카오 지도(방식 B) 실배포 검증 = 사실상 전부 통과** (https://bus-cignal.vercel.app, 간사 test·광주지구로 입장):
+    - 도메인 등록: 카카오 콘솔은 타계정이라 직접 확인 불가 → **지도 렌더 성공으로 간접 확인 완료**.
+    - 내 정보>출발지/도착지: 검색("평창 대관령")→결과 선택→주소·좌표 자동입력→**저장 반영 + 저장 목록 핀 렌더**(3핀 확인). 테스트 항목 `[TEST] 발왕산 케이블카`는 검증 후 삭제(원상복구).
+    - 차량 등록: 출발·도착 지도 2개 모두 렌더 + 검색("알펜시아리조트")→선택→**핀 정확 표시**. 등록 제출은 안 함.
+    - 콘솔 에러 0. PROD-ACTIVATION ② 완료.
+    - ⚠️ **마이너 버그(CC행)**: `/operator/profile` 새 장소 추가에서 검색 결과 **선택 직후 프리뷰 핀이 안 보임**(지도 줌·이동만 됨, 저장 후에는 핀 정상). 차량 등록 화면은 동일 KakaoSearchPicker로 프리뷰 핀 정상 → 화면별 차이 의심 (의심: components/kakao/KakaoSearchPicker.tsx placePickMarker·마커 레이어 display:none / app/operator/profile/LocationManager.tsx). **상세 재현·관찰 = docs/SESSION-HANDOFF.md 현재 인계.**
+    - ⏸ 학생 차편 지도(/me/trip)·매칭 결과 지도: prod 매칭 데이터 0이라 검증 불가(추후 베타 때).
+
 - 📍 **CC 세션 (2026-06-07 밤 — ⭐⭐ 다음 세션 여기부터 / 자율 폴리시 5종 완료)**: **신규기능 테스트 확충·채팅 입퇴장 시스템 메시지·채팅 푸시 음소거·hydration 결정화·신규화면 폴리시 = 5개 전부 main 머지(#104~#108, CI green). 멀티에이전트 병렬(테스트·디자인 백그라운드 에이전트 2 + 채팅/DB는 직접). 열린 PR 0.**
   - ✅ **머지 완료 (#104~#108, 전부 typecheck·lint·test·build + playwright green)**:
     - **#104** 채팅 **방별 푸시 음소거**(보안점검 Finding 3) — 마이그 `chat_mutes`(operator|passenger XOR·부분 unique·RLS deny+revoke) · `lib/chat/mutes`(get/set) · notify fan-out에서 음소거 수신자 `emit{push:false}`(인앱은 유지) · `/api/chat/mute` GET·POST(세션 권한, tripId만 신뢰) · ChatRoom 헤더 토글(🔔/🔕) · 단위테스트.
