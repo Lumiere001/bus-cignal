@@ -19,6 +19,7 @@ To: CC 다음 세션 (⭐ 여기부터). 다음 = 약관 4항목 반영 → 🏁
   1. **약관 org 4항목**(운영주체·보호책임자·연락처·시행일) — 사용자 값 주면 /terms·/privacy 반영(placeholder 교체).
   2. **🏁 최종 시퀀스(사용자 확정 순서)** = ① 보안 테스트(회귀+/security-review+test:rules, 기능 훼손 없이) → ② 실배포 데이터 전체 삭제(채팅 포함) → ③ 최종 배포. 상세 = docs/PROD-ACTIVATION.md '🏁 최종 마무리 시퀀스'.
      - 데이터 삭제 도구 준비·검증됨: `scripts/load/wipe-prod.mjs`(DRY RUN 기본, --confirm로 삭제, regions/system_config 보존, FK순서·로컬검증 OK) + Firestore 'channels' 컬렉션 삭제(채팅).
+다음 세션 추가 작업(사용자 요청): **repo 브랜치 정리** — 스테일 로컬(`feat/chat-kakao-kccc`·`fix/operator-cookie-render`) 삭제 + `git fetch --prune`(머지완료 원격 캐시 정리) + 원격에 남은 머지완료 브랜치(`origin/chore/*`·`origin/docs/*` 등) 정리.
 미처리(낮음): 신청목록 404(코드 대칭 → 데이터/세션, 실패 URL 받으면 재현) — 단 차량상세 404는 #117로 친절 안내화됨.
 실험 더미: 최종 시퀀스 ②에서 전체 삭제 예정(그 전까지 보존).
 ```
