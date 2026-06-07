@@ -8,21 +8,22 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: CC 세션 (2026-06-07 밤2 — Cowork 인계 처리 + 채팅 버그픽스 + 차량취소 기능 + Firebase 진단)
-To: 사용자/Cowork (firestore.rules 배포 + 차량취소 마이그 push) / CC 다음 세션
-결과(#110~#112 머지, 열린 PR 0 · gate+playwright green · 단위255 · E2E48):
-  - #110 Cowork 점검 결과 커밋 + scripts/verify-prod-db.mjs (pnpm verify:prod, 읽기전용).
-  - #111 🐛 채팅 헤더 출발시각 KST 교정(서버 로컬 TZ → formatKstDateShort). Vercel서 9시간 어긋나던 버그 해소.
-  - #112 🆕 지구 차량 취소(활성 매칭 0일 때만) — 마이그 20260607000002 + cancelTrip + TripCancelButton + E2E2.
-진단: 채팅 "재입장 오류·잘 안불려옴" = prod 배포된 firestore.rules가 코드보다 옛 버전일 가능성 매우 큼
-  (멤버/읽음[#100]·입퇴장[#108] 규칙 미배포 → 그 쓰기 PERMISSION_DENIED → 옵티미스틱 롤백 깜빡임+콘솔오류).
-  → 핵심 픽스 = **최신 firestore.rules 재배포**(코드 아님). 규칙은 test:rules 22 pass.
-멀티유저 라이브 테스트: 미실시(정직) — 규칙 에뮬레이터+단위까지. 라이브 2인은 규칙 배포 후/로컬 에뮬레이터로.
+From: CC 세션 (2026-06-07 밤3 — 피드백 라운드 + 학생 링크 흐름 검증)
+To: 사용자/Cowork (firestore.rules 배포 + db push + 문구/약관) / CC 다음 세션
+결과(#110~#115 머지, 열린 PR 0 · gate+playwright green · E2E 49):
+  - #110 Cowork 점검 커밋+verify:prod · #111 채팅 출발시각 KST · #112 차량 취소(마이그 20260607000002)
+  - #114 피드백: /status 문구·탑승학생 문구·"지구 차량 목록" · 🆕 공개 인원 변경(editSeatOffer) · 🔗 예약 링크(/r/<code>+복사) · 🐛 매칭 해제/취소 재큐잉(신청 '매칭됨' 잔존 픽스) · '자리 풀기'→'매칭 해제' 용어+확인모달
+  - #115 예약 링크 회귀 E2E
+학생 링크 흐름 = ✅ 정상: 입금확인→코드 발급→매칭현황 링크+복사(#114)→학생 /r/<code> 폼(200)→/me 예약표시(E2E pass·무세션307). "안 보임"은 #114 미배포 시점 또는 paid 매칭 부재 추정.
+채팅 "재입장 오류" 진단(직전): prod firestore.rules가 코드보다 옛버전 → **최신 rules 재배포가 핵심**(test:rules 22 pass).
 사용자/Cowork 할 일:
-  1. [핵심] firestore.rules 최신본 배포 (firebase login + deploy, 팀장 승인 게이트) → 채팅 오류 해소 + 입퇴장 활성화.
-  2. 차량취소 마이그 20260607000002 prod 적용 (supabase db push).
-미처리(다음): [low] /operator/profile 새 장소 프리뷰 핀 미표시(KakaoSearchPicker/LocationManager) — Cowork 보고, 미수정.
-실험 더미: 사용자 지시로 **보존**(삭제 보류).
+  1. [핵심] firestore.rules 최신본 배포 (npx firebase-tools@14 deploy --only firestore:rules --project bus-cignal) → 채팅 입퇴장/읽음 오류 해소.
+  2. supabase db push (chat_mutes + trips_cancellable 마이그 prod 적용).
+  3. /status 상단 긴 문단: A/B/C 안 중 택1(논의 대기 — 미수정).
+  4. 신청목록 404: 실패 URL+간사 생성방식 제공 → 재현(코드 경로 대칭이라 데이터/세션 추정).
+  5. "매칭 해제" 용어 확정 · 약관 org 4항목.
+미처리(다음): [low] /operator/profile 새 장소 프리뷰 핀 미표시(KakaoSearchPicker/LocationManager) — Cowork 보고.
+실험 더미: 사용자 지시로 보존.
 ```
 
 ### (이전 인계 — CC 2026-06-07 밤)
