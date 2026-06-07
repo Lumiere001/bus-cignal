@@ -4,6 +4,7 @@ import {
   resolveChatAccess,
 } from "@/lib/chat/access";
 import { DIRECTION_SHORT } from "@/lib/labels";
+import { formatKstDateShort } from "@/lib/datetime";
 import { ChatRoom } from "@/components/chat/ChatRoom";
 
 /** trips.direction('up'|'down') → '상행'|'하행'. 알 수 없는 값은 빈 문자열. */
@@ -17,14 +18,9 @@ type Props = {
   params: Promise<{ tripId: string }>;
 };
 
-function formatDeparture(iso: string): string {
-  const d = new Date(iso);
-  const month = d.getMonth() + 1;
-  const date = d.getDate();
-  const h = d.getHours().toString().padStart(2, "0");
-  const m = d.getMinutes().toString().padStart(2, "0");
-  return `${month}월 ${date}일 ${h}:${m}`;
-}
+// ⚠️ 채팅 헤더 출발시각은 반드시 KST 결정적 포맷(formatKstDateShort)을 쓴다.
+//    예전 로컬 formatDeparture는 new Date().getHours()(서버 로컬 TZ)를 써서
+//    Vercel(UTC)에선 차량 상세(formatKstDateTime, KST)와 9시간 어긋났음 → 교정.
 
 export default async function ChatPage({ params }: Props) {
   const { tripId } = await params;
@@ -85,7 +81,7 @@ export default async function ChatPage({ params }: Props) {
           </p>
           {header && (
             <p className="truncate text-xs" style={{ color: "#9a9aa2" }}>
-              출발 시각: {formatDeparture(header.departureAt)}
+              출발 시각: {formatKstDateShort(header.departureAt)}
             </p>
           )}
         </div>
