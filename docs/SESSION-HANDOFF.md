@@ -8,22 +8,19 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: CC 세션 (2026-06-07 밤3 — 피드백 라운드 + 학생 링크 흐름 검증)
-To: 사용자/Cowork (firestore.rules 배포 + db push + 문구/약관) / CC 다음 세션
-결과(#110~#115 머지, 열린 PR 0 · gate+playwright green · E2E 49):
-  - #110 Cowork 점검 커밋+verify:prod · #111 채팅 출발시각 KST · #112 차량 취소(마이그 20260607000002)
-  - #114 피드백: /status 문구·탑승학생 문구·"지구 차량 목록" · 🆕 공개 인원 변경(editSeatOffer) · 🔗 예약 링크(/r/<code>+복사) · 🐛 매칭 해제/취소 재큐잉(신청 '매칭됨' 잔존 픽스) · '자리 풀기'→'매칭 해제' 용어+확인모달
-  - #115 예약 링크 회귀 E2E
-학생 링크 흐름 = ✅ 정상: 입금확인→코드 발급→매칭현황 링크+복사(#114)→학생 /r/<code> 폼(200)→/me 예약표시(E2E pass·무세션307). "안 보임"은 #114 미배포 시점 또는 paid 매칭 부재 추정.
-채팅 "재입장 오류" 진단(직전): prod firestore.rules가 코드보다 옛버전 → **최신 rules 재배포가 핵심**(test:rules 22 pass).
-사용자/Cowork 할 일:
-  1. [핵심] firestore.rules 최신본 배포 (npx firebase-tools@14 deploy --only firestore:rules --project bus-cignal) → 채팅 입퇴장/읽음 오류 해소.
-  2. supabase db push (chat_mutes + trips_cancellable 마이그 prod 적용).
-  3. /status 상단 긴 문단: A/B/C 안 중 택1(논의 대기 — 미수정).
-  4. 신청목록 404: 실패 URL+간사 생성방식 제공 → 재현(코드 경로 대칭이라 데이터/세션 추정).
-  5. "매칭 해제" 용어 확정 · 약관 org 4항목.
-미처리(다음): [low] /operator/profile 새 장소 프리뷰 핀 미표시(KakaoSearchPicker/LocationManager) — Cowork 보고.
-실험 더미: 사용자 지시로 보존.
+From: CC 세션 (2026-06-07 밤4 — 피드백 마무리 + prod 활성 완료 + 최종 시퀀스 준비)
+To: CC 다음 세션 (⭐ 여기부터). 다음 = 약관 4항목 반영 → 🏁 최종 시퀀스(보안→삭제→배포).
+결과(#110~#118 머지, 열린 PR 0 · 전부 gate+playwright green · E2E 49):
+  - #110~#112 Cowork커밋·채팅출발시각KST·차량취소  #114~#115 피드백(문구·인원변경·예약링크·재큐잉)·예약링크E2E
+  - #117 '매칭 해제'→'매칭 취소' 용어 통일(중복 cancelMatch 버튼 제거) · /status 상단 문구 확정안 · 차량상세 404→친절 안내(소유 지구만)
+  - #118 카카오 '선택한 위치' 프리뷰 핀 미표시 픽스(relayout) — 시각확인은 배포 후(카카오는 배포 도메인만 렌더)
+사용자가 직접 완료: ✅ prod db push(마이그 Local==Remote) · ✅ firestore.rules 배포 → 채팅 입퇴장/읽음/음소거·차량취소·공개인원 prod 동작.
+남은 출시 전:
+  1. **약관 org 4항목**(운영주체·보호책임자·연락처·시행일) — 사용자 값 주면 /terms·/privacy 반영(placeholder 교체).
+  2. **🏁 최종 시퀀스(사용자 확정 순서)** = ① 보안 테스트(회귀+/security-review+test:rules, 기능 훼손 없이) → ② 실배포 데이터 전체 삭제(채팅 포함) → ③ 최종 배포. 상세 = docs/PROD-ACTIVATION.md '🏁 최종 마무리 시퀀스'.
+     - 데이터 삭제 도구 준비·검증됨: `scripts/load/wipe-prod.mjs`(DRY RUN 기본, --confirm로 삭제, regions/system_config 보존, FK순서·로컬검증 OK) + Firestore 'channels' 컬렉션 삭제(채팅).
+미처리(낮음): 신청목록 404(코드 대칭 → 데이터/세션, 실패 URL 받으면 재현) — 단 차량상세 404는 #117로 친절 안내화됨.
+실험 더미: 최종 시퀀스 ②에서 전체 삭제 예정(그 전까지 보존).
 ```
 
 ### (이전 인계 — CC 2026-06-07 밤)
