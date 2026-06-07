@@ -315,8 +315,8 @@ export async function confirmPayment(matchId: string): Promise<ActionResult> {
 }
 
 /**
- * [매칭 해제] — 송금 지연·오승인 등으로 간사가 매칭을 수동 해제하고 좌석을 다시 비운다
- * (구 '자리 풀기' · SPEC §7 release_seat). awaiting_payment·payment_reported만 → expired.
+ * [매칭 취소] — 송금 지연·오승인 등으로 간사가 매칭을 취소하고 좌석을 다시 비운다
+ * (구 '자리 풀기/매칭 해제' · SPEC §7 release_seat). awaiting_payment·payment_reported만 → expired.
  * 신청 지구는 다시 대기열(queued)로 되돌려 '매칭됨'이 잘못 남지 않게 한다(재매칭 가능).
  */
 export async function releaseSeat(matchId: string): Promise<ActionResult> {
@@ -334,14 +334,14 @@ export async function releaseSeat(matchId: string): Promise<ActionResult> {
     .in("status", ["awaiting_payment", "payment_reported"])
     .select("id")
     .maybeSingle();
-  if (error) return { error: "매칭 해제 중 오류가 발생했습니다." };
+  if (error) return { error: "매칭 취소 중 오류가 발생했습니다." };
   if (!data) return { error: "이미 처리된 매칭입니다." };
 
   // ★ 신청 상태 되돌리기 — 매칭이 풀렸으니 신청은 더 이상 '전원 매칭'이 아님.
   //   신청 지구 화면에 '매칭됨'이 잘못 남는 버그 방지(이미 queued/거절/취소면 건드리지 않음).
   await requeueRequestOfMatch(db, matchId);
 
-  // 알림: 매칭 해제 → 신청 지구 (paid 전이라 학생 검증 레코드 없음 → passenger null). SPEC §S8.
+  // 알림: 매칭 취소 → 신청 지구 (paid 전이라 학생 검증 레코드 없음 → passenger null). SPEC §S8.
   try {
     await emit(
       "seat_freed",
@@ -510,7 +510,7 @@ export async function cancelTrip(
   if (pre && pre.length > 0) {
     return {
       error:
-        "매칭된(자리 점유) 학생이 있어 취소할 수 없습니다. 먼저 매칭을 정리(매칭 해제·취소)한 뒤 다시 시도해주세요.",
+        "매칭된(자리 점유) 학생이 있어 취소할 수 없습니다. 먼저 학생들의 매칭을 취소한 뒤 다시 시도해주세요.",
     };
   }
 

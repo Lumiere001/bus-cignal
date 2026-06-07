@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -29,7 +28,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     .from("trips")
     .select(
       `
-      id, direction, departure_at, capacity, price_per_seat, status, note,
+      id, operator_region_id, direction, departure_at, capacity, price_per_seat, status, note,
       cancelled_at, cancellation_reason,
       origin:region_locations!origin_location_id(label, address),
       destination:region_locations!destination_location_id(label, address),
@@ -42,10 +41,30 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     `,
     )
     .eq("id", id)
-    .eq("operator_region_id", session.regionId!)
-    .single();
+    .maybeSingle();
 
-  if (!trip) notFound();
+  // 차량 상세·관리(대기 큐·매칭·인원·취소)는 그 차량을 등록한 '공급 지구' 간사만.
+  // 없거나 다른 지구 차량이면 빈 404 대신 무엇 때문인지 친절히 안내한다.
+  if (!trip || trip.operator_region_id !== session.regionId) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+        <Link
+          href="/operator/trips"
+          className="mb-6 inline-block text-sm text-gray-500 hover:text-gray-700"
+        >
+          ← 지구 차량 목록
+        </Link>
+        <p className="text-lg font-semibold text-gray-900">
+          {!trip ? "차량을 찾을 수 없어요" : "다른 지구가 등록한 차량이에요"}
+        </p>
+        <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm leading-relaxed">
+          {!trip
+            ? "이미 취소·삭제되었거나 주소가 잘못되었을 수 있어요."
+            : "차량 상세·관리(대기 큐·매칭·인원 변경)는 그 차량을 등록한 공급 지구 간사만 볼 수 있어요. 우리 지구가 신청한 차편 정보는 ‘신청’ 메뉴에서 확인하세요."}
+        </p>
+      </div>
+    );
+  }
 
   // 대기 신청 (시각순 — FIFO 표시, 강제 아님. priority는 힌트)
   const { data: requests } = await supabase
@@ -212,7 +231,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               tripId={trip.id}
               blockedReason={
                 activeMatches.length > 0
-                  ? "매칭된 학생이 있어 취소할 수 없어요. 매칭을 정리(매칭 해제·취소)한 뒤 취소할 수 있어요."
+                  ? "매칭된 학생이 있어 취소할 수 없어요. 먼저 학생들의 매칭을 취소한 뒤 차량을 취소할 수 있어요."
                   : null
               }
             />
