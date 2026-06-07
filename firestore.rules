@@ -45,16 +45,13 @@ service cloud.firestore {
             && request.resource.data.text.size() >= 1
             && request.resource.data.text.size() <= 500
           )
-          // (B) 시스템 입장/퇴장 — 본인(senderId==subjectId)만, 텍스트는 displayName 파생값으로
-          //     고정 → 임의 시스템 문구 위조 차단(자기 입퇴장 알림만 게시 가능).
+          // (B) 시스템 입장 — 본인(senderId==subjectId)만, 텍스트는 displayName 파생값으로
+          //     고정 → 임의 시스템 문구 위조 차단(자기 입장 알림만 게시 가능).
+          //     "나가기" 개념이 없으므로 퇴장("…님이 나갔어요") 문구는 허용하지 않는다.
           || (
             request.resource.data.senderRole == 'system'
-            && (
-              request.resource.data.text
+            && request.resource.data.text
                 == request.resource.data.displayName + '님이 들어왔어요'
-              || request.resource.data.text
-                == request.resource.data.displayName + '님이 나갔어요'
-            )
           )
         );
 

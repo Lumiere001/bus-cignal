@@ -224,7 +224,6 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                 tripId={trip.id}
                 currentCount={openSeats}
                 matched={activeMatches.length}
-                capacity={trip.capacity}
               />
             </div>
             <TripCancelButton

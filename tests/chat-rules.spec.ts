@@ -200,7 +200,7 @@ describe("Firestore Rules — channels/{tripId}/messages", () => {
     });
   });
 
-  describe("create — 시스템 입장/퇴장 (B)", () => {
+  describe("create — 시스템 입장 (B)", () => {
     function joinMsg(senderId: string, displayName: string) {
       return {
         text: `${displayName}님이 들어왔어요`,
@@ -218,9 +218,9 @@ describe("Firestore Rules — channels/{tripId}/messages", () => {
       );
     });
 
-    it("본인 퇴장 안내 → 허용 (간사)", async () => {
+    it("퇴장 안내('…님이 나갔어요') → 거부 (나가기 개념 없음)", async () => {
       const db = operatorOp1();
-      await assertSucceeds(
+      await assertFails(
         addDoc(collection(db, "channels", TRIP_1, "messages"), {
           text: "김간사님이 나갔어요",
           senderRole: "system",
