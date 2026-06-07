@@ -8,6 +8,14 @@
 
 ## 🔄 현재 작업 (Active)
 
+- 📍 **CC 세션 (2026-06-07 밤3 — ⭐⭐ 사용자 피드백 라운드 + 학생 링크 흐름 검증)**: **문구·예약링크·차량 인원변경·매칭 해제 용어/재큐잉/확인모달 + 학생 접근 링크 흐름 end-to-end 검증. #114~#115 머지(열린 PR 0).**
+  - ✅ **머지 (#114~#115, gate+playwright green · E2E 49)**:
+    - **#114** 피드백 반영: /status "로그인 불필요" 제거·"대기 인원=각 지구의 승인 대기" · 탑승학생 "타는"·"지구 차량 상세" · "← 지구 차량 목록" · 🆕 **공개 인원 변경**(editSeatOffer, 매칭인원~정원) · 🔗 **예약 링크**(매칭현황 `/r/<code>`+"링크 복사" ReservationLink) · 🐛 **매칭 해제/취소 시 신청 재큐잉**(신청지구 '매칭됨' 잔존 버그=대구 케이스 픽스) · **'자리 풀기/풀림'→'매칭 해제(됨)'** 용어정리 + 실수방지 확인모달.
+    - **#115** 예약 링크(#9) 회귀 E2E.
+  - ✅ **학생 링크 흐름 = 정상 동작 확인**: 입금확인→예약코드(BUS-XXXX) 발급 → 매칭현황에 `/r/<code>` 링크+복사버튼(#114) → 학생 `/r/<code>` 본인확인 폼(curl 200·form 렌더) → `/me` 예약 표시(passenger-reservation E2E pass, /me 무세션 307 보호). **즉 링크 생성·학생 페이지 모두 동작.** 사용자가 "안 보인다"한 건 #114 직전(링크 미배포)·또는 paid 매칭 없던 상태로 추정.
+  - 🔧 **디버깅 메모(중요)**: 매칭 해제 E2E에서 releaseSeat의 loadOwnedMatch가 0행 반환하는 harness-특정 flake 발견(동일 loader 쓰는 confirmPayment=approve-chain은 통과 → prod 경로 건전). 재큐잉 로직은 격리 node 스크립트로 검증 완료. E2E는 확인모달 검증으로 robust화. **matches select에 스칼라 `request_id`+동일 FK 임베드 동시 select하면 타입드 클라서 0행 → 분리(requeueRequestOfMatch 별도 스칼라 조회).**
+  - ⛔ **사용자 할 일(누적)**: ① firestore.rules 배포(채팅 입퇴장/읽음) ② `supabase db push`(chat_mutes+trips_cancellable) ③ /status 긴 문단 A/B/C 택1(미수정·논의대기) ④ 404 실패 URL 제공(코드 대칭→데이터/세션 추정) ⑤ "매칭 해제" 용어 확정 ⑥ 약관 org 4항목. 외부: CCC consumer·해지큐.
+
 - 📍 **CC 세션 (2026-06-07 밤2 — ⭐ 채팅 버그픽스 + 차량취소 기능 + Firebase 진단)**: **Cowork 인계 처리(커밋·출발시각버그) + 신규 기능(지구 차량 취소) + 채팅 재입장 오류 진단. #110~#112 머지(열린 PR 0).**
   - ✅ **머지 (#110~#112, 전부 gate+playwright green · 단위255 · E2E48)**:
     - **#110** Cowork prod 점검 결과 커밋 + `scripts/verify-prod-db.mjs`(`pnpm verify:prod`, 읽기전용).
