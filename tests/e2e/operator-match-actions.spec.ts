@@ -47,10 +47,13 @@ test("매칭 취소: 승인 매칭에 실수 방지 확인 모달 + 설명", asy
   }
 });
 
-test("공개 인원 변경: 좌석 수 조정 → 잔여석 반영", async ({ page }) => {
+test("공개 인원 변경: 좌석 수 조정 → 정원·잔여석 함께 반영", async ({ page }) => {
   const scn = await createApproveScenario({ passengers: 1, offered: 10 });
   try {
     await page.goto(`/operator/trips/${scn.tripId}`);
+    // 변경 전: 정원 44석(시나리오 기본) — 공개 인원(10)과 분리돼 있던 상태
+    await expect(page.getByText(/정원 44석/)).toBeVisible();
+
     await page.getByRole("button", { name: "공개 인원 변경" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
@@ -58,6 +61,8 @@ test("공개 인원 변경: 좌석 수 조정 → 잔여석 반영", async ({ pa
     await input.fill("6");
     await dialog.getByRole("button", { name: "변경 저장" }).click();
 
+    // 공개 인원을 6으로 내리면 정원도 6으로 함께 바뀐다(사용자 정책 2026-06-07).
+    await expect(page.getByText(/정원 6석/)).toBeVisible();
     // 매칭 없음 → 잔여 = 공개 좌석(6)
     await expect(page.getByText(/잔여 6석/)).toBeVisible();
   } finally {

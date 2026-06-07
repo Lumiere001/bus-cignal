@@ -53,19 +53,14 @@ describe("validateMessageText", () => {
   });
 });
 
-describe("systemMessageText (입장/퇴장)", () => {
-  it("join → '○○님이 들어왔어요'", () => {
-    expect(systemMessageText("이지은", "join")).toBe("이지은님이 들어왔어요");
-  });
-
-  it("leave → '○○님이 나갔어요'", () => {
-    expect(systemMessageText("김광주", "leave")).toBe("김광주님이 나갔어요");
+describe("systemMessageText (입장)", () => {
+  it("입장 → '○○님이 들어왔어요' (나가기 개념 없음 → join만 존재)", () => {
+    expect(systemMessageText("이지은")).toBe("이지은님이 들어왔어요");
   });
 
   it("firestore.rules (B) 분기 형식과 정확 일치 — displayName + 고정 접미사", () => {
-    // 규칙: text == displayName + '님이 들어왔어요' | '님이 나갔어요'
+    // 규칙: text == displayName + '님이 들어왔어요' (퇴장 문구는 더 이상 허용 안 됨)
     const name = "홍길동";
-    expect(systemMessageText(name, "join")).toBe(`${name}님이 들어왔어요`);
-    expect(systemMessageText(name, "leave")).toBe(`${name}님이 나갔어요`);
+    expect(systemMessageText(name)).toBe(`${name}님이 들어왔어요`);
   });
 });

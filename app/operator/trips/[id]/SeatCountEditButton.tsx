@@ -5,20 +5,21 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { editSeatOffer } from "./actions";
 
+// 차량 좌석 수 상한 — 트립 생성(actions.ts)의 1~200 제한과 동일.
+const MAX_SEATS = 200;
+
 /**
- * 공개 인원수(타지구 공개 좌석) 변경 — draft/published 차량에서만 렌더(page.tsx 가드).
- * 이미 매칭된 인원(matched) 이상, 정원(capacity) 이하로만 조정 가능.
+ * 공개 인원수(= 이 차량이 내놓는 좌석 = 정원) 변경 — draft/published 차량에서만 렌더(page.tsx 가드).
+ * 변경하면 정원도 함께 바뀐다. 이미 매칭된 인원(matched) 이상, 최대 200석까지 조정 가능.
  */
 export function SeatCountEditButton({
   tripId,
   currentCount,
   matched,
-  capacity,
 }: {
   tripId: string;
   currentCount: number;
   matched: number;
-  capacity: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -69,8 +70,9 @@ export function SeatCountEditButton({
             <div>
               <h3 className="text-base font-semibold">공개 인원 변경</h3>
               <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                타지구에 공개할 좌석 수를 조정합니다. 이미 매칭된 {matched}명 이상,
-                정원 {capacity}석 이하로만 가능해요. (확정된 매칭 인원은 바뀌지 않습니다.)
+                이 차량이 내놓는 좌석 수를 조정합니다.{" "}
+                <b>변경하면 정원도 함께 바뀌어요.</b> 이미 매칭된 {matched}명 이상,
+                최대 {MAX_SEATS}석까지 가능해요. (확정된 매칭 인원은 바뀌지 않습니다.)
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -82,7 +84,7 @@ export function SeatCountEditButton({
                 type="number"
                 inputMode="numeric"
                 min={min}
-                max={capacity}
+                max={MAX_SEATS}
                 value={count}
                 onChange={(e) => setCount(Number(e.target.value))}
                 disabled={isPending}
@@ -112,7 +114,7 @@ export function SeatCountEditButton({
                 type="button"
                 size="sm"
                 onClick={submit}
-                disabled={isPending || count < min || count > capacity}
+                disabled={isPending || count < min || count > MAX_SEATS}
               >
                 {isPending ? "변경 중…" : "변경 저장"}
               </Button>

@@ -8,7 +8,17 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **CC 세션 (2026-06-07 밤4 — ⭐⭐⭐ 다음 세션 여기부터 / prod 활성 완료 + 최종 시퀀스 준비)**: **'매칭 취소' 용어 통일·404 친절안내·카카오 핀 픽스 머지 + prod 활성(마이그 push·rules 배포 = 사용자 직접 완료) + 최종 마무리 시퀀스(보안→삭제→배포) 계획·도구 준비. #117~#118 머지(열린 PR 0).**
+- 📍 **CC 세션 (2026-06-07 밤5 — ⭐⭐⭐ 다음 세션 여기부터 / 보안테스트 GO·로컬 브랜치 정리 + 출시 전 마무리 수정 2건)**: **🏁 시퀀스 ① 보안 테스트 완료(GO) + repo 로컬 정리 + 사용자 보고 버그 2건 수정 머지.**
+  - ✅ **🏁 ① 보안 테스트 — GO**: 회귀 게이트 전부 green(typecheck·lint·단위·build·E2E49·rules22) + 보안 표면 점검(IDOR=resolveChatAccess 세션기반·paid매칭/region, dev-login `VERCEL_ENV=production` 하드차단 이중가드, 시크릿=.env.example placeholder만·full 키 history無, SQL 파라미터화, XSS無, 원자승인 행잠금) 이상 없음. **유일 격상=운영: repo가 PUBLIC**(코드 시크릿은 git에 없음). → private 전환은 사용자 보류(브랜치보호는 Free 私repo 불가, Pro 필요. 솔로라 enforce 가치 낮음).
+  - ✅ **repo 로컬 정리**: 스테일 로컬 2개(`feat/chat-kakao-kccc`·`fix/operator-cookie-render`, PR #100·#80 머지 확인) + 스테일 worktree(`bus-cignal-fix-operator`) 제거 + `fetch --prune`(스테일 원격 ref ~45개 정리). **GitHub 실제 원격 = main + (이번 머지 후) 0**.
+  - ✅ **버그 수정 머지 (gate green · E2E 49 유지)**:
+    - **① 공개 인원 ↔ 정원 동기화**: `editSeatOffer`가 `seat_count`와 함께 `trips.capacity`도 갱신(상한 200=생성과 동일). 모달 문구 "정원도 함께 바뀜". 이제 둘이 항상 같음(=공개=정원). e2e 강화(정원 44→6·잔여 6 단언). ⚠️ "정원 크게+공개 적게" 분리 보관은 불가해짐(사용자 의도 반영).
+    - **③ 채팅 '나가기' 개념 제거**: "나갔어요"(화면 이탈 cleanup 게시) 완전 삭제 → 카톡식 "첫 연결=들어왔어요"만 1회. `SystemEvent`에서 leave 제거, **firestore.rules에서도 '…님이 나갔어요' 불허**(rules테스트 22, 퇴장거부 케이스 추가).
+  - ⚠️ **배포 필수(이번 변경)**: `firestore.rules` 또 바뀜 → **재배포 필요**(`firebase deploy --only firestore:rules`, 팀장 승인 게이트). 안 하면 prod 규칙 stale.
+  - 📌 **PWA 후속(요청)**: 첫 방문자에게 설치 권장 팝업/배너 추가 예정(별도 PR). Android=beforeinstallprompt, iOS=공유→홈화면 안내(programmatic 불가).
+  - ⛔ **남은 출시 전**: 약관 org 4항목(값 대기) · 🏁 ②(데이터 삭제: `wipe-prod.mjs --confirm` + Firestore `channels` 삭제) → ③ 배포. (CCC consumer·해지큐=외부.)
+
+- 📍 **CC 세션 (2026-06-07 밤4 — prod 활성 완료 + 최종 시퀀스 준비)**: **'매칭 취소' 용어 통일·404 친절안내·카카오 핀 픽스 머지 + prod 활성(마이그 push·rules 배포 = 사용자 직접 완료) + 최종 마무리 시퀀스(보안→삭제→배포) 계획·도구 준비. #117~#118 머지(열린 PR 0).**
   - ✅ **머지 (#117~#118, gate+playwright green · E2E 49)**: #117 '매칭 해제'→**'매칭 취소'** 용어 통일(중복 cancelMatch 버튼 제거, 매칭당 취소 하나) · /status 상단 문구 확정안 · **차량상세 404→친절 안내**(소유 공급 지구만 보는 페이지임을 설명). #118 카카오 **'선택한 위치' 프리뷰 핀** 미표시 픽스(`map.relayout()`, 결과 목록 접힘 리플로우 대응 — 시각확인은 배포 후).
   - ✅ **prod 활성 완료(사용자 직접)**: `supabase db push`(마이그 Local==Remote 16/16) + `firestore.rules` 배포(@14 deploy). → 채팅 입퇴장/읽음/음소거·차량취소·공개인원 변경이 prod에서 동작.
   - 🏁 **최종 마무리 시퀀스 준비(계획만, 다음 실행)**: ① 보안 테스트(회귀 게이트+`/security-review`+`test:rules`, 기능 훼손 없이) → ② **실배포 데이터 전체 삭제**(채팅 포함) → ③ 최종 배포. 상세 = `docs/PROD-ACTIVATION.md` '🏁 최종 마무리 시퀀스'.

@@ -30,7 +30,7 @@ import { systemMessageText, type SystemEvent } from "@/lib/chat/message";
 export type ChatMessage = {
   id: string;
   text: string;
-  /** 'system' = 입장/퇴장 안내(카톡식). 일반 메시지는 passenger|operator. */
+  /** 'system' = 입장 안내(카톡식, 첫 연결만). 일반 메시지는 passenger|operator. */
   senderRole: ChatRole | "system";
   senderId: string;
   displayName: string;
@@ -153,7 +153,7 @@ export async function sendChatMessage(
 }
 
 /**
- * 입장/퇴장 시스템 메시지 전송(카톡식). 본문은 systemMessageText로 고정 —
+ * 입장 시스템 메시지 전송(카톡식, 첫 연결만). 본문은 systemMessageText로 고정 —
  * firestore.rules (B) 분기가 displayName 파생 형식과의 정확 일치를 강제한다.
  * senderId는 토큰 subjectId(서버 권한) — 본인 것만 게시 가능.
  */
@@ -163,7 +163,7 @@ export async function sendSystemMessage(
 ): Promise<void> {
   const col = collection(chatDb(), "channels", tripId, "messages");
   await addDoc(col, {
-    text: systemMessageText(payload.displayName, payload.event),
+    text: systemMessageText(payload.displayName),
     senderRole: "system",
     senderId: payload.senderId,
     displayName: payload.displayName,

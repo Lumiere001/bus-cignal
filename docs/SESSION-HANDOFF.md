@@ -8,20 +8,28 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: CC 세션 (2026-06-07 밤4 — 피드백 마무리 + prod 활성 완료 + 최종 시퀀스 준비)
-To: CC 다음 세션 (⭐ 여기부터). 다음 = 약관 4항목 반영 → 🏁 최종 시퀀스(보안→삭제→배포).
-결과(#110~#118 머지, 열린 PR 0 · 전부 gate+playwright green · E2E 49):
-  - #110~#112 Cowork커밋·채팅출발시각KST·차량취소  #114~#115 피드백(문구·인원변경·예약링크·재큐잉)·예약링크E2E
-  - #117 '매칭 해제'→'매칭 취소' 용어 통일(중복 cancelMatch 버튼 제거) · /status 상단 문구 확정안 · 차량상세 404→친절 안내(소유 지구만)
-  - #118 카카오 '선택한 위치' 프리뷰 핀 미표시 픽스(relayout) — 시각확인은 배포 후(카카오는 배포 도메인만 렌더)
-사용자가 직접 완료: ✅ prod db push(마이그 Local==Remote) · ✅ firestore.rules 배포 → 채팅 입퇴장/읽음/음소거·차량취소·공개인원 prod 동작.
+From: CC 세션 (2026-06-07 밤5 — 🏁① 보안테스트 GO·repo 로컬정리 + 출시 전 버그 2건 수정 머지)
+To: CC 다음 세션 (⭐ 여기부터). 다음 = (PWA 설치팝업 PR) → firestore.rules 재배포 → 약관 4항목 → 🏁②삭제 → ③배포.
+이번 세션 결과(gate green · E2E 49 · rules 22):
+  - ✅ 🏁① 보안 테스트 = **GO**. 회귀 전부 green + 보안표면 점검 이상無. 유일 격상=운영: **repo가 PUBLIC**(코드 시크릿은 git에 없음). private 전환은 사용자 보류(Free 私repo는 브랜치보호 불가, 솔로라 enforce 가치 낮음 — 원하면 Pro).
+  - ✅ repo 로컬 정리: 스테일 로컬 2개 + 스테일 worktree 제거 + prune. GitHub 실제 원격 = main만(이번 PR 머지 후).
+  - ✅ 버그수정 머지: **① 공개 인원↔정원 동기화**(editSeatOffer가 capacity도 갱신, 상한200, 모달문구, e2e강화. 이제 둘 항상 같음 — 분리보관 불가) · **③ 채팅 '나가기' 제거**("나갔어요" 삭제, 첫 연결 "들어왔어요"만, firestore.rules에서도 퇴장문구 불허).
+⚠️ 배포 필수: **firestore.rules 재배포**(이번에 또 바뀜 — 퇴장 불허). `firebase deploy --only firestore:rules`(팀장 승인 게이트). 안 하면 prod 규칙 stale.
 남은 출시 전:
-  1. **약관 org 4항목**(운영주체·보호책임자·연락처·시행일) — 사용자 값 주면 /terms·/privacy 반영(placeholder 교체).
-  2. **🏁 최종 시퀀스(사용자 확정 순서)** = ① 보안 테스트(회귀+/security-review+test:rules, 기능 훼손 없이) → ② 실배포 데이터 전체 삭제(채팅 포함) → ③ 최종 배포. 상세 = docs/PROD-ACTIVATION.md '🏁 최종 마무리 시퀀스'.
-     - 데이터 삭제 도구 준비·검증됨: `scripts/load/wipe-prod.mjs`(DRY RUN 기본, --confirm로 삭제, regions/system_config 보존, FK순서·로컬검증 OK) + Firestore 'channels' 컬렉션 삭제(채팅).
-다음 세션 추가 작업(사용자 요청): **repo 브랜치 정리** — 스테일 로컬(`feat/chat-kakao-kccc`·`fix/operator-cookie-render`) 삭제 + `git fetch --prune`(머지완료 원격 캐시 정리) + 원격에 남은 머지완료 브랜치(`origin/chore/*`·`origin/docs/*` 등) 정리.
-미처리(낮음): 신청목록 404(코드 대칭 → 데이터/세션, 실패 URL 받으면 재현) — 단 차량상세 404는 #117로 친절 안내화됨.
-실험 더미: 최종 시퀀스 ②에서 전체 삭제 예정(그 전까지 보존).
+  0. **PWA 첫방문 설치 권장 팝업**(사용자 요청) — 별도 PR로 추가 예정(Android=beforeinstallprompt 커스텀, iOS=공유→홈화면 안내·programmatic 불가, 1회 표시 localStorage).
+  1. **firestore.rules 재배포**(위 ⚠️).
+  2. **약관 org 4항목**(운영주체·보호책임자·연락처·시행일) — 값 주면 /terms·/privacy 반영.
+  3. **🏁 ②삭제 → ③배포**: `wipe-prod.mjs`(DRY→--confirm, regions/system_config 보존) + Firestore `channels` 삭제(채팅, recursive). 그다음 라이브 스모크. 상세=docs/PROD-ACTIVATION.md '🏁 최종 마무리 시퀀스'.
+미처리(낮음): 신청목록 404(데이터/세션 의심, 실패 URL 받으면 재현).
+실험 더미: 🏁②에서 전체 삭제 예정.
+```
+
+### (이전 인계 — CC 2026-06-07 밤4)
+
+```
+From: CC 세션 (2026-06-07 밤4 — 피드백 마무리 + prod 활성 완료 + 최종 시퀀스 준비)
+결과(#110~#118 머지): #117 '매칭 취소' 용어통일·차량상세404 친절안내 · #118 카카오 프리뷰핀 픽스.
+사용자 직접 완료: ✅ prod db push · ✅ firestore.rules 배포(밤4 시점). 🏁① 보안테스트는 밤5에서 수행(GO).
 ```
 
 ### (이전 인계 — CC 2026-06-07 밤)

@@ -37,19 +37,18 @@ export function validateMessageText(raw: string): MessageValidation {
   return { ok: true, text };
 }
 
-/** 시스템 입장/퇴장 이벤트. */
-export type SystemEvent = "join" | "leave";
+/**
+ * 시스템 이벤트. 카톡식으로 **첫 입장만** 알린다 — "나가기" 개념이 없으므로 leave는 없다.
+ */
+export type SystemEvent = "join";
 
 /**
- * 카톡식 입장/퇴장 시스템 메시지 본문 — 예) "이지은님이 들어왔어요".
+ * 카톡식 입장 시스템 메시지 본문 — 예) "이지은님이 들어왔어요".
  *
- * ⚠️ firestore.rules (B) 분기가 `displayName + '님이 들어왔어요'|'님이 나갔어요'` 와의
+ * ⚠️ firestore.rules (B) 분기가 `displayName + '님이 들어왔어요'` 와의
  *    **정확 일치**를 강제한다(임의 시스템 문구 위조 차단). 이 함수의 출력이 그 형식과
  *    한 글자라도 달라지면 Rules가 거부하므로 양쪽을 함께 바꿔야 한다.
  */
-export function systemMessageText(
-  displayName: string,
-  event: SystemEvent,
-): string {
-  return `${displayName}님이 ${event === "join" ? "들어왔어요" : "나갔어요"}`;
+export function systemMessageText(displayName: string): string {
+  return `${displayName}님이 들어왔어요`;
 }

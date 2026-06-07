@@ -184,9 +184,6 @@ export function ChatRoom({ tripId }: Props) {
     unsubscribersRef.current = { messages: null, members: null };
   }, []);
 
-  // 이 세션에서 "입장" 시스템 메시지를 게시했는지 — 떠날 때 "퇴장"을 1회만 짝지어 게시.
-  const announcedJoinRef = useRef(false);
-
   /** 본인 읽음 커서 upsert — best-effort(실패해도 채팅 흐름 안 막음). */
   const upsertRead = useCallback(() => {
     const id = identityRef.current;
@@ -281,14 +278,13 @@ export function ChatRoom({ tripId }: Props) {
 
         // 카톡식 입장 안내 — **최초 입장(member 문서 없음)일 때만** 1회 게시.
         //   markRead가 member 문서를 만들기 전에 검사해야 하므로 upsertRead보다 먼저.
-        //   퇴장 안내는 입장을 게시한 세션에 한해 cleanup에서 짝지어 보낸다.
+        //   "나가기" 개념은 없다(카톡처럼 방을 아예 떠나는 동작이 없으므로 퇴장 메시지도 없음).
         const firstJoin = !(await memberExists(
           chatDb(),
           tripId,
           data.subjectId,
         ));
         if (!cancelled && firstJoin) {
-          announcedJoinRef.current = true;
           void sendSystemMessage(tripId, {
             senderId: data.subjectId,
             displayName: data.displayName,
@@ -346,18 +342,8 @@ export function ChatRoom({ tripId }: Props) {
 
     return () => {
       cancelled = true;
-      // 입장을 게시한 세션은 떠날 때 퇴장 안내(best-effort) — auth는 유지되므로 전송 가능.
-      if (announcedJoinRef.current) {
-        announcedJoinRef.current = false;
-        const id = identityRef.current;
-        if (id) {
-          void sendSystemMessage(tripId, {
-            senderId: id.subjectId,
-            displayName: id.displayName,
-            event: "leave",
-          }).catch(() => {});
-        }
-      }
+      // 화면을 벗어나도 "나갔어요"는 보내지 않는다 — 채팅방을 보고 있는지 여부는
+      // 입퇴장이 아니다(카톡식: 첫 연결만 "들어왔어요", 나가기 개념 없음). 구독만 정리.
       if (unsubMessages) unsubMessages();
       if (unsubMembers) unsubMembers();
       unsubscribersRef.current = { messages: null, members: null };
