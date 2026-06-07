@@ -8,7 +8,13 @@
 
 ## 🔄 현재 작업 (Active)
 
-- 📍 **CC 세션 (2026-06-07 밤5 — ⭐⭐⭐ 다음 세션 여기부터 / 보안테스트 GO·로컬 브랜치 정리 + 출시 전 마무리 수정 2건)**: **🏁 시퀀스 ① 보안 테스트 완료(GO) + repo 로컬 정리 + 사용자 보고 버그 2건 수정 머지.**
+- 📍 **CC 세션 (2026-06-07 밤6 — 🚀 v1.0.0 정식 출시 / ⭐ 다음 세션 여기부터)**: **첫 production 출시 완료 + 출시 후 발견 이슈 1건.**
+  - 🚀 **출시(사용자 직접 마무리)**: firestore.rules 재배포 + 🏁② 데이터 삭제(Supabase `wipe-prod.mjs` + Firestore `channels`) + ③ 최종 배포 + 라이브 스모크 + 카카오 지도 배포검증 완료. PR #121·#122 머지 → main `0aaeaf9`. **태그 `v1.0.0` + GitHub 릴리즈 발행**(latest).
+  - 🐛 **출시 후 발견(중요)**: 랜딩 '예약 조회' 버튼 → `/r` 인데 `app/r/page.tsx` 없음(라우트는 `/r/[code]`만) → **404**. 학생이 코드 없이 예약조회 불가. fix 후보 = (a) `/r` 코드입력 페이지 신설(권장) / (b) 버튼 제거. 사용자 결정 대기.
+  - 📌 **세션·PWA Q&A**: 인증=쿠키(학생 30일 / 간사 12h, httpOnly·Lax). Android PWA=브라우저와 저장소 공유(로그인 그대로 이어짐), **iOS 홈화면 PWA=Safari와 저장소 분리**(앱 안에서 1회 로그인 필요). 푸시=FCM 옵트인.
+  - ⛔ **남은(출시 후)**: 약관 org 4항목(반영 여부 미확인) · `/r` 404 fix · CCC consumer 연동+해지큐(외부, 현재 간사=매직링크 임시).
+
+- 📍 **CC 세션 (2026-06-07 밤5 — 보안테스트 GO·로컬 브랜치 정리 + 출시 전 마무리 수정 2건)**: **🏁 시퀀스 ① 보안 테스트 완료(GO) + repo 로컬 정리 + 사용자 보고 버그 2건 수정 머지.**
   - ✅ **🏁 ① 보안 테스트 — GO**: 회귀 게이트 전부 green(typecheck·lint·단위·build·E2E49·rules22) + 보안 표면 점검(IDOR=resolveChatAccess 세션기반·paid매칭/region, dev-login `VERCEL_ENV=production` 하드차단 이중가드, 시크릿=.env.example placeholder만·full 키 history無, SQL 파라미터화, XSS無, 원자승인 행잠금) 이상 없음. **유일 격상=운영: repo가 PUBLIC**(코드 시크릿은 git에 없음). → private 전환은 사용자 보류(브랜치보호는 Free 私repo 불가, Pro 필요. 솔로라 enforce 가치 낮음).
   - ✅ **repo 로컬 정리**: 스테일 로컬 2개(`feat/chat-kakao-kccc`·`fix/operator-cookie-render`, PR #100·#80 머지 확인) + 스테일 worktree(`bus-cignal-fix-operator`) 제거 + `fetch --prune`(스테일 원격 ref ~45개 정리). **GitHub 실제 원격 = main + (이번 머지 후) 0**.
   - ✅ **버그 수정 머지 (gate green · E2E 49 유지)**:

@@ -8,20 +8,25 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
+From: CC 세션 (2026-06-07 밤6 — 🚀 v1.0.0 정식 출시)
+To: CC 다음 세션 (⭐ 여기부터). 출시 완료 — 다음은 출시 후 마무리/연동.
+🚀 출시: 사용자가 firestore.rules 재배포 + 🏁② 데이터 삭제(Supabase wipe + Firestore channels) + ③ 최종 배포 + 라이브 스모크 + 카카오 지도 배포검증까지 완료.
+  - PR #121(공개인원↔정원 동기화·채팅 '나가기' 제거) · #122(PWA 첫방문 설치 배너) 머지 → main `0aaeaf9`.
+  - **태그 `v1.0.0` + GitHub 릴리즈 발행**(latest). 첫 정식 production.
+🐛 출시 후 발견(중요): **랜딩 '예약 조회' 버튼이 `/r`로 가는데 `app/r/page.tsx`가 없어 404**(라우트는 `/r/[code]`만). 데이터 삭제 무관·라우트 버그. 학생이 코드 없이 예약조회 불가.
+   - fix 후보: (a) `/r` 코드입력 페이지 신설(BUS-XXXX 입력→/r/<code> 포워드) ⟵ 권장, 또는 (b) 랜딩 버튼 제거(학생은 간사 링크로만). 사용자 결정 대기.
+남은(출시 후):
+  1. **약관 org 4항목**(운영주체·개인정보보호책임자·연락처·시행일) — ⚠️ 반영 여부 미확인. 값 주면 /terms·/privacy 교체.
+  2. 위 `/r` 404 fix.
+  3. CCC consumer 로그인 연동 + 연결 해지 큐 — 외부 CCC API 대기(현재 간사=매직링크 임시).
+📌 세션·PWA 메커니즘(자주 묻는 질문): 인증은 **쿠키**(학생 `bc_passenger_session` 30일 / 간사 `bc_operator_session` 12h, httpOnly·SameSite=Lax). **Android PWA**는 브라우저와 저장소 공유 → 웹 로그인이 앱에 그대로. **iOS 홈화면 PWA**는 Safari와 저장소 **분리** → 앱 안에서 1회 로그인/verify 필요(그 후 앱 자체 쿠키로 유지). 푸시=FCM 옵트인(/me paid 후 배너).
+```
+
+### (이전 인계 — CC 2026-06-07 밤5)
+
+```
 From: CC 세션 (2026-06-07 밤5 — 🏁① 보안테스트 GO·repo 로컬정리 + 출시 전 버그 2건 수정 머지)
-To: CC 다음 세션 (⭐ 여기부터). 다음 = (PWA 설치팝업 PR) → firestore.rules 재배포 → 약관 4항목 → 🏁②삭제 → ③배포.
-이번 세션 결과(gate green · E2E 49 · rules 22):
-  - ✅ 🏁① 보안 테스트 = **GO**. 회귀 전부 green + 보안표면 점검 이상無. 유일 격상=운영: **repo가 PUBLIC**(코드 시크릿은 git에 없음). private 전환은 사용자 보류(Free 私repo는 브랜치보호 불가, 솔로라 enforce 가치 낮음 — 원하면 Pro).
-  - ✅ repo 로컬 정리: 스테일 로컬 2개 + 스테일 worktree 제거 + prune. GitHub 실제 원격 = main만(이번 PR 머지 후).
-  - ✅ 버그수정 머지: **① 공개 인원↔정원 동기화**(editSeatOffer가 capacity도 갱신, 상한200, 모달문구, e2e강화. 이제 둘 항상 같음 — 분리보관 불가) · **③ 채팅 '나가기' 제거**("나갔어요" 삭제, 첫 연결 "들어왔어요"만, firestore.rules에서도 퇴장문구 불허).
-⚠️ 배포 필수: **firestore.rules 재배포**(이번에 또 바뀜 — 퇴장 불허). `firebase deploy --only firestore:rules`(팀장 승인 게이트). 안 하면 prod 규칙 stale.
-남은 출시 전:
-  0. **PWA 첫방문 설치 권장 팝업**(사용자 요청) — 별도 PR로 추가 예정(Android=beforeinstallprompt 커스텀, iOS=공유→홈화면 안내·programmatic 불가, 1회 표시 localStorage).
-  1. **firestore.rules 재배포**(위 ⚠️).
-  2. **약관 org 4항목**(운영주체·보호책임자·연락처·시행일) — 값 주면 /terms·/privacy 반영.
-  3. **🏁 ②삭제 → ③배포**: `wipe-prod.mjs`(DRY→--confirm, regions/system_config 보존) + Firestore `channels` 삭제(채팅, recursive). 그다음 라이브 스모크. 상세=docs/PROD-ACTIVATION.md '🏁 최종 마무리 시퀀스'.
-미처리(낮음): 신청목록 404(데이터/세션 의심, 실패 URL 받으면 재현).
-실험 더미: 🏁②에서 전체 삭제 예정.
+결과: 🏁① 보안 테스트 GO(회귀·보안표면 이상無, 단 repo PUBLIC) · repo 로컬 정리 · PR #121(공개인원↔정원·채팅 no-leave)·#122(PWA 설치배너) 머지. 위 밤6에서 출시 완료.
 ```
 
 ### (이전 인계 — CC 2026-06-07 밤4)
