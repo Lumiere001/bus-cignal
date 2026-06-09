@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
+import { BackButton } from "@/components/ui/back-button";
 
 export const metadata = {
   title: "사용 가이드 — Bus Cignal",
@@ -10,6 +11,8 @@ export const metadata = {
 export default function GuidePage() {
   return (
     <main className="mx-auto max-w-md space-y-8 px-4 py-8">
+      <BackButton />
+
       <div className="space-y-3 text-center">
         <div className="flex justify-center">
           <Logo size="sm" />

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { one } from "@/lib/supabase/relation";
+import { BackButton } from "@/components/ui/back-button";
 import { StatusView, type RegionSupply } from "./StatusView";
 
 export const dynamic = "force-dynamic";
@@ -162,6 +163,9 @@ export default async function StatusPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:py-10">
+      <div className="mb-4">
+        <BackButton />
+      </div>
       <header className="mb-6 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-700">
