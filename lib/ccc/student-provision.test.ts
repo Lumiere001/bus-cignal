@@ -1,18 +1,71 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("server-only", () => ({}));
-// is_staff 가드는 DB 접근 전에 반환 → admin 클라이언트는 호출되지 않음(스텁만).
-vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
+
+// DB 모킹: regions(코드→id) + students(ccc_id 조회→없음→insert).
+const regionMaybe = vi.fn();
+const studentMaybe = vi.fn();
+const studentInsertSingle = vi.fn();
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
+    from: (t: string) => {
+      if (t === "regions") {
+        return { select: () => ({ eq: () => ({ maybeSingle: regionMaybe }) }) };
+      }
+      if (t === "students") {
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: studentMaybe }) }),
+          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+          insert: () => ({ select: () => ({ single: studentInsertSingle }) }),
+        };
+      }
+      throw new Error(`unexpected table ${t}`);
+    },
+  }),
+}));
 
 import { provisionStudentFromCcc } from "./student-provision";
 
-describe("provisionStudentFromCcc — is_staff 가드", () => {
-  it("is_staff=true → 거부(간사는 학생 로그인 불가)", async () => {
-    const r = await provisionStudentFromCcc("sub-1", {
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe("provisionStudentFromCcc", () => {
+  // 핵심 회귀: 간사(is_staff=true)도 학생으로 프로비저닝되어야 한다(학생 화면 접근 허용).
+  it("간사(is_staff=true)도 차단하지 않고 학생으로 프로비저닝", async () => {
+    regionMaybe.mockResolvedValue({ data: { id: "region-1" } });
+    studentMaybe.mockResolvedValue({ data: null }); // 신규
+    studentInsertSingle.mockResolvedValue({ data: { id: "stu-1" }, error: null });
+
+    const r = await provisionStudentFromCcc("sub-staff", {
       is_staff: true,
       name: "김간사",
       branch_no: 2601,
+      phone: "01000000000",
     });
-    expect(r).toEqual({ ok: false, error: "is_staff" });
+    expect(r).toEqual({
+      ok: true,
+      studentId: "stu-1",
+      regionId: "region-1",
+      cccId: "sub-staff",
+    });
+  });
+
+  it("일반 학생도 정상 프로비저닝(지구 미매핑이면 region_id=null)", async () => {
+    regionMaybe.mockResolvedValue({ data: null }); // 미등록 지구
+    studentMaybe.mockResolvedValue({ data: null });
+    studentInsertSingle.mockResolvedValue({ data: { id: "stu-2" }, error: null });
+
+    const r = await provisionStudentFromCcc("sub-stu", {
+      is_staff: false,
+      name: "최학생",
+      branch_no: 9999,
+    });
+    expect(r).toEqual({
+      ok: true,
+      studentId: "stu-2",
+      regionId: null,
+      cccId: "sub-stu",
+    });
   });
 });

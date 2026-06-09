@@ -3,22 +3,22 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { branchCode, type HandoffPayload } from "./handoff";
 
 /**
- * CCC 학생 핸드오프 payload → student 프로비저닝.
- *  - target_role=student로 CCC가 1차 거르지만, is_staff=true면 방어적 거부(간사 로그인으로 안내).
+ * CCC 핸드오프 payload → student 프로비저닝.
+ *  - **간사(is_staff=true)도 학생으로 프로비저닝**한다(차단 X). 간사가 학생 로그인으로 들어와
+ *    학생 화면을 보거나 본인이 직접 버스를 신청할 수 있게. (간사 신원/operators row는 그대로
+ *    유지 — students는 같은 ccc_id로 별도 신원, 학생 흐름 전용.)
  *  - branch_no → regions.code(출신 지구) 매핑. 미등록 지구면 region_id=null로 로그인은 허용
- *    (신청 단계에서 지구 필요 — 향후 처리). ccc_id로 upsert(재로그인 시 최신화).
+ *    (신청 단계에서 지구 필요). ccc_id로 upsert(재로그인 시 최신화).
  */
 
 export type StudentProvisionResult =
   | { ok: true; studentId: string; regionId: string | null; cccId: string }
-  | { ok: false; error: "is_staff" | "db_error" };
+  | { ok: false; error: "db_error" };
 
 export async function provisionStudentFromCcc(
   subjectId: string,
   payload: HandoffPayload,
 ): Promise<StudentProvisionResult> {
-  if (payload.is_staff === true) return { ok: false, error: "is_staff" };
-
   const db = createAdminClient();
 
   // 출신 지구 매핑(있으면). 미등록이어도 로그인 자체는 막지 않는다.

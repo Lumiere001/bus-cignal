@@ -52,16 +52,6 @@ export default async function Page({
         </p>
       )}
 
-      {error === "invalid" && (
-        <p
-          role="alert"
-          className="text-destructive bg-destructive/10 rounded-md px-3 py-2 text-sm"
-        >
-          입장 링크가 유효하지 않거나 만료되었습니다. 담당 마스터에게 링크 재발급을
-          요청해 주세요.
-        </p>
-      )}
-
       {/* ⚠️ 일반 <a>(top-level 전체 페이지 이동) — Next <Link>(클라이언트 이동) 아님.
           CCC 외부 동의→콜백 왕복이 설치형 PWA(특히 iOS)에서 같은 브라우징 컨텍스트로
           유지돼 세션 쿠키가 올바른 저장소에 들어가게 한다(별도 Safari 컨텍스트 이탈 방지). */}
@@ -75,8 +65,8 @@ export default async function Page({
       <div className="bg-muted/40 rounded-xl border p-4 text-sm leading-relaxed">
         <p className="mb-1 font-medium">CCC 로그인이 안 되시나요?</p>
         <p className="text-muted-foreground">
-          담당 마스터(운영자)에게 <b>입장 링크</b>를 요청하시면 임시로 입장할 수
-          있어요. 승인된 간사에게만 발급됩니다.
+          CCC에서 간사로 확인되지 않으면 입장할 수 없어요. 소속 지구·간사 등록을 담당
+          마스터에게 확인해 주세요.
         </p>
       </div>
 
