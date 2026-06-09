@@ -23,6 +23,8 @@ export type RequestRow = {
   destLabel: string;
   regionName: string | null;
   passengerNames: string[];
+  /** 'student' = 학생 본인 직접 신청, 'operator' = 간사가 대신 신청. */
+  requesterKind: "student" | "operator";
 };
 
 function statusLabel(status: string): string {
@@ -171,6 +173,12 @@ export function RequestsList({ requests }: { requests: RequestRow[] }) {
                       >
                         {statusLabel(status)}
                       </span>
+                      {/* 학생 본인이 직접 신청한 건 — 간사 대신신청과 구분 (공급측 큐와 동일 톤). */}
+                      {r.requesterKind === "student" && (
+                        <span className="inline-block whitespace-nowrap rounded-md bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
+                          학생 직접 신청
+                        </span>
+                      )}
                     </div>
                     <span className="shrink-0 whitespace-nowrap text-xs text-gray-400">
                       {formatKstDateTime(r.requestedAt)} 신청

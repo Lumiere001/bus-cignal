@@ -19,7 +19,7 @@ export default async function Page() {
     .from("seat_requests")
     .select(
       `
-      id, requested_at, seat_count, status,
+      id, requested_at, seat_count, status, requester_kind,
       trip:trips!trip_id(
         direction,
         origin:region_locations!origin_location_id(label, address),
@@ -48,6 +48,9 @@ export default async function Page() {
       destLabel: dest?.label ?? dest?.address ?? "도착지",
       regionName: region?.name ?? null,
       passengerNames: passengers.map((p) => p.name),
+      requesterKind: (r.requester_kind === "student" ? "student" : "operator") as
+        | "student"
+        | "operator",
     };
   });
 
