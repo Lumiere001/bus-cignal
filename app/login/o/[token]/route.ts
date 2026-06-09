@@ -1,10 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { OPERATOR_COOKIE, signOperatorToken } from "@/lib/auth/operator-session";
+import {
+  OPERATOR_COOKIE,
+  OPERATOR_SESSION_DAYS,
+  signOperatorToken,
+} from "@/lib/auth/operator-session";
 
 export const dynamic = "force-dynamic";
 
-const SESSION_SEC = 12 * 60 * 60; // operator-session 만료(12h)와 일치
+const SESSION_SEC = OPERATOR_SESSION_DAYS * 24 * 60 * 60; // operator-session 만료(30일)와 일치
 
 /**
  * 간사 매직링크 입장 — /login/o/<token>.

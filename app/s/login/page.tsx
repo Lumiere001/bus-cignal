@@ -53,13 +53,14 @@ export default async function StudentLoginPage({
         </p>
       )}
 
-      <Link
+      {/* ⚠️ 일반 <a>(top-level 전체 페이지 이동) — 설치형 PWA(특히 iOS)에서 CCC 외부
+          동의→콜백 왕복이 같은 컨텍스트로 유지되어 세션 쿠키가 올바른 저장소에 들어가게 한다. */}
+      <a
         href="/s/login/ccc"
-        prefetch={false}
         className={cn(buttonVariants({ size: "lg" }), "h-12 w-full text-[15px]")}
       >
         CCC 계정으로 로그인
-      </Link>
+      </a>
 
       <div className="bg-muted/40 rounded-xl border p-4 text-sm leading-relaxed">
         <p className="mb-1 font-medium">예약번호를 받으셨나요?</p>

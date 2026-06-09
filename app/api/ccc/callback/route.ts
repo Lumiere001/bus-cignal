@@ -2,7 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { exchangeCode } from "@/lib/ccc/handoff";
 import { provisionOperatorFromCcc } from "@/lib/ccc/provision";
 import { provisionStudentFromCcc } from "@/lib/ccc/student-provision";
-import { OPERATOR_COOKIE, signOperatorToken } from "@/lib/auth/operator-session";
+import {
+  OPERATOR_COOKIE,
+  OPERATOR_SESSION_DAYS,
+  signOperatorToken,
+} from "@/lib/auth/operator-session";
 import {
   STUDENT_COOKIE,
   STUDENT_SESSION_DAYS,
@@ -12,7 +16,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const STATE_COOKIE = "bc_ccc_state";
-const SESSION_SEC = 12 * 60 * 60; // operator-session(12h)와 일치
+const SESSION_SEC = OPERATOR_SESSION_DAYS * 24 * 60 * 60; // operator-session(30일)와 일치
 const STUDENT_SESSION_SEC = STUDENT_SESSION_DAYS * 24 * 60 * 60;
 
 /**
