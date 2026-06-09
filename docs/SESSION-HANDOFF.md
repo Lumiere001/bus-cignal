@@ -8,28 +8,61 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: CC 세션 (2026-06-09 — v1.0.0 출시 후 QA 라운드 + 학생 직접신청 Phase 1 + CCC 간사 라이브)
-To: CC 다음 세션 (⭐ 여기부터). 최우선 = 학생 Phase 2·3 자율 워크플로우 빌드.
+From: CC 세션 (2026-06-10 후속 — 간사 운영 피드백 5건 반영 + v1.1.0 확장·prod 배포)
+To: CC 다음 세션
 
-⭐⭐ 다음 세션 1순위: **학생 직접 신청 Phase 2·3 — 자율 워크플로우로 빌드**
-   - 스펙(상세): `docs/STUDENT-PHASE-2-3-SPEC.md` ← 이거 읽고 그대로 진행.
-   - **빌드 base 브랜치: `feat/ccc-student-login`** (Phase 1 들어있음·최신 main 반영). 거기서 작업.
-   - Phase 2 = 학생 화면(차량 둘러보기·직접 신청·내 예약). Phase 3 = 채팅 연동·승인 큐 학생 표시.
-   - 사용자가 "자율 워크플로우(ultracode/use a workflow)"로 돌리길 원함.
+✅ 이번 세션 = 간사 요청 5건 전부 구현·로컬검증·prod 배포. v1.1.0 태그를 최신 커밋(ca6cb91)으로 이동 + 릴리즈 노트 갱신.
+   릴리즈: https://github.com/Lumiere001/bus-cignal/releases/tag/v1.1.0
 
-이번 세션(6/9) 결과:
-  - **간사 CCC 로그인 라이브**: #125 머지(콜백 `/api/ccc/callback` main 배포). 간사님이 ?code 받아옴 = CCC 등록 연결됨. (Vercel 배포 점검 필요 — 아래.)
-  - 간사 QA 피드백 3건: #133(페이지 이동 로딩 스켈레톤 /operator·/admin·/me) · #134('공개 인원'→'잔여 좌석' 라벨) 머지.
-  - 이전: #124(/r 404 fix·조회 페이지) · #126(/r 입력 BUS- 접두어) · #127·#128(prod-QA 시드 도구) · #129(잔여좌석 정원고정·입력버그) · #130(수요 간사 예약링크 공유).
-  - **학생 Phase 1**: PR #132(draft, base main) — students 테이블 + seat_requests 학생지원 + CCC 학생 로그인(/s/*). 브랜치 feat/ccc-student-login. CCC 학생 등록 후 라이브.
+머지된 PR (전부 prod 라이브):
+  - **#139** CCC 코드 직접 전달 — state(CSRF) 검증 완화(쿠키 있으면 검증/없으면 통과). 재로그인 없이 1회 통과.
+  - **#140** 용어 상행→**가는편**·하행→**오는편**(코드 키 up/down 불변) + 방향별 위치(가는편 출발=지도·도착=평창휘닉스파크 고정 / 오는편 출발=텍스트 기본'블루캐니언 옆 주차장'·도착=지도, 학생 지도는 '지역'쪽) + **신청 학생 선택 거절**(체크한 학생만, 미선택 시 전체취소 경고). 마이그 `request_passengers.declined_at`.
+  - **#141** 수요측 신청목록 '학생 직접 신청' 배지.
+  - **#142** **입금 계좌** — 차량 등록 시 은행·예금주·계좌번호 입력 + 매칭(송금대기) 후 학생 /s·수요 간사 신청상세에 입금계좌 안내. 마이그 `trips.bank_name/account_number/account_holder`.
+  - **#143** **같은 지구 간사 전원 알림** — emit()이 operator 대상을 그 지구 전체 승인 간사로 fan-out(`targets.ts` expandOperatorTargets). 스키마 무변경.
 
-⏳ **Vercel 배포 점검(이번 세션 마지막 작업)**: #134까지 머지 후 Vercel 배포가 오래 pending이었음(Hobby 큐 추정). main HEAD 배포 success인지 + `/api/ccc/callback`이 404 아닌지 확인.
+운영/배포 메모:
+  - **prod DB 마이그 2건 수동 적용**(`supabase db push`, 링크 프로젝트 `zovrgrbrzxpzmgpkxmns`): `20260610000000_request_passenger_decline`, `20260610000001_trips_account`. ⚠️ CI 자동 적용 X → 컬럼 참조 코드 머지(=Vercel 배포) **전에** 선적용 필수.
+  - **main 브랜치 보호(ruleset)**: PR 승인 1건 필수 → CC 셀프 승인 불가. 머지는 사용자 승인 후 `--admin` 강제(매 PR). #139~#143 모두 admin 머지.
+  - dev-login `/dev/login`(next dev면 자동, env 불필요). seed-dev에 광주 간사 2명(김광주·이광주 — fan-out 검증용) + 모든 trip 계좌.
+  - 원격 브랜치 = main만(정리됨). 로컬 main = origin/main + 이 핸드오프 커밋 1개(미푸시).
 
-남은(출시 후, 외부/대기):
-  1. **CCC 학생 등록**: client_id=`bus-cignal-student`, redirect_uri=`.../api/ccc/student-callback`, target_role=student. + Vercel env `CCC_HANDOFF_STUDENT_CLIENT_ID`·`STUDENT_SESSION_SECRET`.
-  2. **약관 org 4항목** — 값 받으면 /terms·/privacy 반영(미확인).
-  3. CCC 간사 redirect_uri 운영 전환 확인 + Vercel `CCC_*` env(기본값으로도 동작).
-📌 세션·PWA: 쿠키 인증(학생/r 30일·CCC학생 30일·간사 12h). iOS 홈화면 PWA는 Safari와 저장소 분리 → 앱 안 1회 로그인. 푸시=FCM 옵트인.
+검증: tsc·eslint·build green · 단위 46 · e2e 59/59 · 로컬 supabase 실동작(양방향 등록·선택거절·배지·계좌·지구 fan-out) + preview 스크린샷.
+
+다음 세션 후보(미착수):
+  - (신규) 학생/수요측 **입금 계좌 '복사' 버튼**(현재 표시만) · 거절된(declined) 학생의 수요측 표시(현재 공급 큐에서만 제외).
+  - (기존 잔여) iOS 실기기 스모크 · `operators.login_token` 컬럼 제거 마이그 · 약관 org 4항목(/terms·/privacy).
+```
+
+### (이전 인계 — CC 2026-06-10 v1.1.0 출시)
+
+```
+From: CC 세션 (2026-06-10 — 학생 직접신청 Phase 2·3 빌드 + v1.1.0 출시까지 완료)
+To: CC 다음 세션
+
+✅ 이번 세션 = **v1.1.0 출시 완료** (학생 직접 신청 + 사용성 개선)
+   릴리즈: https://github.com/Lumiere001/bus-cignal/releases/tag/v1.1.0 (태그 v1.1.0 · main · prod 배포됨)
+
+머지된 PR (전부 prod 라이브):
+  - **#132** 학생 직접신청 Phase 1·2·3 — CCC 학생 로그인 · 차량 둘러보기(지도)·직접 신청 · '예약 확인'=/me 브리지(passenger 세션 발급) · 버스 채팅(match_passengers 신원 재사용) · 승인 큐 '학생 직접 신청' 배지.
+  - **#136** 간사 세션 12h→30일 + iOS 설치형 PWA CCC 로그인 안정화(top-level `<a>`·sameSite=lax).
+  - **#137** 간사 이름 헤더 · 사용 가이드(/guide)+TIP+docs/GUIDE.md · 전국 잔여석(/status) 진입(간사 상단바·학생 허브) · '← 돌아가기' 버튼(iOS PWA용 router.back).
+  - **#138** 간사 매직링크 온보딩 제거(CCC-only) · 간사도 학생 화면 접근(provisionStudentFromCcc의 is_staff 차단 제거) · /s 허브 시각성.
+
+운영 상태 (출시 완료):
+  - prod 마이그 `students` 적용 ✅ · CCC 학생 등록 회신 완료 ✅ · Vercel env(STUDENT_SESSION_SECRET·CCC_HANDOFF_STUDENT_CLIENT_ID) ✅
+  - Firebase 채팅 더미 삭제 ✅ (직접 조회로 잔여 0 확인) · operators.login_token 잔재는 사용자 SQL로 정리(`update operators set login_token=null`).
+  - 실제 간사 1명 운영 진입 중 → **전체 wipe 안 함**(개별 정리만).
+
+다음 세션 할 일 (선택·후속):
+  1. **iOS 실기기 스모크** — 설치→앱에서 CCC 로그인 1회(top-level 이동 실검증). 구형 iOS 실패 시 수동코드 폴백 설계.
+  2. **operators.login_token 컬럼 제거 마이그** (현재 컬럼 보존·미사용 — 코드 참조 0).
+  3. 약관 org 4항목(운영주체·연락처·시행일) → /terms·/privacy.
+  4. (선택) 채팅 데스크탑 폭(max-w-md=카톡식 의도) · 운영 중 QA 잔여 데이터 개별 정리.
+
+📌 로그인 4경로: 간사 CCC(/login→/operator, 30일) · 학생 CCC(/s/login→/s, 30일) · 예약번호(/r→/me, 30일) · 마스터 비번(/admin, 24h).
+   간사 로그인=staff→/operator·학생→/s · 학생 로그인=누구나 /s(간사 포함, students 별도 신원). iOS PWA는 앱 안 1회 로그인.
+📌 출시 전 더미 삭제 도구: `scripts/load/wipe-prod.mjs`(Supabase·students 포함, --confirm) + Firebase 콘솔 `channels` 컬렉션 삭제.
 ```
 
 ### (이전 인계 — CC 2026-06-07 밤5)
