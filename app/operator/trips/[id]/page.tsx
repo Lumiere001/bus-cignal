@@ -216,7 +216,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           💬 버스 채팅 ({DIRECTION_SHORT[direction]})
         </Link>
 
-        {/* 관리 — draft/published 에서만: 공개 인원 변경 + 차량 취소. */}
+        {/* 관리 — draft/published 에서만: 잔여 좌석 변경 + 차량 취소. */}
         {(status === "draft" || status === "published") && (
           <>
             <div className="mt-4 flex flex-wrap items-center gap-2">

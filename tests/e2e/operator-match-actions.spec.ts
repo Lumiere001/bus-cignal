@@ -47,15 +47,15 @@ test("매칭 취소: 승인 매칭에 실수 방지 확인 모달 + 설명", asy
   }
 });
 
-test("공개 인원 변경: 정원 고정, 잔여만 공개 인원 기준으로 반영", async ({ page }) => {
+test("잔여 좌석 변경: 정원 고정, 잔여만 반영", async ({ page }) => {
   const scn = await createApproveScenario({ passengers: 1, offered: 10 });
   try {
     await page.goto(`/operator/trips/${scn.tripId}`);
-    // 시나리오: 정원 44 · 공개 10 · 매칭 0 → 잔여 10
+    // 시나리오: 정원 44 · 내놓는 좌석 10 · 매칭 0 → 잔여 10
     await expect(page.getByText("정원 44석", { exact: true })).toBeVisible();
     await expect(page.getByText("잔여 10석", { exact: true })).toBeVisible();
 
-    await page.getByRole("button", { name: "공개 인원 변경" }).click();
+    await page.getByRole("button", { name: "잔여 좌석 변경" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     const input = dialog.getByRole("spinbutton");
@@ -63,7 +63,7 @@ test("공개 인원 변경: 정원 고정, 잔여만 공개 인원 기준으로 
     await dialog.getByRole("button", { name: "변경 저장" }).click();
     await expect(dialog).toBeHidden(); // 저장 후 모달 닫힘
 
-    // 공개 인원 10→6: 정원은 그대로 44, 잔여만 6(=공개 6 − 매칭 0)으로 반영.
+    // 내놓는 좌석 10→6: 정원은 그대로 44, 잔여만 6(=6 − 매칭 0)으로 반영.
     await expect(page.getByText("정원 44석", { exact: true })).toBeVisible();
     await expect(page.getByText("잔여 6석", { exact: true })).toBeVisible();
   } finally {
@@ -71,11 +71,11 @@ test("공개 인원 변경: 정원 고정, 잔여만 공개 인원 기준으로 
   }
 });
 
-test("공개 인원 변경: 빈 값이면 저장 비활성 + 정원 초과 거부", async ({ page }) => {
+test("잔여 좌석 변경: 빈 값이면 저장 비활성 + 정원 초과 거부", async ({ page }) => {
   const scn = await createApproveScenario({ passengers: 1, offered: 10 });
   try {
     await page.goto(`/operator/trips/${scn.tripId}`);
-    await page.getByRole("button", { name: "공개 인원 변경" }).click();
+    await page.getByRole("button", { name: "잔여 좌석 변경" }).click();
     const dialog = page.getByRole("dialog");
     const input = dialog.getByRole("spinbutton");
     const save = dialog.getByRole("button", { name: "변경 저장" });
