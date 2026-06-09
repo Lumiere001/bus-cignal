@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireStudent, clearStudentSession } from "@/lib/auth/student";
+import { clearPassengerSession } from "@/lib/auth/passenger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emit, NOTIFICATION_EVENTS } from "@/lib/notifications";
 import { isMaintenanceMode, isPastRequestDeadline } from "@/lib/system-config";
@@ -198,8 +199,9 @@ export async function cancelStudentRequest(
   return { ok: true };
 }
 
-/** 학생 로그아웃 → 학생 로그인 안내로. */
+/** 학생 로그아웃 → 학생 로그인 안내로. ("예약 확인" 브리지로 발급된 passenger 세션도 함께 정리.) */
 export async function studentLogout(): Promise<void> {
   await clearStudentSession();
+  await clearPassengerSession();
   redirect("/s/login");
 }

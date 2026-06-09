@@ -3,16 +3,16 @@ import { requireStudent } from "@/lib/auth/student";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { one } from "@/lib/supabase/relation";
 import { Logo } from "@/components/brand/logo";
-import { StudentApply, type ApplyTrip } from "./StudentApply";
+import { StudentApply, type WizardTrip } from "./StudentApply";
 
 export const dynamic = "force-dynamic";
 
-// 매칭으로 자리를 점유하는 상태 — 잔여 계산 시 차감 (차량 상세·간사 신청과 동일 기준).
+// 매칭으로 자리를 점유하는 상태 — 잔여 계산 시 차감 (간사 신청 마법사와 동일 기준).
 const ACTIVE_MATCH_STATUSES = ["awaiting_payment", "payment_reported", "paid"] as const;
 
 /**
- * 학생 차량 둘러보기 + 직접 신청 (Phase 2-2). 간사 신청 마법사(RequestWizard)를 참고하되
- * 학생은 본인 1명·정보는 CCC에서 미리 채워져, 차량 선택 → 동의 → 제출로 단순화한다.
+ * 학생 차량 둘러보기 + 직접 신청 (Phase 2-2). 간사 신청 마법사(RequestWizard)와 같은
+ * 조회→지도·차량선택→신청 흐름. 학생은 본인 1명·정보는 CCC에서 미리 채워져 명단 단계가 없다.
  */
 export default async function StudentApplyPage() {
   const session = await requireStudent();
@@ -20,7 +20,7 @@ export default async function StudentApplyPage() {
 
   const { data: student } = await db
     .from("students")
-    .select("name, phone, region_id, regions:regions!region_id(name)")
+    .select("name, phone, regions:regions!region_id(name)")
     .eq("id", session.studentId)
     .maybeSingle();
 
@@ -32,15 +32,15 @@ export default async function StudentApplyPage() {
     studentName && studentPhone && studentPhone.replace(/[^0-9]/g, "").length >= 10,
   );
 
-  // 신청 가능한 공급 차량 — published + 잔여>0. (지구 무관 전체 노출: 학생은 소비자 입장)
+  // 신청 가능 차량 — published + 잔여>0. 지도 핀·권역 추천용으로 좌표·area 임베드.
   const { data: trips } = await db
     .from("trips")
     .select(
       `
       id, direction, departure_at, price_per_seat,
-      origin:region_locations!origin_location_id(label, address),
-      destination:region_locations!destination_location_id(label, address),
-      region:regions!operator_region_id(name),
+      origin:region_locations!origin_location_id(label, address, lat, lng),
+      destination:region_locations!destination_location_id(label, address, lat, lng),
+      region:regions!operator_region_id(name, area),
       seat_offers(seat_count, status),
       matches(id, status)
     `,
@@ -48,7 +48,7 @@ export default async function StudentApplyPage() {
     .eq("status", "published")
     .order("departure_at", { ascending: true });
 
-  const applyTrips: ApplyTrip[] = (trips ?? [])
+  const wizardTrips: WizardTrip[] = (trips ?? [])
     .map((t) => {
       const origin = one(t.origin);
       const dest = one(t.destination);
@@ -59,18 +59,31 @@ export default async function StudentApplyPage() {
         (ACTIVE_MATCH_STATUSES as readonly string[]).includes(m.status ?? ""),
       ).length;
       const direction: "up" | "down" = t.direction === "down" ? "down" : "up";
+      // 평창 픽업 = 상행이면 도착지(평창), 하행이면 출발지(평창).
+      const pyeongchang = direction === "up" ? dest : origin;
       return {
         id: t.id,
         direction,
         departureAt: t.departure_at,
         pricePerSeat: t.price_per_seat,
         regionName: one(t.region)?.name ?? "타지구",
+        regionArea: one(t.region)?.area ?? null,
         originLabel: origin?.label ?? origin?.address ?? "출발지",
         destinationLabel: dest?.label ?? dest?.address ?? "도착지",
+        pyeongchangLabel: pyeongchang?.label ?? pyeongchang?.address ?? "평창 픽업",
+        pyeongchangLat: pyeongchang?.lat ?? null,
+        pyeongchangLng: pyeongchang?.lng ?? null,
         availableSeats: Math.max(0, openSeats - activeMatches),
       };
     })
     .filter((t) => t.availableSeats > 0);
+
+  // 출발 지구 선택지 = 공급 차량이 있는 지구들(중복 제거, 가나다순).
+  const regionOptions = Array.from(
+    new Map(
+      wizardTrips.map((t) => [t.regionName, { name: t.regionName, area: t.regionArea }]),
+    ).values(),
+  ).sort((a, b) => a.name.localeCompare(b.name, "ko"));
 
   return (
     <main className="mx-auto max-w-md space-y-5 px-4 py-8">
@@ -79,11 +92,8 @@ export default async function StudentApplyPage() {
       </div>
 
       <div>
-        <Link
-          href="/s"
-          className="mb-3 inline-block text-sm text-gray-500 hover:text-gray-700"
-        >
-          ← 내 신청
+        <Link href="/s" className="mb-3 inline-block text-sm text-gray-500 hover:text-gray-700">
+          ← 학생 홈
         </Link>
         <h1 className="text-xl font-semibold text-gray-900">차량 신청하기</h1>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -104,7 +114,8 @@ export default async function StudentApplyPage() {
         </p>
       ) : (
         <StudentApply
-          trips={applyTrips}
+          trips={wizardTrips}
+          regionOptions={regionOptions}
           studentName={studentName as string}
           studentPhone={studentPhone as string}
         />

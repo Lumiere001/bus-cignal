@@ -76,6 +76,20 @@ export default async function Page({
           있어요. 승인된 간사에게만 발급됩니다.
         </p>
       </div>
+
+      {/* 학생 진입 — 간사가 아닌 학생 본인은 학생 로그인으로 */}
+      <div className="border-t pt-5">
+        <p className="text-muted-foreground mb-2 text-sm">학생이신가요?</p>
+        <Link
+          href="/s/login"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "lg" }),
+            "bg-card h-12 w-full text-[15px]",
+          )}
+        >
+          학생 로그인 →
+        </Link>
+      </div>
     </main>
   );
 }

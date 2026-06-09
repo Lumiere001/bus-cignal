@@ -48,10 +48,16 @@ export default function Home() {
             간사 로그인 →
           </Link>
           <Link
+            href="/s/login"
+            className={cn(buttonVariants({ size: "lg" }), "h-12 w-full bg-blue-600 text-[15px] hover:bg-blue-700")}
+          >
+            학생 로그인 →
+          </Link>
+          <Link
             href="/r"
             className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-12 w-full bg-card text-[15px]")}
           >
-            예약 조회
+            예약번호로 조회
           </Link>
           <Link
             href="/status"
