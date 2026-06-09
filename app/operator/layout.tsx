@@ -70,7 +70,16 @@ export default async function OperatorLayout({ children }: { children: React.Rea
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            {/* 사용 가이드 — 모바일 하단탭엔 없어 상단바에 항상 노출(간사가 학생 안내까지) */}
+            <Link
+              href="/guide"
+              aria-label="사용 가이드"
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
+            >
+              <span>📖</span>
+              <span className="hidden sm:inline">가이드</span>
+            </Link>
             {/* 로그인한 간사 이름 — "내가 제대로 로그인했구나" 확인용 (간사 요청) */}
             {operatorName && (
               <Link
