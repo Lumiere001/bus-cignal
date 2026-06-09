@@ -66,6 +66,8 @@ export async function approveRequest(
   if (trip.status !== "published") return { error: "공개 상태의 Trip만 매칭할 수 있습니다." };
 
   // 신청 메타 (queued 확인 + 알림 수신 지구). 좌석 검증·매칭 삽입은 아래 원자 RPC가 담당.
+  // operator_id는 학생 직접 신청이면 null → 아래 emit의 requestOperatorId가 null이 되어
+  // resolveTargets가 그 대상을 자동 제외(학생 알림 best-effort 스킵). 학생은 /s 화면에서 상태 확인.
   const { data: request } = await db
     .from("seat_requests")
     .select("id, operator_id, status")
@@ -147,6 +149,8 @@ export async function rejectRequest(
   const trip = await loadOwnedTrip(db, tripId, session.regionId);
   if (!trip) return { error: "Trip을 찾을 수 없습니다." };
 
+  // operator_id는 학생 직접 신청이면 null → 아래 거절 알림의 requestOperatorId가 null이 되어
+  // resolveTargets가 자동 제외(학생 알림 best-effort 스킵). 학생은 /s 화면에서 거절 사유 확인.
   const { data: request } = await db
     .from("seat_requests")
     .select("id, status, operator_id")

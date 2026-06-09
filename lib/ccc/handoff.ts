@@ -6,8 +6,12 @@
 
 const DEFAULT_BASE = "https://ccc-summer.vercel.app";
 
-/** 등록된 client_id (CCC 게시판 등록값과 일치해야 함). */
+/** 등록된 client_id (CCC 게시판 등록값과 일치해야 함). 간사용. */
 export const CCC_CLIENT_ID = process.env.CCC_HANDOFF_CLIENT_ID ?? "bus-cignal";
+
+/** 학생용 client_id (target_role=student로 별도 등록). */
+export const CCC_STUDENT_CLIENT_ID =
+  process.env.CCC_HANDOFF_STUDENT_CLIENT_ID ?? "bus-cignal-student";
 
 /** ccc-summer Base URL (끝 슬래시 제거). */
 export function cccBase(): string {
@@ -80,6 +84,7 @@ export function isEligibleStaff(payload: HandoffPayload): boolean {
 export async function exchangeCode(
   code: string,
   redirectUri: string,
+  clientId: string = CCC_CLIENT_ID,
 ): Promise<ExchangeResult> {
   let res: Response;
   try {
@@ -88,7 +93,7 @@ export async function exchangeCode(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         code,
-        client_id: CCC_CLIENT_ID,
+        client_id: clientId,
         redirect_uri: redirectUri,
       }),
       cache: "no-store",

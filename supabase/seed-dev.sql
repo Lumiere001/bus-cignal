@@ -57,3 +57,9 @@ on conflict (id) do nothing;
 insert into match_passengers (id, match_id, name, phone, school_or_role) values
   ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '이지은', '010-3333-4444', '부산대')
 on conflict (id) do nothing;
+
+-- CCC 로그인 학생 (직접 신청 테스트) — 부산 지구. /dev/login 학생 버튼 + E2E student 세션.
+insert into students (id, ccc_id, name, phone, region_id, campus, last_login_at) values
+  ('f5000000-0000-0000-0000-000000000001', 'dev-student-busan', '최학생', '010-7777-0001',
+   (select id from regions where code = '2801'), '부산대', now())
+on conflict (id) do nothing;

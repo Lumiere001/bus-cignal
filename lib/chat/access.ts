@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getOperatorSession } from "@/lib/auth/operator";
 import { getPassengerSession } from "@/lib/auth/passenger";
+import { getStudentSession } from "@/lib/auth/student";
 import type { OperatorClaims } from "@/lib/auth/operator-session";
 
 /**
@@ -80,6 +81,55 @@ export async function getPassengerChatAccess(
 }
 
 /**
+ * CCC 학생(students) 채팅 접근권: 본인 신청(student_id)이 이 trip에서 **paid** 매칭이어야 함.
+ *  paid 시 confirmPayment가 만든 match_passengers 행을 채팅 신원으로 그대로 사용한다
+ *  → role='passenger' + subjectId=match_passengers.id (Firestore 규칙·UID 체계 변경 불필요,
+ *    예약번호(/r) 학생과 동일한 passenger 신원으로 같은 방에 입장).
+ */
+export async function getStudentChatAccess(
+  studentId: string,
+  tripId: string,
+): Promise<ChatAccess | null> {
+  const db = createAdminClient();
+
+  // 1. 이 학생의 이 trip 신청들
+  const { data: reqRows } = await db
+    .from("seat_requests")
+    .select("id")
+    .eq("student_id", studentId)
+    .eq("trip_id", tripId);
+  const requestIds = (reqRows ?? []).map((r) => r.id);
+  if (!requestIds.length) return null;
+
+  // 2. 그 신청의 paid 매칭만 (채팅은 paid에서만 입장)
+  const { data: paidMatches } = await db
+    .from("matches")
+    .select("id")
+    .eq("trip_id", tripId)
+    .in("request_id", requestIds)
+    .eq("status", "paid")
+    .limit(1);
+  const paidMatchId = paidMatches?.[0]?.id;
+  if (!paidMatchId) return null;
+
+  // 3. paid 매칭의 학생 검증 레코드 = 채팅 신원(passenger). 전화 등은 노출하지 않음.
+  const { data: mpRows } = await db
+    .from("match_passengers")
+    .select("id, name")
+    .eq("match_id", paidMatchId)
+    .limit(1);
+  const mp = mpRows?.[0];
+  if (!mp) return null;
+
+  return {
+    role: "passenger",
+    tripId,
+    subjectId: mp.id,
+    displayName: mp.name,
+  };
+}
+
+/**
  * 간사 채팅 접근권: 공급 지구 또는 (매칭된 학생이 있는) 신청 지구.
  *  - 공급: trips.operator_region_id === 세션 region
  *  - 신청: 이 trip의 seat_requests 중 세션 region 것이 있고, 그 신청에 매칭(matches)이 존재
@@ -150,6 +200,13 @@ export async function resolveChatAccess(
   const passenger = await getPassengerSession();
   if (passenger) {
     const access = await getPassengerChatAccess(passenger.passengerId, tripId);
+    if (access) return access;
+  }
+
+  // CCC 학생 세션(/s) — paid 매칭이면 passenger 신원으로 입장(getStudentChatAccess).
+  const student = await getStudentSession();
+  if (student) {
+    const access = await getStudentChatAccess(student.studentId, tripId);
     if (access) return access;
   }
 
