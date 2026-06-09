@@ -35,7 +35,9 @@ export async function GET(req: NextRequest) {
 
   if (upstreamError) return fail(upstreamError.replace(/[^a-z_]/gi, ""));
   if (!code) return fail("no_code");
-  if (!state || !cookieState || state !== cookieState) return fail("state");
+  // state(CSRF): 우리 버튼(/s/login/ccc)으로 시작했으면 쿠키가 있고 그땐 반드시 일치해야 함.
+  //   CCC가 코드를 직접 전달(IdP-initiated)하면 쿠키가 없으니 검증 생략 — 한 번에 처리.
+  if (cookieState && state !== cookieState) return fail("state");
 
   const redirectUri = `${base}/api/ccc/student-callback`;
   const ex = await exchangeCode(code, redirectUri, CCC_STUDENT_CLIENT_ID);

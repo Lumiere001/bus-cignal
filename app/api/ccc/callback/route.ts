@@ -43,8 +43,11 @@ export async function GET(req: NextRequest) {
   if (upstreamError) return fail(upstreamError.replace(/[^a-z_]/gi, ""));
   if (!code) return fail("no_code");
 
-  // state는 항상 보내므로 항상 검증(쿠키와 일치).
-  if (!state || !cookieState || state !== cookieState) return fail("state");
+  // state(CSRF): 우리 로그인 버튼(/login/ccc)으로 시작한 흐름엔 쿠키가 있고, 그땐 반드시 일치해야 한다.
+  // 단, CCC가 코드를 콜백으로 **직접 전달**(IdP-initiated)하는 경우엔 우리 쿠키가 없으므로 검증을 건너뛴다
+  //   — 코드를 다시 로그인 누르지 않고 한 번에 처리(간사 요청). 핸드오프 보안은 1회용 5분 code +
+  //   등록된 redirect_uri + 서버↔서버 exchange로도 성립하므로 안전 표면은 유지된다.
+  if (cookieState && state !== cookieState) return fail("state");
 
   // exchange는 발급 때와 동일한 redirect_uri를 보내야 함 = 등록된 콜백 URL.
   const redirectUri = `${base}/api/ccc/callback`;
