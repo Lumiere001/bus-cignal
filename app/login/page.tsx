@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 // ccc_<reason> 에러 → 사용자 안내 문구.
 const CCC_ERRORS: Record<string, string> = {
   ccc_access_denied: "동의를 취소하셨어요. 다시 시도해 주세요.",
-  ccc_not_staff: "간사 계정만 입장할 수 있어요. (CCC에서 간사로 확인되지 않았습니다.)",
+  ccc_not_staff:
+    "간사 계정이 아니에요. 학생이면 아래 ‘학생 로그인’으로 들어와 주세요.",
   ccc_region_unmapped:
     "소속 지구가 아직 시스템에 등록되지 않았어요. 담당 마스터에게 문의해 주세요.",
   ccc_revoked: "이 계정은 입장이 막혀 있어요. 담당 마스터에게 문의해 주세요.",

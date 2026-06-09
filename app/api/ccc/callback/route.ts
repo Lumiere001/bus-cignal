@@ -1,12 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { exchangeCode } from "@/lib/ccc/handoff";
 import { provisionOperatorFromCcc } from "@/lib/ccc/provision";
+import { provisionStudentFromCcc } from "@/lib/ccc/student-provision";
 import { OPERATOR_COOKIE, signOperatorToken } from "@/lib/auth/operator-session";
+import {
+  STUDENT_COOKIE,
+  STUDENT_SESSION_DAYS,
+  signStudentToken,
+} from "@/lib/auth/student-session";
 
 export const dynamic = "force-dynamic";
 
 const STATE_COOKIE = "bc_ccc_state";
 const SESSION_SEC = 12 * 60 * 60; // operator-session(12h)와 일치
+const STUDENT_SESSION_SEC = STUDENT_SESSION_DAYS * 24 * 60 * 60;
 
 /**
  * CCC 핸드오프 콜백 — /api/ccc/callback?code&state.
@@ -41,7 +48,32 @@ export async function GET(req: NextRequest) {
   if (!ex.ok) return fail(ex.error.replace(/[^a-z_]/gi, ""));
 
   const prov = await provisionOperatorFromCcc(ex.subjectId, ex.payload);
-  if (!prov.ok) return fail(prov.error);
+  if (!prov.ok) {
+    // 간사 계정이 아니면(학생) → 학생으로 프로비저닝 후 학생 허브(/s)로 우회.
+    //   학생이 실수로 '간사 로그인'으로 들어와도 오류 대신 본인 화면으로 가게 한다.
+    //   (CCC가 payload를 돌려준 경우. is_staff=false라 student-provision은 그대로 통과.)
+    if (prov.error === "not_staff") {
+      const sprov = await provisionStudentFromCcc(ex.subjectId, ex.payload);
+      if (sprov.ok) {
+        const sjwt = await signStudentToken({
+          studentId: sprov.studentId,
+          cccId: sprov.cccId,
+          regionId: sprov.regionId,
+        });
+        const sres = NextResponse.redirect(new URL("/s", base));
+        sres.cookies.set(STUDENT_COOKIE, sjwt, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: STUDENT_SESSION_SEC,
+          path: "/",
+        });
+        sres.cookies.delete(STATE_COOKIE);
+        return sres;
+      }
+    }
+    return fail(prov.error);
+  }
 
   const jwt = await signOperatorToken({
     operatorId: prov.operatorId,
