@@ -117,7 +117,8 @@ test("매칭/예약: 입금 확인된 학생 → 수요 간사 화면에 예약�
     await page.goto(`/operator/requests/${scn.requestId}`);
 
     // 입금 확인 배지 + 예약번호 + '링크 복사' 버튼 → 수요 간사가 학생에게 공유 가능.
-    await expect(page.getByText("입금 확인")).toBeVisible();
+    // (헤더 힌트 "입금 확인 N명"과 구분 위해 배지는 정확 매칭)
+    await expect(page.getByText("입금 확인", { exact: true })).toBeVisible();
     await expect(page.getByText(scn.code)).toBeVisible();
     await expect(
       page.getByRole("button", { name: /링크 복사/ }),
