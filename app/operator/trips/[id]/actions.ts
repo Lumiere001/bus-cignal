@@ -190,6 +190,110 @@ export async function rejectRequest(
   return { ok: true };
 }
 
+// ─── 선택 학생 거절 (공급 간사 — 체크한 학생만 제거, 사용자 요청 2026-06-10) ──────────
+/**
+ * 대기 신청에서 '선택한 학생'만 거절한다(나머지는 대기 유지).
+ *   - 선택 학생을 request_passengers.declined_at 으로 표시(기록 보존, 큐 표시에서만 제외).
+ *   - 거절 후 남은 활성 학생(declined_at null)이 0이면 신청 전체를 rejected 로 마감
+ *     (= 전원 거절과 동일 결과: 거절 로그 + match_rejected/rejection_occurred 알림).
+ *   - 남은 학생이 있으면 신청은 queued 유지 + 신청 지구에 'passengers_declined' 안내.
+ * 전체 거절(아무도 선택 안 함)은 기존 rejectRequest 를 사용한다.
+ */
+export async function declinePassengers(
+  tripId: string,
+  requestId: string,
+  passengerIds: string[],
+  reason: string,
+): Promise<ActionResult> {
+  const session = await requireOperator();
+  if (!session.regionId) return { error: "소속 지구 정보가 없습니다." };
+
+  if (passengerIds.length === 0) return { error: "거절할 학생을 선택해주세요." };
+  const trimmed = reason.trim();
+  if (trimmed.length > 500) return { error: "사유는 500자 이하로 입력해주세요." };
+
+  const db = createAdminClient();
+
+  const trip = await loadOwnedTrip(db, tripId, session.regionId);
+  if (!trip) return { error: "Trip을 찾을 수 없습니다." };
+
+  // 신청 메타 — queued 확인 + 알림 대상(신청 지구 간사). 학생 직접 신청이면 operator_id null.
+  const { data: request } = await db
+    .from("seat_requests")
+    .select("id, operator_id, status")
+    .eq("id", requestId)
+    .eq("trip_id", tripId)
+    .single();
+  if (!request) return { error: "신청을 찾을 수 없습니다." };
+  if (request.status !== "queued") return { error: "이미 처리된 신청입니다." };
+
+  // 선택 학생이 이 신청 소속 + 아직 활성(미거절)인지 확인 (FormData 위조·중복 처리 방어).
+  const { data: targets } = await db
+    .from("request_passengers")
+    .select("id")
+    .eq("request_id", requestId)
+    .in("id", passengerIds)
+    .is("declined_at", null);
+  const targetIds = (targets ?? []).map((p) => p.id);
+  if (targetIds.length === 0) {
+    return { error: "이미 처리된 학생입니다. 새로고침 후 다시 시도해주세요." };
+  }
+
+  // 선택 학생 거절 표시 (기록 보존, 큐 표시에서만 제외).
+  const { error: declineErr } = await db
+    .from("request_passengers")
+    .update({ declined_at: new Date().toISOString(), decline_reason: trimmed || null })
+    .in("id", targetIds);
+  if (declineErr) return { error: "거절 처리 중 오류가 발생했습니다." };
+
+  // 남은 활성 학생(declined_at null) 수. 0이면 신청에 남은 사람이 없으니 전체 마감.
+  // (매칭된 학생은 declined_at null로 남아 카운트됨 → 신청을 닫지 않음: 매칭은 그대로 유지.)
+  const { count: remainingActive } = await db
+    .from("request_passengers")
+    .select("id", { count: "exact", head: true })
+    .eq("request_id", requestId)
+    .is("declined_at", null);
+
+  if ((remainingActive ?? 0) === 0) {
+    // 남은 학생 없음 → 신청 통째 마감 (전원 거절과 동일 결과).
+    const closingReason = trimmed || "신청 학생 전원 거절";
+    await db
+      .from("seat_requests")
+      .update({ status: "rejected", reject_reason: closingReason })
+      .eq("id", requestId)
+      .eq("status", "queued");
+    await db.from("rejection_log").insert({
+      seat_request_id: requestId,
+      rejected_by: session.operatorId,
+      reason: closingReason,
+    });
+    try {
+      await emit(
+        "match_rejected",
+        { requestOperatorId: request.operator_id },
+        { requestId, reason: closingReason },
+      );
+      await emit("rejection_occurred", { master: true }, { requestId, reason: closingReason });
+    } catch {
+      /* 알림 실패 무시 */
+    }
+  } else {
+    // 일부만 거절 — 남은 학생 대기 유지. 신청 지구에 '일부 제외' 안내(학생 직접 신청이면 skip).
+    try {
+      await emit(
+        "passengers_declined",
+        { requestOperatorId: request.operator_id },
+        { requestId, declinedCount: targetIds.length, reason: trimmed || undefined },
+      );
+    } catch {
+      /* 알림 실패 무시 */
+    }
+  }
+
+  revalidatePath(`/operator/trips/${tripId}`);
+  return { ok: true };
+}
+
 // ─── 매칭 후반 (공급 간사 — SPEC §S4·§7) ─────────────────────────────────────
 
 /** matchId가 본인 지구 공급 trip 소속인지 확인. 통과 시 match(+passenger) 반환. */

@@ -9,6 +9,7 @@ export const NOTIFICATION_EVENTS = {
   REQUEST_CANCELLED: "request_cancelled", // 대기 중 신청 취소(신청 간사) → 공급
   MATCH_CONFIRMED: "match_confirmed", // 매칭 확정 → 신청
   MATCH_REJECTED: "match_rejected", // 거절 + 사유 → 신청
+  PASSENGERS_DECLINED: "passengers_declined", // 신청 학생 일부 거절(선택 거절, 나머지 대기) → 신청
   PARTIAL_MATCH: "partial_match", // 부분 매칭 처리(간사 수동) → 양쪽
   SEAT_FREED: "seat_freed", // 자리 풀림/큐 재노출 → 신청 + 학생
   PAYMENT_DELAY_PRE: "payment_delay_pre", // 송금 지연 사전 알림 → 신청
@@ -57,6 +58,7 @@ export const EVENT_SLOTS = {
   request_cancelled: ["supplyOperatorId"],
   match_confirmed: ["requestOperatorId"],
   match_rejected: ["requestOperatorId"],
+  passengers_declined: ["requestOperatorId"],
   partial_match: ["supplyOperatorId", "requestOperatorId"],
   seat_freed: ["requestOperatorId", "passengerId"],
   payment_delay_pre: ["requestOperatorId"],
@@ -87,6 +89,7 @@ export interface NotificationPayloads {
   request_cancelled: { requestId: string; tripId: string };
   match_confirmed: { matchId: string; tripId: string };
   match_rejected: { requestId: string; reason: string };
+  passengers_declined: { requestId: string; declinedCount: number; reason?: string };
   partial_match: { matchId: string; requestId: string; seatCount: number };
   seat_freed: { tripId: string; requestId?: string };
   payment_delay_pre: { matchId: string };

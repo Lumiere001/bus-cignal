@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatKstDateTime } from "@/lib/datetime";
-import { approveRequest, rejectRequest } from "./actions";
+import { approveRequest, rejectRequest, declinePassengers } from "./actions";
 
 type QueuePassenger = {
   id: string;
@@ -114,6 +114,29 @@ function RequestCard({
     });
   }
 
+  // [거절] 확정 — 체크한 학생이 있으면 '선택 학생만' 거절, 없으면 신청 전체 거절.
+  function confirmRejectOrDecline() {
+    if (selectedCount > 0) handleDecline();
+    else handleReject();
+  }
+
+  // 선택 학생만 거절 (나머지는 대기 유지). 성공 시 선택 비우고 큐 재조회.
+  function handleDecline() {
+    setError(null);
+    startTransition(async () => {
+      const result = await declinePassengers(tripId, req.id, [...selected], reason);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      setRejecting(false);
+      setReason("");
+      setSelected(new Set());
+      router.refresh();
+    });
+  }
+
+  // 신청 전체 거절 (학생 미선택 시). 사유 필수(10자+).
   function handleReject() {
     setError(null);
     startTransition(async () => {
@@ -224,20 +247,31 @@ function RequestCard({
         </p>
       )}
 
-      {/* 거절 사유 입력 — 거절은 개별 학생이 아니라 "이 신청 전체"가 대상 */}
+      {/* 거절 패널 — 체크한 학생이 있으면 '선택 학생만' 거절, 없으면 신청 전체 거절(경고). */}
       {rejecting && (
         <div className="mt-3 space-y-2">
-          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-            ⚠️ 이 신청 <b>전체({req.passengers.length}명)</b>가 거절됩니다. 체크박스 선택과
-            무관하게 신청 한 건이 통째로 거절되고, 사유가 신청 지구에 전달됩니다. (특정
-            학생만 빼려면 거절 대신 <b>원하는 학생만 승인</b>하세요.)
-          </p>
+          {selectedCount > 0 ? (
+            <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">
+              체크한 <b>{selectedCount}명</b>만 이 신청에서 거절(제거)합니다. 남은{" "}
+              <b>{req.passengers.length - selectedCount}명</b>은 대기 상태로 유지돼요. 사유는
+              선택이며 신청 지구에 전달됩니다.
+            </p>
+          ) : (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              ⚠️ 학생을 한 명도 선택하지 않아 이 신청 <b>전체({req.passengers.length}명)</b>가
+              취소됩니다. 특정 학생만 빼려면 닫고 그 학생을 체크한 뒤 다시 거절하세요.
+            </p>
+          )}
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={2}
             maxLength={500}
-            placeholder="거절 사유 (10자 이상, 신청 지구에 전달됩니다)"
+            placeholder={
+              selectedCount > 0
+                ? "거절 사유 (선택, 신청 지구에 전달됩니다)"
+                : "거절 사유 (10자 이상, 신청 지구에 전달됩니다)"
+            }
             disabled={isPending}
             className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           />
@@ -261,10 +295,16 @@ function RequestCard({
             </Button>
             <Button
               size="sm"
-              onClick={handleReject}
-              disabled={isPending || reason.trim().length < 10}
+              onClick={confirmRejectOrDecline}
+              disabled={
+                isPending || (selectedCount === 0 && reason.trim().length < 10)
+              }
             >
-              {isPending ? "처리중..." : "거절 확정"}
+              {isPending
+                ? "처리중..."
+                : selectedCount > 0
+                  ? `${selectedCount}명 거절`
+                  : "신청 전체 거절"}
             </Button>
           </>
         ) : (

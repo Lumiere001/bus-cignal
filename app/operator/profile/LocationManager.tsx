@@ -96,8 +96,8 @@ export function LocationManager({ locations }: { locations: RegionLocation[] }) 
               required
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             >
-              <option value="down">하행 (평창 → 지역)</option>
-              <option value="up">상행 (지역 → 평창)</option>
+              <option value="down">오는편 (평창 → 지역)</option>
+              <option value="up">가는편 (지역 → 평창)</option>
             </select>
           </div>
           <div className="space-y-1">

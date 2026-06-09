@@ -529,6 +529,8 @@ export type Database = {
         Row: {
           anonymized: boolean
           created_at: string
+          decline_reason: string | null
+          declined_at: string | null
           id: string
           name: string
           note: string | null
@@ -540,6 +542,8 @@ export type Database = {
         Insert: {
           anonymized?: boolean
           created_at?: string
+          decline_reason?: string | null
+          declined_at?: string | null
           id?: string
           name: string
           note?: string | null
@@ -551,6 +555,8 @@ export type Database = {
         Update: {
           anonymized?: boolean
           created_at?: string
+          decline_reason?: string | null
+          declined_at?: string | null
           id?: string
           name?: string
           note?: string | null

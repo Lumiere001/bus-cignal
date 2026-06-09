@@ -73,7 +73,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       `
       id, requested_at, seat_count, status, operator_id, requester_kind,
       region:regions!region_id(name, code),
-      request_passengers(id, name, phone, school_or_role, priority, note)
+      request_passengers(id, name, phone, school_or_role, priority, note, declined_at)
     `,
     )
     .eq("trip_id", id)
@@ -135,7 +135,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           | "student"
           | "operator",
         passengers: (r.request_passengers ?? [])
-          .filter((p) => !matchedPassengerIds.has(p.id))
+          // 매칭된(활성) 학생 + 개별 거절된(declined_at) 학생은 큐에서 제외.
+          .filter((p) => !matchedPassengerIds.has(p.id) && p.declined_at == null)
           .sort((a, b) => a.priority - b.priority)
           .map((p) => ({
             id: p.id,

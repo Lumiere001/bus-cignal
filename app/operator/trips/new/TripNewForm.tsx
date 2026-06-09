@@ -26,6 +26,11 @@ type Selection =
   | { kind: "new"; place: PickedPlace }
   | null;
 
+// 가는편(up) 도착지는 평창 휘닉스파크로 고정 — 간사가 매번 지정할 필요 없음(사용자 요청 2026-06-10).
+const PYEONGCHANG_VENUE_LABEL = "평창 휘닉스파크";
+// 오는편(down) 출발지 기본 텍스트 — 지구 상황에 맞게 간사가 자유 수정 가능.
+const DEFAULT_RETURN_ORIGIN = "블루캐니언 옆 주차장";
+
 export function TripNewForm({ locations }: { locations: Location[] }) {
   const [direction, setDirection] = useState<"up" | "down">("down");
   const [state, formAction, isPending] = useActionState(createTrip, undefined);
@@ -70,6 +75,7 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
                   // 방향 바뀌면 선택 초기화 (다른 방향의 장소를 잘못 제출하지 않도록)
                   setOrigin(null);
                   setDest(null);
+                  setManual(false);
                 }}
                 className="accent-blue-600"
               />
@@ -79,74 +85,71 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
         </div>
       </fieldset>
 
-      {/* 입력 방식 토글 */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">출발지 · 도착지</span>
-        <button
-          type="button"
-          onClick={() => setManual((v) => !v)}
-          className="text-xs font-medium text-blue-600 hover:underline"
-        >
-          {manual ? "지도에서 선택" : "목록에서 선택"}
-        </button>
-      </div>
-
-      {manual ? (
-        // ── Fallback: 기존 <select> 드롭다운 (지도 미동작 환경) ──
+      {/* 출발지·도착지 — 방향에 따라 한쪽은 지도 지정, 한쪽은 고정/텍스트.
+          · 가는편(up): 출발지(지역)=지도 지정, 도착지=평창 휘닉스파크 고정.
+          · 오는편(down): 출발지=평창 텍스트 안내, 도착지(지역)=지도 지정. */}
+      {direction === "up" ? (
         <>
-          <SelectField
-            label="출발지"
-            id="origin"
-            name="origin_location_id"
-            placeholder="출발지 선택"
-            emptyMsg="등록된 출발지가 없습니다. 프로필에서 먼저 등록해주세요."
-            options={origins}
-            labelOf={locationLabel}
-          />
-          <SelectField
-            label="도착지"
-            id="dest"
-            name="destination_location_id"
-            placeholder="도착지 선택"
-            emptyMsg="등록된 도착지가 없습니다. 프로필에서 먼저 등록해주세요."
-            options={destinations}
-            labelOf={locationLabel}
-          />
-        </>
-      ) : (
-        // ── 방식 B: 지도 + 검색으로 출발지/도착지 선택 ──
-        <>
-          <PointPicker
+          <MapSlot
             title="출발지"
             options={origins}
             labelOf={locationLabel}
             value={origin}
             onChange={setOrigin}
+            manual={manual}
+            onToggleManual={() => setManual((v) => !v)}
+            idName="origin_location_id"
+            newName="origin_new"
+            placeholder="출발지 선택"
+            emptyMsg="등록된 출발지가 없습니다. 프로필에서 먼저 등록해주세요."
           />
-          <PointPicker
+          {/* 도착지 = 평창 휘닉스파크 (고정, 서버에서 확정 — 폼 입력 없음) */}
+          <div className="space-y-1">
+            <span className="text-sm font-medium text-gray-700">도착지</span>
+            <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700">
+              <span>📍 {PYEONGCHANG_VENUE_LABEL}</span>
+              <span className="ml-auto text-xs text-gray-400">고정</span>
+            </div>
+            <p className="text-xs text-gray-400">
+              가는편 도착지는 평창 휘닉스파크로 고정됩니다.
+            </p>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* 출발지 = 평창 (텍스트 안내, 지도 없음). 기본값을 지구 상황에 맞게 수정 가능. */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700" htmlFor="origin_text">
+              출발지
+            </label>
+            <input
+              id="origin_text"
+              type="text"
+              name="origin_text"
+              defaultValue={DEFAULT_RETURN_ORIGIN}
+              maxLength={100}
+              required
+              placeholder="예) 블루캐니언 옆 주차장"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
+            <p className="text-xs text-gray-400">
+              오는편 출발지는 평창에서의 집결 위치를 텍스트로 안내합니다. 기본값을 지구
+              상황에 맞게 수정하세요.
+            </p>
+          </div>
+          <MapSlot
             title="도착지"
             options={destinations}
             labelOf={locationLabel}
             value={dest}
             onChange={setDest}
+            manual={manual}
+            onToggleManual={() => setManual((v) => !v)}
+            idName="destination_location_id"
+            newName="dest_new"
+            placeholder="도착지 선택"
+            emptyMsg="등록된 도착지가 없습니다. 프로필에서 먼저 등록해주세요."
           />
-          {/* 서버 액션 제출용 hidden — 등록 장소면 id, 새 장소면 JSON. */}
-          {origin?.kind === "registered" && (
-            <input type="hidden" name="origin_location_id" value={origin.id} />
-          )}
-          {origin?.kind === "new" && (
-            <input
-              type="hidden"
-              name="origin_new"
-              value={JSON.stringify(origin.place)}
-            />
-          )}
-          {dest?.kind === "registered" && (
-            <input type="hidden" name="destination_location_id" value={dest.id} />
-          )}
-          {dest?.kind === "new" && (
-            <input type="hidden" name="dest_new" value={JSON.stringify(dest.place)} />
-          )}
         </>
       )}
 
@@ -272,45 +275,85 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
   );
 }
 
-// ── Fallback <select> (기존 동작 유지) ──
-function SelectField({
-  label,
-  id,
-  name,
-  placeholder,
-  emptyMsg,
+// ── 지도 지정 슬롯: 토글(목록/지도) + (등록 장소 quick-select·지도 검색 | fallback select) + 제출용 hidden ──
+function MapSlot({
+  title,
   options,
   labelOf,
+  value,
+  onChange,
+  manual,
+  onToggleManual,
+  idName,
+  newName,
+  placeholder,
+  emptyMsg,
 }: {
-  label: string;
-  id: string;
-  name: string;
-  placeholder: string;
-  emptyMsg: string;
+  title: string;
   options: Location[];
   labelOf: (l: Location) => string;
+  value: Selection;
+  onChange: (s: Selection) => void;
+  manual: boolean;
+  onToggleManual: () => void;
+  idName: string;
+  newName: string;
+  placeholder: string;
+  emptyMsg: string;
 }) {
   return (
-    <div className="space-y-1">
-      <label className="text-sm font-medium text-gray-700" htmlFor={id}>
-        {label}
-      </label>
-      {options.length === 0 ? (
-        <p className="text-sm text-red-500">{emptyMsg}</p>
-      ) : (
-        <select
-          id={id}
-          name={name}
-          required
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label
+          htmlFor={manual ? idName : undefined}
+          className="text-sm font-medium text-gray-700"
         >
-          <option value="">{placeholder}</option>
-          {options.map((l) => (
-            <option key={l.id} value={l.id}>
-              {labelOf(l)}
-            </option>
-          ))}
-        </select>
+          {title}
+        </label>
+        <button
+          type="button"
+          onClick={onToggleManual}
+          className="text-xs font-medium text-blue-600 hover:underline"
+        >
+          {manual ? "지도에서 선택" : "목록에서 선택"}
+        </button>
+      </div>
+
+      {manual ? (
+        // ── Fallback: <select> 드롭다운 (지도 미동작 환경) ──
+        options.length === 0 ? (
+          <p className="text-sm text-red-500">{emptyMsg}</p>
+        ) : (
+          <select
+            id={idName}
+            name={idName}
+            required
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          >
+            <option value="">{placeholder}</option>
+            {options.map((l) => (
+              <option key={l.id} value={l.id}>
+                {labelOf(l)}
+              </option>
+            ))}
+          </select>
+        )
+      ) : (
+        // ── 방식 B: 지도 + 검색으로 선택 ──
+        <>
+          <PointPicker
+            options={options}
+            labelOf={labelOf}
+            value={value}
+            onChange={onChange}
+          />
+          {value?.kind === "registered" && (
+            <input type="hidden" name={idName} value={value.id} />
+          )}
+          {value?.kind === "new" && (
+            <input type="hidden" name={newName} value={JSON.stringify(value.place)} />
+          )}
+        </>
       )}
     </div>
   );
@@ -318,13 +361,11 @@ function SelectField({
 
 // ── 방식 B 지점 선택기: 지도(등록 핀 + 검색) + 등록 장소 quick-select ──
 function PointPicker({
-  title,
   options,
   labelOf,
   value,
   onChange,
 }: {
-  title: string;
   options: Location[];
   labelOf: (l: Location) => string;
   value: Selection;
@@ -369,8 +410,6 @@ function PointPicker({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-gray-700">{title}</p>
-
       {/* 등록 장소 quick-select (지도 없이도 고를 수 있게) */}
       {options.length > 0 && (
         <div className="flex flex-wrap gap-2">

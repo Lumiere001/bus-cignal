@@ -1,13 +1,15 @@
 // 공유 라벨 헬퍼 — 팀원1·2 모두 사용 (변경 시 팀장 합의 필요)
 
+// 방향 라벨 — 사용자 노출 용어는 '가는편'(지역→평창) / '오는편'(평창→지역).
+// 코드 키 up/down 은 불변(스키마·로직 기준). 용어 변경 시 이 두 맵만 교체.
 export const DIRECTION_LABEL: Record<"up" | "down", string> = {
-  up: "상행 (지역 → 평창)",
-  down: "하행 (평창 → 지역)",
+  up: "가는편 (지역 → 평창)",
+  down: "오는편 (평창 → 지역)",
 };
 
 export const DIRECTION_SHORT: Record<"up" | "down", string> = {
-  up: "상행",
-  down: "하행",
+  up: "가는편",
+  down: "오는편",
 };
 
 export type TripStatus = "draft" | "published" | "closed" | "cancelled";

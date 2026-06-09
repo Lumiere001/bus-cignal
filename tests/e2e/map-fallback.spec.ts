@@ -17,17 +17,18 @@ test("차량 등록: 키 없이 폼 렌더 + 토글로 드롭다운(목록) fall
 }) => {
   await page.goto("/operator/trips/new");
 
-  // 지도 키 없이도 페이지가 crash 없이 렌더(제목·입력 방식 토글 존재).
+  // 지도 키 없이도 페이지가 crash 없이 렌더(제목·방향 라벨 존재).
   await expect(
     page.getByRole("heading", { name: "차량 등록" }),
   ).toBeVisible();
-  await expect(page.getByText("출발지 · 도착지")).toBeVisible();
+  // 방향 용어(가는편/오는편) 렌더 확인.
+  await expect(page.getByText("오는편 (평창 → 지역)")).toBeVisible();
 
-  // 기본은 방식 B(지도) — "목록에서 선택" 토글로 <select> fallback 전환.
-  await page.getByRole("button", { name: "목록에서 선택" }).click();
-
-  // fallback 드롭다운(출발지/도착지 <select>)이 보여야 함 — 지도 없이도 입력 가능.
+  // 기본 방향은 오는편(down): 출발지=평창 텍스트 입력, 도착지=지도 슬롯.
   await expect(page.getByLabel("출발지")).toBeVisible();
+
+  // 도착지 슬롯의 "목록에서 선택" 토글로 <select> fallback 전환(지도 없이도 입력 가능).
+  await page.getByRole("button", { name: "목록에서 선택" }).click();
   await expect(page.getByLabel("도착지")).toBeVisible();
 
   // 다시 지도 모드로 돌아가도 crash 없이 토글 동작.
