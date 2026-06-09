@@ -1,6 +1,6 @@
 import { MATCH_STATUS_LABEL } from "@/lib/labels";
 import { MatchActions } from "./MatchActions";
-import { ReservationLink } from "./ReservationLink";
+import { ReservationLink } from "@/components/operator/ReservationLink";
 
 export type MatchRow = {
   id: string;
