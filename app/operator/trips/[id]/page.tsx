@@ -82,8 +82,13 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   // 신청 지구 담당 간사 연락처 — 큐 헤더에 "담당 간사 ○○○ 010-…" 표기용.
   // 각 신청의 operator_id를 한 번에 묶어 조회(중복 제거) → 맵으로 룩업. (운영 연락 목적, 팀장 승인)
+  // operator_id는 학생 직접 신청이면 null → 간사 신청만 추려서 연락처 조회.
   const requestOperatorIds = [
-    ...new Set((requests ?? []).map((r) => r.operator_id).filter(Boolean)),
+    ...new Set(
+      (requests ?? [])
+        .map((r) => r.operator_id)
+        .filter((id): id is string => id !== null),
+    ),
   ];
   const operatorContacts = new Map<string, { name: string | null; phone: string | null }>();
   if (requestOperatorIds.length > 0) {

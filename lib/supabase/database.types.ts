@@ -631,13 +631,15 @@ export type Database = {
           consent_confirmed_by: string | null
           created_at: string
           id: string
-          operator_id: string
+          operator_id: string | null
           parent_request_id: string | null
           region_id: string
           reject_reason: string | null
           requested_at: string
+          requester_kind: string
           seat_count: number
           status: string
+          student_id: string | null
           trip_id: string
         }
         Insert: {
@@ -645,13 +647,15 @@ export type Database = {
           consent_confirmed_by?: string | null
           created_at?: string
           id?: string
-          operator_id: string
+          operator_id?: string | null
           parent_request_id?: string | null
           region_id: string
           reject_reason?: string | null
           requested_at?: string
+          requester_kind?: string
           seat_count: number
           status?: string
+          student_id?: string | null
           trip_id: string
         }
         Update: {
@@ -659,13 +663,15 @@ export type Database = {
           consent_confirmed_by?: string | null
           created_at?: string
           id?: string
-          operator_id?: string
+          operator_id?: string | null
           parent_request_id?: string | null
           region_id?: string
           reject_reason?: string | null
           requested_at?: string
+          requester_kind?: string
           seat_count?: number
           status?: string
+          student_id?: string | null
           trip_id?: string
         }
         Relationships: [
@@ -698,10 +704,58 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "seat_requests_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "seat_requests_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      students: {
+        Row: {
+          campus: string | null
+          ccc_id: string
+          created_at: string
+          id: string
+          last_login_at: string | null
+          name: string | null
+          phone: string | null
+          region_id: string | null
+        }
+        Insert: {
+          campus?: string | null
+          ccc_id: string
+          created_at?: string
+          id?: string
+          last_login_at?: string | null
+          name?: string | null
+          phone?: string | null
+          region_id?: string | null
+        }
+        Update: {
+          campus?: string | null
+          ccc_id?: string
+          created_at?: string
+          id?: string
+          last_login_at?: string | null
+          name?: string | null
+          phone?: string | null
+          region_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
             referencedColumns: ["id"]
           },
         ]
