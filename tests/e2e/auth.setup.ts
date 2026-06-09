@@ -5,6 +5,7 @@ import {
   MASTER_STATE,
   OPERATOR_GWANGJU_STATE,
   OPERATOR_BUSAN_STATE,
+  STUDENT_STATE,
 } from "./support/auth-paths";
 
 // dev-login(seed 기반 임시 진입점)으로 세션 쿠키를 받아 storageState로 저장한다.
@@ -32,4 +33,12 @@ setup("부산(수요) 간사 세션 저장", async ({ page }) => {
   await page.getByRole("button", { name: /박부산/ }).click();
   await page.waitForURL(/\/operator/);
   await page.context().storageState({ path: OPERATOR_BUSAN_STATE });
+});
+
+// CCC 학생 — seed:dev의 최학생(dev-student-busan, 지구 2801). 학생 직접신청·예약·채팅 흐름 검증.
+setup("학생(CCC) 세션 저장", async ({ page }) => {
+  await page.goto("/dev/login");
+  await page.getByRole("button", { name: /최학생/ }).click();
+  await page.waitForURL(/\/s$/);
+  await page.context().storageState({ path: STUDENT_STATE });
 });

@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { devLoginAsMaster, devLoginAsOperator } from "@/lib/auth/dev-login";
+import {
+  devLoginAsMaster,
+  devLoginAsOperator,
+  devLoginAsStudent,
+} from "@/lib/auth/dev-login";
 import { devLoginEnabled } from "@/lib/auth/dev-login-guard";
 import { Button } from "@/components/ui/button";
 
@@ -13,7 +17,7 @@ export default async function DevLoginPage() {
 
   const db = createAdminClient();
 
-  const [{ data: operators }, { data: regions }, { data: codes }] =
+  const [{ data: operators }, { data: regions }, { data: codes }, { data: students }] =
     await Promise.all([
       db
         .from("operators")
@@ -26,6 +30,7 @@ export default async function DevLoginPage() {
         .select("id, reservation_code")
         .not("reservation_code", "is", null)
         .limit(10),
+      db.from("students").select("id, name, region_id").order("created_at"),
     ]);
 
   const regionName = new Map((regions ?? []).map((r) => [r.id, r.name]));
@@ -77,6 +82,28 @@ export default async function DevLoginPage() {
           <p className="text-muted-foreground text-sm">
             승인된 간사 없음 — <code>supabase db reset</code> (또는{" "}
             <code>pnpm seed:dev</code>) 먼저 실행하세요.
+          </p>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold">CCC 학생 (직접 신청)</h2>
+        {students && students.length > 0 ? (
+          students.map((st) => (
+            <form key={st.id} action={devLoginAsStudent.bind(null, st.id)}>
+              <Button
+                type="submit"
+                variant="outline"
+                className="w-full justify-start"
+              >
+                {st.name ?? "(이름 없음)"} ·{" "}
+                {st.region_id ? (regionName.get(st.region_id) ?? "?") : "?"} → /s
+              </Button>
+            </form>
+          ))
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            seed 학생 없음 — <code>supabase db reset</code> 먼저 실행하세요.
           </p>
         )}
       </section>

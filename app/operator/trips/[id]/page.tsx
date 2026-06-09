@@ -71,7 +71,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     .from("seat_requests")
     .select(
       `
-      id, requested_at, seat_count, status, operator_id,
+      id, requested_at, seat_count, status, operator_id, requester_kind,
       region:regions!region_id(name, code),
       request_passengers(id, name, phone, school_or_role, priority, note)
     `,
@@ -130,6 +130,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         regionName: one(r.region)?.name ?? "타지구",
         operatorName: contact?.name ?? null,
         operatorPhone: contact?.phone ?? null,
+        // 학생 직접 신청(requester_kind='student')이면 담당 간사 대신 '학생 직접 신청' 배지 표시.
+        requesterKind: (r.requester_kind === "student" ? "student" : "operator") as
+          | "student"
+          | "operator",
         passengers: (r.request_passengers ?? [])
           .filter((p) => !matchedPassengerIds.has(p.id))
           .sort((a, b) => a.priority - b.priority)

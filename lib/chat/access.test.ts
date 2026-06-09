@@ -78,11 +78,15 @@ vi.mock("@/lib/supabase/admin", () => ({
 // 세션 모킹 (resolveChatAccess 용)
 const getPassengerSession = vi.fn();
 const getOperatorSession = vi.fn();
+const getStudentSession = vi.fn();
 vi.mock("@/lib/auth/passenger", () => ({
   getPassengerSession: () => getPassengerSession(),
 }));
 vi.mock("@/lib/auth/operator", () => ({
   getOperatorSession: () => getOperatorSession(),
+}));
+vi.mock("@/lib/auth/student", () => ({
+  getStudentSession: () => getStudentSession(),
 }));
 
 import {
@@ -94,6 +98,8 @@ import {
 beforeEach(() => {
   vi.clearAllMocks();
   passengerMatchDataset = [];
+  // 학생 세션은 기본 없음 — resolveChatAccess의 학생 분기를 건드리지 않음(passenger/operator 경로 검증 유지).
+  getStudentSession.mockResolvedValue(null);
 });
 
 describe("getPassengerChatAccess", () => {

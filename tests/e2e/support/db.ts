@@ -197,3 +197,170 @@ export async function createPendingOperator(): Promise<{
   };
   return { id, name, cleanup };
 }
+
+// ─── 학생 직접 신청(CCC 학생) 픽스처 ─────────────────────────────────────────────
+
+/** seed-dev.sql의 CCC 학생(최학생, 부산 2801). */
+export const STUDENT_DEV_ID = "f5000000-0000-0000-0000-000000000001";
+const STUDENT_DEV_NAME = "최학생";
+const STUDENT_DEV_PHONE = "010-7777-0001";
+
+/**
+ * 광주(공급) 소유 published trip + open offer를 **고유 라벨**로 격리 생성.
+ * 라벨이 고유해 /s/apply 목록·채팅 헤더에서 이 차량만 선택/검증 가능.
+ */
+export interface StudentTripScenario {
+  tripId: string;
+  originLabel: string;
+  destLabel: string;
+  cleanup: () => Promise<void>;
+}
+
+export async function createStudentTrip(): Promise<StudentTripScenario> {
+  const gwangju = await regionIdByCode("2601");
+  const gwangjuOp = await operatorIdByCccId("dev-op-gwangju");
+  const tag = randomUUID().replace(/-/g, "").slice(0, 6);
+  const originLabel = `E2E학생출발${tag}`;
+  const destLabel = `E2E학생도착${tag}`;
+
+  const tripId = randomUUID();
+  const originLoc = randomUUID();
+  const destLoc = randomUUID();
+  const offerId = randomUUID();
+
+  await db.from("region_locations").insert([
+    {
+      id: originLoc,
+      region_id: gwangju,
+      direction: "down",
+      location_type: "origin",
+      address: "강원 평창군 봉평면",
+      label: originLabel,
+      lat: 37.6,
+      lng: 128.7,
+      created_by: gwangjuOp,
+    },
+    {
+      id: destLoc,
+      region_id: gwangju,
+      direction: "down",
+      location_type: "destination",
+      address: "광주 동구 충장로",
+      label: destLabel,
+      lat: 35.15,
+      lng: 126.91,
+      created_by: gwangjuOp,
+    },
+  ]);
+  await db.from("trips").insert({
+    id: tripId,
+    operator_region_id: gwangju,
+    direction: "down",
+    origin_location_id: originLoc,
+    destination_location_id: destLoc,
+    departure_at: new Date(Date.now() + 30 * 864e5).toISOString(),
+    capacity: 44,
+    price_per_seat: 35000,
+    note: "[E2E] 학생 직접신청 trip",
+    status: "published",
+    created_by: gwangjuOp,
+  });
+  await db
+    .from("seat_offers")
+    .insert({ id: offerId, trip_id: tripId, seat_count: 5, status: "open" });
+
+  const cleanup = async () => {
+    await db.from("matches").delete().eq("trip_id", tripId);
+    const { data: reqs } = await db
+      .from("seat_requests")
+      .select("id")
+      .eq("trip_id", tripId);
+    const ids = (reqs ?? []).map((r) => r.id);
+    if (ids.length) {
+      await db.from("request_passengers").delete().in("request_id", ids);
+      await db.from("seat_requests").delete().in("id", ids);
+    }
+    await db.from("seat_offers").delete().eq("trip_id", tripId);
+    await db.from("trips").delete().eq("id", tripId);
+    await db.from("region_locations").delete().in("id", [originLoc, destLoc]);
+  };
+
+  return { tripId, originLabel, destLabel, cleanup };
+}
+
+/** 학생(STUDENT_DEV) 직접 신청 1건을 trip에 격리 삽입(승인 큐 배지·승인 테스트용). */
+export async function seedStudentRequest(
+  tripId: string,
+  status: "queued" | "matched" = "queued",
+): Promise<{ requestId: string; passengerId: string; name: string }> {
+  const busan = await regionIdByCode("2801");
+  const requestId = randomUUID();
+  const passengerId = randomUUID();
+  await db.from("seat_requests").insert({
+    id: requestId,
+    trip_id: tripId,
+    region_id: busan,
+    requester_kind: "student",
+    student_id: STUDENT_DEV_ID,
+    seat_count: 1,
+    status,
+    consent_confirmed_at: new Date().toISOString(),
+    requested_at: new Date().toISOString(),
+  });
+  await db.from("request_passengers").insert({
+    id: passengerId,
+    request_id: requestId,
+    name: STUDENT_DEV_NAME,
+    phone: STUDENT_DEV_PHONE,
+    school_or_role: "부산대",
+    priority: 1,
+  });
+  return { requestId, passengerId, name: STUDENT_DEV_NAME };
+}
+
+/** 학생 paid 매칭 시나리오 — /s 예약확정·예약번호·채팅 입장 검증용. */
+export interface StudentPaidScenario {
+  tripId: string;
+  originLabel: string;
+  destLabel: string;
+  code: string;
+  name: string;
+  cleanup: () => Promise<void>;
+}
+
+export async function createStudentPaidScenario(): Promise<StudentPaidScenario> {
+  const trip = await createStudentTrip();
+  const { requestId, passengerId, name } = await seedStudentRequest(
+    trip.tripId,
+    "matched",
+  );
+  const matchId = randomUUID();
+  const code = shortCode();
+
+  await db.from("matches").insert({
+    id: matchId,
+    trip_id: trip.tripId,
+    request_id: requestId,
+    passenger_id: passengerId,
+    status: "paid",
+    payment_due_at: new Date(Date.now() + 864e5).toISOString(),
+    payment_reported_at: new Date(Date.now() - 36e5).toISOString(),
+    paid_at: new Date(Date.now() - 18e5).toISOString(),
+    reservation_code: code,
+  });
+  await db.from("match_passengers").insert({
+    match_id: matchId,
+    name,
+    phone: STUDENT_DEV_PHONE,
+    school_or_role: "부산대",
+  });
+
+  return {
+    tripId: trip.tripId,
+    originLabel: trip.originLabel,
+    destLabel: trip.destLabel,
+    code,
+    name,
+    cleanup: trip.cleanup,
+  };
+}

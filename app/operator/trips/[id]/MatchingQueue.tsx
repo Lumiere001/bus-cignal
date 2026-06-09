@@ -21,6 +21,8 @@ type QueueRequest = {
   regionName: string;
   operatorName: string | null;
   operatorPhone: string | null;
+  /** 'student' = 학생 직접 신청(담당 간사 없음), 'operator' = 간사 신청. */
+  requesterKind: "student" | "operator";
   passengers: QueuePassenger[];
 };
 
@@ -131,18 +133,25 @@ function RequestCard({
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <span className="text-sm font-medium text-gray-900">{req.regionName}</span>
-          {/* 신청 지구 담당 간사 연락처 — 운영 연락용 (팀장 승인) */}
-          <span className="ml-2 text-xs text-gray-500">
-            담당 간사 {req.operatorName ?? "미지정"}
-            {req.operatorPhone && (
-              <a
-                href={`tel:${req.operatorPhone}`}
-                className="ml-1 text-blue-600 hover:underline"
-              >
-                {req.operatorPhone}
-              </a>
-            )}
-          </span>
+          {req.requesterKind === "student" ? (
+            // 학생 직접 신청 — 담당 간사 없음. 본인 정보는 아래 명단(이름·전화)에 그대로.
+            <span className="ml-2 rounded-md bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-violet-700">
+              학생 직접 신청
+            </span>
+          ) : (
+            // 신청 지구 담당 간사 연락처 — 운영 연락용 (팀장 승인)
+            <span className="ml-2 text-xs text-gray-500">
+              담당 간사 {req.operatorName ?? "미지정"}
+              {req.operatorPhone && (
+                <a
+                  href={`tel:${req.operatorPhone}`}
+                  className="ml-1 text-blue-600 hover:underline"
+                >
+                  {req.operatorPhone}
+                </a>
+              )}
+            </span>
+          )}
         </div>
         <span className="shrink-0 text-xs text-gray-400">
           {formatKstDateTime(req.requestedAt)} 신청
