@@ -8,18 +8,28 @@
 ## 🔄 현재 인계 (Active Handoff)
 
 ```
-From: CC 세션 (2026-06-07 밤6 — 🚀 v1.0.0 정식 출시)
-To: CC 다음 세션 (⭐ 여기부터). 출시 완료 — 다음은 출시 후 마무리/연동.
-🚀 출시: 사용자가 firestore.rules 재배포 + 🏁② 데이터 삭제(Supabase wipe + Firestore channels) + ③ 최종 배포 + 라이브 스모크 + 카카오 지도 배포검증까지 완료.
-  - PR #121(공개인원↔정원 동기화·채팅 '나가기' 제거) · #122(PWA 첫방문 설치 배너) 머지 → main `0aaeaf9`.
-  - **태그 `v1.0.0` + GitHub 릴리즈 발행**(latest). 첫 정식 production.
-🐛 출시 후 발견(중요): **랜딩 '예약 조회' 버튼이 `/r`로 가는데 `app/r/page.tsx`가 없어 404**(라우트는 `/r/[code]`만). 데이터 삭제 무관·라우트 버그. 학생이 코드 없이 예약조회 불가.
-   - fix 후보: (a) `/r` 코드입력 페이지 신설(BUS-XXXX 입력→/r/<code> 포워드) ⟵ 권장, 또는 (b) 랜딩 버튼 제거(학생은 간사 링크로만). 사용자 결정 대기.
-남은(출시 후):
-  1. **약관 org 4항목**(운영주체·개인정보보호책임자·연락처·시행일) — ⚠️ 반영 여부 미확인. 값 주면 /terms·/privacy 교체.
-  2. 위 `/r` 404 fix.
-  3. CCC consumer 로그인 연동 + 연결 해지 큐 — 외부 CCC API 대기(현재 간사=매직링크 임시).
-📌 세션·PWA 메커니즘(자주 묻는 질문): 인증은 **쿠키**(학생 `bc_passenger_session` 30일 / 간사 `bc_operator_session` 12h, httpOnly·SameSite=Lax). **Android PWA**는 브라우저와 저장소 공유 → 웹 로그인이 앱에 그대로. **iOS 홈화면 PWA**는 Safari와 저장소 **분리** → 앱 안에서 1회 로그인/verify 필요(그 후 앱 자체 쿠키로 유지). 푸시=FCM 옵트인(/me paid 후 배너).
+From: CC 세션 (2026-06-09 — v1.0.0 출시 후 QA 라운드 + 학생 직접신청 Phase 1 + CCC 간사 라이브)
+To: CC 다음 세션 (⭐ 여기부터). 최우선 = 학생 Phase 2·3 자율 워크플로우 빌드.
+
+⭐⭐ 다음 세션 1순위: **학생 직접 신청 Phase 2·3 — 자율 워크플로우로 빌드**
+   - 스펙(상세): `docs/STUDENT-PHASE-2-3-SPEC.md` ← 이거 읽고 그대로 진행.
+   - **빌드 base 브랜치: `feat/ccc-student-login`** (Phase 1 들어있음·최신 main 반영). 거기서 작업.
+   - Phase 2 = 학생 화면(차량 둘러보기·직접 신청·내 예약). Phase 3 = 채팅 연동·승인 큐 학생 표시.
+   - 사용자가 "자율 워크플로우(ultracode/use a workflow)"로 돌리길 원함.
+
+이번 세션(6/9) 결과:
+  - **간사 CCC 로그인 라이브**: #125 머지(콜백 `/api/ccc/callback` main 배포). 간사님이 ?code 받아옴 = CCC 등록 연결됨. (Vercel 배포 점검 필요 — 아래.)
+  - 간사 QA 피드백 3건: #133(페이지 이동 로딩 스켈레톤 /operator·/admin·/me) · #134('공개 인원'→'잔여 좌석' 라벨) 머지.
+  - 이전: #124(/r 404 fix·조회 페이지) · #126(/r 입력 BUS- 접두어) · #127·#128(prod-QA 시드 도구) · #129(잔여좌석 정원고정·입력버그) · #130(수요 간사 예약링크 공유).
+  - **학생 Phase 1**: PR #132(draft, base main) — students 테이블 + seat_requests 학생지원 + CCC 학생 로그인(/s/*). 브랜치 feat/ccc-student-login. CCC 학생 등록 후 라이브.
+
+⏳ **Vercel 배포 점검(이번 세션 마지막 작업)**: #134까지 머지 후 Vercel 배포가 오래 pending이었음(Hobby 큐 추정). main HEAD 배포 success인지 + `/api/ccc/callback`이 404 아닌지 확인.
+
+남은(출시 후, 외부/대기):
+  1. **CCC 학생 등록**: client_id=`bus-cignal-student`, redirect_uri=`.../api/ccc/student-callback`, target_role=student. + Vercel env `CCC_HANDOFF_STUDENT_CLIENT_ID`·`STUDENT_SESSION_SECRET`.
+  2. **약관 org 4항목** — 값 받으면 /terms·/privacy 반영(미확인).
+  3. CCC 간사 redirect_uri 운영 전환 확인 + Vercel `CCC_*` env(기본값으로도 동작).
+📌 세션·PWA: 쿠키 인증(학생/r 30일·CCC학생 30일·간사 12h). iOS 홈화면 PWA는 Safari와 저장소 분리 → 앱 안 1회 로그인. 푸시=FCM 옵트인.
 ```
 
 ### (이전 인계 — CC 2026-06-07 밤5)
