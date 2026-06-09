@@ -2,9 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DIRECTION_SHORT, REQUEST_STATUS_LABEL } from "@/lib/labels";
+import {
+  DIRECTION_SHORT,
+  REQUEST_STATUS_LABEL,
+  MATCH_STATUS_LABEL,
+} from "@/lib/labels";
 import { one } from "@/lib/supabase/relation";
 import { formatKstDateTime } from "@/lib/datetime";
+import { ReservationLink } from "@/components/operator/ReservationLink";
 import { RequestActions } from "./RequestActions";
 
 export const dynamic = "force-dynamic";
@@ -60,17 +65,20 @@ export default async function RequestDetailPage({
   const trip = one(req.trip);
   const passengers = [...req.request_passengers].sort((a, b) => a.priority - b.priority);
 
+  // 학생별 매칭 상태·예약번호(표시용) — 본인 지구 학생이라 노출 OK.
+  //   입금 확인(paid)된 학생은 /r 예약 링크를 수요 간사가 직접 학생에게 공유 가능.
+  const { data: matchRows } = await db
+    .from("matches")
+    .select("passenger_id, status, reservation_code")
+    .eq("request_id", req.id)
+    .in("status", ["awaiting_payment", "payment_reported", "paid"]);
+  const matchByPax = new Map(
+    (matchRows ?? []).map((m) => [m.passenger_id, m]),
+  );
+  const paidCount = (matchRows ?? []).filter((m) => m.status === "paid").length;
+
   // 수정·취소 가능 = 대기중 + 진행 중 매칭 없음 (서버 액션에서도 동일 가드로 재검증).
-  let canModify = req.status === "queued";
-  if (canModify) {
-    const { data: activeMatches } = await db
-      .from("matches")
-      .select("id")
-      .eq("request_id", req.id)
-      .in("status", ["awaiting_payment", "payment_reported", "paid"])
-      .limit(1);
-    if (activeMatches && activeMatches.length > 0) canModify = false;
-  }
+  const canModify = req.status === "queued" && (matchRows?.length ?? 0) === 0;
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 px-4 py-8">
@@ -117,20 +125,54 @@ export default async function RequestDetailPage({
       </section>
 
       <section className="rounded-xl border p-4">
-        <h2 className="mb-3 text-sm font-semibold">학생 명단 (우선순위순)</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">학생 명단 (우선순위순)</h2>
+          {paidCount > 0 && (
+            <span className="text-muted-foreground text-xs">
+              입금 확인 {paidCount}명 — 아래 예약 링크를 학생에게 공유하세요
+            </span>
+          )}
+        </div>
         <ol className="space-y-2">
-          {passengers.map((p) => (
-            <li key={p.id} className="flex items-center justify-between gap-3 border-b py-2 last:border-0 text-sm">
-              <span>
-                <span className="text-muted-foreground mr-2 tabular-nums">{p.priority}.</span>
-                <span className="font-medium">{p.name}</span>
-                {p.school_or_role && (
-                  <span className="text-muted-foreground ml-2 text-xs">{p.school_or_role}</span>
+          {passengers.map((p) => {
+            const m = matchByPax.get(p.id);
+            return (
+              <li key={p.id} className="border-b py-2 text-sm last:border-0">
+                <div className="flex items-center justify-between gap-3">
+                  <span>
+                    <span className="text-muted-foreground mr-2 tabular-nums">
+                      {p.priority}.
+                    </span>
+                    <span className="font-medium">{p.name}</span>
+                    {p.school_or_role && (
+                      <span className="text-muted-foreground ml-2 text-xs">
+                        {p.school_or_role}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-muted-foreground tabular-nums">
+                    {p.phone}
+                  </span>
+                </div>
+                {m && (
+                  <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 pl-5">
+                    <span
+                      className={`rounded-md px-2 py-0.5 text-xs font-medium ${
+                        m.status === "paid"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-amber-50 text-amber-700"
+                      }`}
+                    >
+                      {MATCH_STATUS_LABEL[m.status] ?? m.status}
+                    </span>
+                    {m.status === "paid" && m.reservation_code && (
+                      <ReservationLink code={m.reservation_code} />
+                    )}
+                  </div>
                 )}
-              </span>
-              <span className="text-muted-foreground tabular-nums">{p.phone}</span>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ol>
       </section>
 

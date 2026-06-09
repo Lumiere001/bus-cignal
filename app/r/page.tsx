@@ -1,13 +1,10 @@
-import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/logo";
+import { ReservationLookupForm } from "@/components/passenger/ReservationLookupForm";
 import { lookupReservation } from "./actions";
 
 type Props = {
   searchParams: Promise<{ error?: string }>;
 };
-
-const inputCls =
-  "rounded-xl border border-input bg-card px-3.5 py-3 text-center font-mono text-lg font-semibold tracking-wider uppercase outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40";
 
 /**
  * 예약 조회 입구 — 예약번호(BUS-XXXX)를 입력하면 본인확인 페이지(/r/<code>)로 보낸다.
@@ -42,28 +39,7 @@ export default async function ReservationLookupPage({ searchParams }: Props) {
           </p>
         )}
 
-        <form action={lookupReservation} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="code" className="text-sm font-semibold">
-              예약번호
-            </label>
-            <input
-              id="code"
-              name="code"
-              type="text"
-              required
-              autoComplete="off"
-              autoCapitalize="characters"
-              maxLength={8}
-              className={inputCls}
-              placeholder="BUS-XXXX"
-            />
-          </div>
-
-          <Button type="submit" className="h-12 w-full text-[15px]">
-            조회하기
-          </Button>
-        </form>
+        <ReservationLookupForm action={lookupReservation} />
       </div>
 
       <p className="text-muted-foreground text-center text-xs">

@@ -47,12 +47,13 @@ test("매칭 취소: 승인 매칭에 실수 방지 확인 모달 + 설명", asy
   }
 });
 
-test("공개 인원 변경: 좌석 수 조정 → 정원·잔여석 함께 반영", async ({ page }) => {
+test("공개 인원 변경: 정원 고정, 잔여만 공개 인원 기준으로 반영", async ({ page }) => {
   const scn = await createApproveScenario({ passengers: 1, offered: 10 });
   try {
     await page.goto(`/operator/trips/${scn.tripId}`);
-    // 변경 전: 정원 44석(시나리오 기본) — 공개 인원(10)과 분리돼 있던 상태
-    await expect(page.getByText(/정원 44석/)).toBeVisible();
+    // 시나리오: 정원 44 · 공개 10 · 매칭 0 → 잔여 10
+    await expect(page.getByText("정원 44석", { exact: true })).toBeVisible();
+    await expect(page.getByText("잔여 10석", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "공개 인원 변경" }).click();
     const dialog = page.getByRole("dialog");
@@ -60,11 +61,37 @@ test("공개 인원 변경: 좌석 수 조정 → 정원·잔여석 함께 반�
     const input = dialog.getByRole("spinbutton");
     await input.fill("6");
     await dialog.getByRole("button", { name: "변경 저장" }).click();
+    await expect(dialog).toBeHidden(); // 저장 후 모달 닫힘
 
-    // 공개 인원을 6으로 내리면 정원도 6으로 함께 바뀐다(사용자 정책 2026-06-07).
-    await expect(page.getByText(/정원 6석/)).toBeVisible();
-    // 매칭 없음 → 잔여 = 공개 좌석(6)
-    await expect(page.getByText(/잔여 6석/)).toBeVisible();
+    // 공개 인원 10→6: 정원은 그대로 44, 잔여만 6(=공개 6 − 매칭 0)으로 반영.
+    await expect(page.getByText("정원 44석", { exact: true })).toBeVisible();
+    await expect(page.getByText("잔여 6석", { exact: true })).toBeVisible();
+  } finally {
+    await scn.cleanup();
+  }
+});
+
+test("공개 인원 변경: 빈 값이면 저장 비활성 + 정원 초과 거부", async ({ page }) => {
+  const scn = await createApproveScenario({ passengers: 1, offered: 10 });
+  try {
+    await page.goto(`/operator/trips/${scn.tripId}`);
+    await page.getByRole("button", { name: "공개 인원 변경" }).click();
+    const dialog = page.getByRole("dialog");
+    const input = dialog.getByRole("spinbutton");
+    const save = dialog.getByRole("button", { name: "변경 저장" });
+
+    // 완전히 비우면 0이 자동 입력되지 않고 빈 상태 → 저장 비활성.
+    await input.fill("");
+    await expect(input).toHaveValue("");
+    await expect(save).toBeDisabled();
+
+    // 정원(44) 초과 → 저장 비활성.
+    await input.fill("99");
+    await expect(save).toBeDisabled();
+
+    // 유효 값 → 저장 활성.
+    await input.fill("8");
+    await expect(save).toBeEnabled();
   } finally {
     await scn.cleanup();
   }

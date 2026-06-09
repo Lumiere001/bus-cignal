@@ -431,7 +431,7 @@ export async function editSeatOffer(
 
   const { data: trip } = await db
     .from("trips")
-    .select("id, status")
+    .select("id, status, capacity")
     .eq("id", tripId)
     .eq("operator_region_id", session.regionId)
     .single();
@@ -439,9 +439,9 @@ export async function editSeatOffer(
   if (trip.status !== "draft" && trip.status !== "published") {
     return { error: "공개·임시저장 상태의 차량만 인원을 변경할 수 있습니다." };
   }
-  // 공개 인원 = 이 차량이 내놓는 좌석 수(= 정원). 생성 시 1~200 제한과 동일하게 맞춘다.
-  if (newCount > 200) {
-    return { error: "좌석 수는 200석을 초과할 수 없습니다." };
+  // 공개 인원은 정원(버스 좌석 수) 이하만. 정원은 바뀌지 않는다 — 공개 인원만 조정한다.
+  if (newCount > trip.capacity) {
+    return { error: `정원(${trip.capacity}석)을 초과할 수 없습니다.` };
   }
 
   // 이미 매칭(자리 점유)된 인원보다 적게 줄일 수 없음.
@@ -471,15 +471,6 @@ export async function editSeatOffer(
     .update({ seat_count: newCount })
     .eq("id", offer.id);
   if (updErr) return { error: "인원 변경 중 오류가 발생했습니다." };
-
-  // 공개 인원과 정원을 함께 맞춘다 — 공개 인원이 곧 이 차량이 내놓는 좌석(=정원)이다.
-  // (사용자 정책 2026-06-07: 공개 인원 변경 시 정원도 같이 변경)
-  const { error: capErr } = await db
-    .from("trips")
-    .update({ capacity: newCount })
-    .eq("id", tripId)
-    .eq("operator_region_id", session.regionId);
-  if (capErr) return { error: "인원 변경 중 오류가 발생했습니다." };
 
   revalidatePath(`/operator/trips/${tripId}`);
   revalidatePath("/operator/trips");

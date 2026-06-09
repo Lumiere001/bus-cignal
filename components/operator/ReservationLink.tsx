@@ -6,7 +6,7 @@ import { useState } from "react";
  * 예약번호 + 학생 개별 접근 링크.
  * 코드는 /r/<code> 로 가는 클릭 가능한 링크(열기·테스트용),
  * "링크 복사" 버튼은 절대 URL(${origin}/r/<code>)을 클립보드에 복사.
- * 서버 컴포넌트인 MatchTable에서 사용하기 위해 분리한 client 조각.
+ * 공급(차량 상세 MatchTable)·수요(신청 상세) 양쪽에서 사용하는 공용 client 조각.
  */
 export function ReservationLink({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
