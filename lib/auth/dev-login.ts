@@ -3,7 +3,11 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { OPERATOR_COOKIE, signOperatorToken } from "./operator-session";
+import {
+  OPERATOR_COOKIE,
+  OPERATOR_SESSION_DAYS,
+  signOperatorToken,
+} from "./operator-session";
 import { MASTER_COOKIE, signMasterToken } from "./master-session";
 import {
   STUDENT_COOKIE,
@@ -42,7 +46,10 @@ export async function devLoginAsOperator(operatorId: string) {
     regionId: op.region_id,
   });
   const c = await cookies();
-  c.set(OPERATOR_COOKIE, token, { ...baseCookie, maxAge: 12 * 60 * 60 });
+  c.set(OPERATOR_COOKIE, token, {
+    ...baseCookie,
+    maxAge: OPERATOR_SESSION_DAYS * 24 * 60 * 60,
+  });
   redirect("/operator");
 }
 

@@ -5,6 +5,8 @@ import { SignJWT, jwtVerify } from "jose";
 // (Supabase Auth/Google OAuth 미사용 — 마스터 세션과 동일 패턴)
 const ALG = "HS256";
 export const OPERATOR_COOKIE = "bc_operator_session";
+// 간사 세션 수명 — 수련회 기간 동안 재로그인 최소화(특히 iOS PWA는 1회 로그인 후 유지).
+export const OPERATOR_SESSION_DAYS = 30;
 
 export type OperatorClaims = {
   operatorId: string;
@@ -22,12 +24,12 @@ function secret(): Uint8Array {
   return new TextEncoder().encode(value);
 }
 
-/** 간사 세션 JWT 발급 (12h). 마스터 승인 완료된 operator에 대해서만 호출. */
+/** 간사 세션 JWT 발급 (30일). 마스터 승인 완료된 operator에 대해서만 호출. */
 export async function signOperatorToken(claims: OperatorClaims): Promise<string> {
   return new SignJWT({ role: "operator", ...claims })
     .setProtectedHeader({ alg: ALG })
     .setIssuedAt()
-    .setExpirationTime("12h")
+    .setExpirationTime(`${OPERATOR_SESSION_DAYS}d`)
     .sign(secret());
 }
 

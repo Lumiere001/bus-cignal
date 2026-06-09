@@ -62,13 +62,15 @@ export default async function Page({
         </p>
       )}
 
-      <Link
+      {/* ⚠️ 일반 <a>(top-level 전체 페이지 이동) — Next <Link>(클라이언트 이동) 아님.
+          CCC 외부 동의→콜백 왕복이 설치형 PWA(특히 iOS)에서 같은 브라우징 컨텍스트로
+          유지돼 세션 쿠키가 올바른 저장소에 들어가게 한다(별도 Safari 컨텍스트 이탈 방지). */}
+      <a
         href="/login/ccc"
-        prefetch={false}
         className={cn(buttonVariants({ size: "lg" }), "h-12 w-full text-[15px]")}
       >
         CCC 계정으로 로그인
-      </Link>
+      </a>
 
       <div className="bg-muted/40 rounded-xl border p-4 text-sm leading-relaxed">
         <p className="mb-1 font-medium">CCC 로그인이 안 되시나요?</p>
