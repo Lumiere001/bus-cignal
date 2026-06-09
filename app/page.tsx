@@ -68,8 +68,11 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="text-muted-foreground py-6 text-center text-xs">
-        CCC IT 사역부 · 2026 여름 수련회
+      <footer className="text-muted-foreground flex flex-col items-center gap-2 py-6 text-center text-xs">
+        <Link href="/guide" className="hover:text-foreground underline-offset-4 hover:underline">
+          📖 사용 가이드
+        </Link>
+        <span>CCC IT 사역부 · 2026 여름 수련회</span>
       </footer>
     </main>
   );

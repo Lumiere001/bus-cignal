@@ -93,6 +93,14 @@ export default async function Page({
           학생 로그인 →
         </Link>
       </div>
+
+      {/* 사용 가이드 — 간사가 학생 신청 방법까지 한눈에 보고 안내할 수 있게 */}
+      <Link
+        href="/guide"
+        className="text-muted-foreground hover:text-foreground text-center text-sm underline-offset-4 hover:underline"
+      >
+        📖 사용 가이드 (간사·학생 사용 방법)
+      </Link>
     </main>
   );
 }
