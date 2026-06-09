@@ -6,6 +6,7 @@ import { Logo } from "@/components/brand/logo";
 import { DIRECTION_SHORT, MATCH_STATUS_LABEL } from "@/lib/labels";
 import { formatKstDateTime } from "@/lib/datetime";
 import { CancelRequestButton } from "./CancelRequestButton";
+import { LinkPending } from "./LinkPending";
 import { studentLogout } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -94,19 +95,21 @@ export default async function StudentHomePage({
       <div className="grid grid-cols-2 gap-3">
         <Link
           href="/s/apply"
-          className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-blue-600 px-4 py-6 text-white shadow-sm hover:bg-blue-700"
+          className="relative flex flex-col items-center justify-center gap-1 rounded-2xl bg-blue-600 px-4 py-6 text-white shadow-sm hover:bg-blue-700"
         >
           <span className="text-2xl">🚌</span>
           <span className="text-base font-semibold">예약하기</span>
           <span className="text-xs text-blue-100">차량 직접 신청</span>
+          <LinkPending />
         </Link>
         <Link
           href="/s/reservations"
-          className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-gray-200 bg-white px-4 py-6 text-gray-900 shadow-sm hover:bg-gray-50"
+          className="relative flex flex-col items-center justify-center gap-1 rounded-2xl border border-gray-200 bg-white px-4 py-6 text-gray-900 shadow-sm hover:bg-gray-50"
         >
           <span className="text-2xl">🎫</span>
           <span className="text-base font-semibold">예약 확인</span>
           <span className="text-xs text-gray-400">확정된 내 예약</span>
+          <LinkPending />
         </Link>
       </div>
 
