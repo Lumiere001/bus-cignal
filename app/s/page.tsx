@@ -77,11 +77,19 @@ export default async function StudentHomePage({
     <main className="mx-auto max-w-md space-y-6 px-4 py-8">
       <div className="flex items-center justify-between">
         <Logo size="sm" />
-        <form action={studentLogout}>
-          <button type="submit" className="text-xs text-gray-400 hover:text-gray-600">
-            로그아웃
-          </button>
-        </form>
+        <div className="flex items-center gap-3">
+          <Link href="/status" className="text-xs text-gray-400 hover:text-gray-600">
+            🗺️ 잔여석
+          </Link>
+          <Link href="/guide" className="text-xs text-gray-400 hover:text-gray-600">
+            📖 사용 방법
+          </Link>
+          <form action={studentLogout}>
+            <button type="submit" className="text-xs text-gray-400 hover:text-gray-600">
+              로그아웃
+            </button>
+          </form>
+        </div>
       </div>
 
       <div className="rounded-xl border bg-white p-5 shadow-sm">

@@ -72,6 +72,13 @@ export default async function StudentLoginPage({
           로 본인확인 후 확인할 수 있어요.
         </p>
       </div>
+
+      <Link
+        href="/guide"
+        className="text-muted-foreground hover:text-foreground text-center text-sm underline-offset-4 hover:underline"
+      >
+        📖 처음이신가요? 사용 방법 보기
+      </Link>
     </main>
   );
 }

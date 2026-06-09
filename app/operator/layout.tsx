@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { logoutOperator } from "@/lib/auth/logout";
+import { getOperatorSession } from "@/lib/auth/operator";
+import { getOperatorRegionName } from "@/lib/auth/operator-region";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isMaintenanceMode } from "@/lib/system-config";
 import { Logo } from "@/components/brand/logo";
 import { BottomTabNav, type TabItem } from "@/components/nav/bottom-tab-nav";
@@ -21,6 +24,7 @@ const NAV = [
   { href: "/operator/boarding", label: "탑승 학생", icon: "🚍" },
   { href: "/operator/settlement", label: "정산", icon: "🧾" },
   { href: "/operator/profile", label: "내 정보", icon: "👤" },
+  { href: "/guide", label: "사용 가이드", icon: "📖" },
 ];
 const TABS: TabItem[] = NAV.slice(0, 5); // 하단바 5개 (내 정보는 헤더 우측)
 
@@ -32,6 +36,21 @@ export default async function OperatorLayout({ children }: { children: React.Rea
   }
 
   const maintenance = await isMaintenanceMode();
+
+  // 상단에 로그인한 간사 이름 표시("내가 제대로 로그인했구나" 확인용). 이름은 세션에 없어 DB 조회.
+  const session = await getOperatorSession();
+  let operatorName: string | null = null;
+  let regionName: string | null = null;
+  if (session) {
+    const db = createAdminClient();
+    const { data: op } = await db
+      .from("operators")
+      .select("name")
+      .eq("id", session.operatorId)
+      .maybeSingle();
+    operatorName = op?.name ?? null;
+    if (session.regionId) regionName = await getOperatorRegionName(session.regionId);
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -51,14 +70,46 @@ export default async function OperatorLayout({ children }: { children: React.Rea
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            {/* 전국 잔여석 현황(/status) — 로그인 후에도 한 번에 (공개 페이지) */}
             <Link
-              href="/operator/profile"
-              aria-label="내 정보"
-              className="bg-accent text-accent-foreground grid h-8 w-8 place-items-center rounded-lg text-sm md:hidden"
+              href="/status"
+              aria-label="전국 잔여석 현황"
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
             >
-              👤
+              <span>🗺️</span>
+              <span className="hidden sm:inline">잔여석</span>
             </Link>
+            {/* 사용 가이드 — 모바일 하단탭엔 없어 상단바에 항상 노출(간사가 학생 안내까지) */}
+            <Link
+              href="/guide"
+              aria-label="사용 가이드"
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
+            >
+              <span>📖</span>
+              <span className="hidden sm:inline">가이드</span>
+            </Link>
+            {/* 로그인한 간사 이름 — "내가 제대로 로그인했구나" 확인용 (간사 요청) */}
+            {operatorName && (
+              <Link
+                href="/operator/profile"
+                className="flex min-w-0 items-center gap-1 text-sm"
+                aria-label="내 정보"
+              >
+                <span className="bg-accent text-accent-foreground grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs">
+                  👤
+                </span>
+                <span className="text-foreground max-w-[7.5rem] truncate font-medium">
+                  {operatorName}
+                  <span className="text-muted-foreground font-normal"> 간사</span>
+                </span>
+                {regionName && (
+                  <span className="text-muted-foreground hidden text-xs sm:inline">
+                    · {regionName}
+                  </span>
+                )}
+              </Link>
+            )}
             <form action={logout}>
               <button
                 type="submit"
