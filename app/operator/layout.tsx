@@ -71,6 +71,15 @@ export default async function OperatorLayout({ children }: { children: React.Rea
             </nav>
           </div>
           <div className="flex items-center gap-2.5">
+            {/* 전국 잔여석 현황(/status) — 로그인 후에도 한 번에 (공개 페이지) */}
+            <Link
+              href="/status"
+              aria-label="전국 잔여석 현황"
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
+            >
+              <span>🗺️</span>
+              <span className="hidden sm:inline">잔여석</span>
+            </Link>
             {/* 사용 가이드 — 모바일 하단탭엔 없어 상단바에 항상 노출(간사가 학생 안내까지) */}
             <Link
               href="/guide"

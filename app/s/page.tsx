@@ -78,6 +78,9 @@ export default async function StudentHomePage({
       <div className="flex items-center justify-between">
         <Logo size="sm" />
         <div className="flex items-center gap-3">
+          <Link href="/status" className="text-xs text-gray-400 hover:text-gray-600">
+            🗺️ 잔여석
+          </Link>
           <Link href="/guide" className="text-xs text-gray-400 hover:text-gray-600">
             📖 사용 방법
           </Link>
