@@ -409,12 +409,12 @@ export async function cancelMatch(matchId: string, reason: string): Promise<Acti
   return { ok: true };
 }
 
-// ─── 공개 인원수 변경 — 공급 간사 (사용자 요청 2026-06-07) ─────────────────────
+// ─── 잔여 좌석(타지구 공개 좌석) 변경 — 공급 간사 (UI 라벨: '잔여 좌석 변경') ─────
 /**
- * 타지구에 공개한 좌석 수(seat_offers.seat_count)를 조정한다.
- *   예: 15명 공개 → 7명 타지구 확정 → 본인 지구용 3석 확보 위해 12로 축소.
+ * 타지구에 내놓는 좌석 수(seat_offers.seat_count)를 조정한다.
+ *   예: 15석 공개 → 7명 타지구 확정 → 본인 지구용 3석 확보 위해 12로 축소.
  * 가드: draft/published 차량만. 이미 매칭(자리 점유)된 인원 미만으로는 못 줄이고, 정원 초과 불가.
- * 확정 인원수 자체는 못 바꾼다(매칭은 그대로) — 공개 좌석 한도만 조정.
+ * 확정 인원수 자체는 못 바꾼다(매칭은 그대로) — 내놓는 좌석 한도만 조정.
  */
 export async function editSeatOffer(
   tripId: string,
@@ -424,7 +424,7 @@ export async function editSeatOffer(
   if (!session.regionId) return { error: "소속 지구 정보가 없습니다." };
 
   if (!Number.isInteger(newCount) || newCount < 1) {
-    return { error: "공개 인원수는 1명 이상이어야 합니다." };
+    return { error: "잔여 좌석은 1석 이상이어야 합니다." };
   }
 
   const db = createAdminClient();
