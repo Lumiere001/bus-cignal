@@ -74,7 +74,7 @@ export default async function StudentHomePage({
     .filter((r) => !r.paid && r.status !== "cancelled");
 
   return (
-    <main className="mx-auto max-w-md space-y-6 px-4 py-8">
+    <main className="mx-auto max-w-md space-y-7 px-5 py-8">
       <div className="flex items-center justify-between">
         <Logo size="sm" />
         <div className="flex items-center gap-3">
@@ -100,21 +100,21 @@ export default async function StudentHomePage({
       </div>
 
       {/* 두 갈래: 예약하기 / 예약 확인 */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
         <Link
           href="/s/apply"
-          className="relative flex flex-col items-center justify-center gap-1 rounded-2xl bg-blue-600 px-4 py-6 text-white shadow-sm hover:bg-blue-700"
+          className="relative flex flex-col items-center justify-center gap-1.5 rounded-2xl bg-blue-600 px-4 py-8 text-white shadow-sm hover:bg-blue-700"
         >
-          <span className="text-2xl">🚌</span>
+          <span className="text-3xl">🚌</span>
           <span className="text-base font-semibold">예약하기</span>
           <span className="text-xs text-blue-100">차량 직접 신청</span>
           <LinkPending />
         </Link>
         <Link
           href="/s/reservations"
-          className="relative flex flex-col items-center justify-center gap-1 rounded-2xl border border-gray-200 bg-white px-4 py-6 text-gray-900 shadow-sm hover:bg-gray-50"
+          className="relative flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-gray-200 bg-white px-4 py-8 text-gray-900 shadow-sm hover:bg-gray-50"
         >
-          <span className="text-2xl">🎫</span>
+          <span className="text-3xl">🎫</span>
           <span className="text-base font-semibold">예약 확인</span>
           <span className="text-xs text-gray-400">확정된 내 예약</span>
           <LinkPending />
