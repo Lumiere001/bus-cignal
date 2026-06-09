@@ -121,6 +121,7 @@ export async function createApproveScenario(
 /** /r 학생 진입 테스트용 — paid 매칭 + 예약번호 + match_passengers를 격리 생성. */
 export interface PaidMatchScenario {
   tripId: string;
+  requestId: string;
   matchId: string;
   code: string;
   name: string;
@@ -160,7 +161,15 @@ export async function createPaidMatchScenario(): Promise<PaidMatchScenario> {
     await base.cleanup();
   };
 
-  return { tripId: base.tripId, matchId, code, name, phoneLast4: phone.slice(-4), cleanup };
+  return {
+    tripId: base.tripId,
+    requestId: base.requestId,
+    matchId,
+    code,
+    name,
+    phoneLast4: phone.slice(-4),
+    cleanup,
+  };
 }
 
 /** rate-limit 등 부수효과 정리용. */

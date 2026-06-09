@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { OPERATOR_BUSAN_STATE } from "./support/auth-paths";
-import { createApproveScenario, type ApproveScenario } from "./support/db";
+import {
+  createApproveScenario,
+  createPaidMatchScenario,
+  type ApproveScenario,
+} from "./support/db";
 
 // 신청 간사(부산) 권한의 신청 취소·수정 회귀 방지.
 //   app/operator/requests/[id]/{RequestActions, edit/RequestEditForm}
@@ -100,6 +104,24 @@ test("수정: 새 학생 추가 → 동의 미체크면 차단, 체크 후 저�
       new RegExp(`/operator/requests/${scn.requestId}$`),
     );
     await expect(page.getByText("E2E신규학생")).toBeVisible();
+  } finally {
+    await scn.cleanup();
+  }
+});
+
+test("매칭/예약: 입금 확인된 학생 → 수요 간사 화면에 예약번호 + 링크 복사 노출", async ({
+  page,
+}) => {
+  const scn = await createPaidMatchScenario();
+  try {
+    await page.goto(`/operator/requests/${scn.requestId}`);
+
+    // 입금 확인 배지 + 예약번호 + '링크 복사' 버튼 → 수요 간사가 학생에게 공유 가능.
+    await expect(page.getByText("입금 확인")).toBeVisible();
+    await expect(page.getByText(scn.code)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /링크 복사/ }),
+    ).toBeVisible();
   } finally {
     await scn.cleanup();
   }
