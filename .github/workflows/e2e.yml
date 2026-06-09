@@ -27,6 +27,7 @@ jobs:
       MASTER_SESSION_SECRET: e2e-master-session-secret-not-a-real-secret-000
       OPERATOR_SESSION_SECRET: e2e-operator-session-secret-not-a-real-secret-0
       PASSENGER_SESSION_SECRET: e2e-passenger-session-secret-not-a-real-secret
+      STUDENT_SESSION_SECRET: e2e-student-session-secret-not-a-real-secret-00
     steps:
       - uses: actions/checkout@v4
 
