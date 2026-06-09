@@ -27,6 +27,13 @@ export function formatPush(type: string, payload: unknown): PushCopy {
       return { title: "매칭 확정", body: "신청이 매칭됐어요. 송금 후 [송금 완료]를 눌러주세요." };
     case "match_rejected":
       return { title: "매칭 거절", body: reason ? `사유: ${reason}` : "신청이 거절됐어요." };
+    case "passengers_declined":
+      return {
+        title: "신청 학생 일부 제외",
+        body: reason
+          ? `일부 학생이 제외됐어요. 남은 학생은 계속 대기해요. 사유: ${reason}`
+          : "신청한 학생 중 일부가 제외됐어요. 남은 학생은 계속 대기해요.",
+      };
     case "partial_match":
       return { title: "부분 매칭", body: "일부 인원만 매칭됐어요. 나머지는 큐에 남아 있어요." };
     case "seat_freed":

@@ -85,6 +85,60 @@ async function resolveNewLocation(
   return inserted.id;
 }
 
+// 가는편(up) 도착지 고정 장소 — 평창 휘닉스파크 (사용자 요청 2026-06-10).
+// 좌표는 길찾기/향후 지도 표기용 근사값(수련회 장소가 고정이라 매번 지정 불필요).
+const PYEONGCHANG_VENUE: NewPlace = {
+  address: "강원특별자치도 평창군 봉평면 휘닉스로 174",
+  placeName: "평창 휘닉스파크",
+  lat: 37.5876,
+  lng: 128.3221,
+};
+
+// 텍스트 전용 장소(좌표 없음)를 본인 지구·방향·타입에 맞춰 upsert하고 id 반환.
+// 오는편(down) 출발지 = 평창 집결 위치(예: '블루캐니언 옆 주차장')처럼 지도 핀 없이
+// 텍스트로만 안내하는 지점에 사용. dedup: region+direction+type+address.
+async function resolveTextLocation(
+  db: AdminClient,
+  params: {
+    regionId: string;
+    operatorId: string;
+    direction: string;
+    locationType: "origin" | "destination";
+    address: string;
+  },
+): Promise<string | null> {
+  const { regionId, operatorId, direction, locationType, address } = params;
+  const trimmed = address.trim();
+  if (trimmed.length < 2 || trimmed.length > 100) return null;
+
+  const { data: existing } = await db
+    .from("region_locations")
+    .select("id")
+    .eq("region_id", regionId)
+    .eq("direction", direction)
+    .eq("location_type", locationType)
+    .eq("address", trimmed)
+    .maybeSingle();
+  if (existing?.id) return existing.id;
+
+  const { data: inserted, error } = await db
+    .from("region_locations")
+    .insert({
+      region_id: regionId,
+      direction,
+      location_type: locationType,
+      address: trimmed,
+      label: null,
+      lat: null,
+      lng: null,
+      created_by: operatorId,
+    })
+    .select("id")
+    .single();
+  if (error || !inserted) return null;
+  return inserted.id;
+}
+
 // ─── Trip 등록 ────────────────────────────────────────────────────────────────
 
 export async function createTrip(
@@ -98,12 +152,14 @@ export async function createTrip(
   }
 
   const direction = formData.get("direction") as string;
-  // 출발지/도착지는 두 경로 중 하나로 옴:
-  //  (1) 등록 장소 id (기존 동작 / fallback select)  (2) 방식 B 새 장소 JSON
-  const originId = formData.get("origin_location_id") as string;
-  const destId = formData.get("destination_location_id") as string;
-  const originNew = parseNewPlace(formData.get("origin_new"));
-  const destNew = parseNewPlace(formData.get("dest_new"));
+  // 방향별 위치 입력 (사용자 요청 2026-06-10):
+  //  · 가는편(up):  출발지=지도 지정(등록 id 또는 새 장소 JSON), 도착지=평창 휘닉스파크 고정.
+  //  · 오는편(down): 출발지=평창 텍스트(origin_text), 도착지=지도 지정(등록 id 또는 새 장소 JSON).
+  const originId = formData.get("origin_location_id") as string; // 가는편 출발 (지도)
+  const originNew = parseNewPlace(formData.get("origin_new")); // 가는편 출발 (새 장소)
+  const destId = formData.get("destination_location_id") as string; // 오는편 도착 (지도)
+  const destNew = parseNewPlace(formData.get("dest_new")); // 오는편 도착 (새 장소)
+  const originText = ((formData.get("origin_text") as string) ?? "").trim(); // 오는편 출발 (텍스트)
   const rawDeparture = formData.get("departure_at") as string;
   const capacity = Number(formData.get("capacity"));
   const price = Number(formData.get("price_per_seat"));
@@ -113,8 +169,15 @@ export async function createTrip(
   const treasurerPhone = cleanPhone((formData.get("treasurer_phone") as string) ?? "");
 
   if (!["up", "down"].includes(direction)) return { error: "방향을 선택해주세요." };
-  if (!originId && !originNew) return { error: "출발지를 선택해주세요." };
-  if (!destId && !destNew) return { error: "도착지를 선택해주세요." };
+  if (direction === "up" && !originId && !originNew) {
+    return { error: "출발지를 선택해주세요." };
+  }
+  if (direction === "down" && originText.length < 2) {
+    return { error: "출발지(집결 위치)를 입력해주세요." };
+  }
+  if (direction === "down" && !destId && !destNew) {
+    return { error: "도착지를 선택해주세요." };
+  }
   if (!rawDeparture) return { error: "출발 시각을 입력해주세요." };
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 200)
     return { error: "정원은 1~200 사이로 입력해주세요." };
@@ -135,55 +198,77 @@ export async function createTrip(
 
   const supabase = createAdminClient();
 
-  // 출발지·도착지를 최종 region_location id로 확정.
-  //  - 등록 id면: 본인 지구·방향·타입 일치 검증 (FormData 위조 방지, 기존 동작)
-  //  - 새 장소면: 본인 지구·방향·타입으로 upsert(중복 주소 재사용) 후 id 사용
-  // 두 경로 모두 region_id는 세션 값으로만 — 위조 불가.
+  // 출발지·도착지를 최종 region_location id로 확정 (방향별 분기, 사용자 요청 2026-06-10).
+  //  - 지도 지정 슬롯: 등록 id면 본인 지구·방향·타입 일치 검증(FormData 위조 방지), 새 장소면 upsert.
+  //  - 고정/텍스트 슬롯: 평창 휘닉스파크(가는편 도착) / 텍스트(오는편 출발)를 서버가 확정.
+  // 모든 경로에서 region_id는 세션 값으로만 — 위조 불가.
   let originLocationId: string | null = null;
   let destLocationId: string | null = null;
 
-  if (originId) {
-    const { data: originLoc } = await supabase
-      .from("region_locations")
-      .select("id")
-      .eq("id", originId)
-      .eq("region_id", session.regionId)
-      .eq("direction", direction)
-      .eq("location_type", "origin")
-      .single();
-    if (!originLoc) return { error: "유효하지 않은 출발지입니다." };
-    originLocationId = originLoc.id;
-  } else if (originNew) {
-    originLocationId = await resolveNewLocation(supabase, {
-      regionId: session.regionId,
-      operatorId: session.operatorId,
-      direction,
-      locationType: "origin",
-      place: originNew,
-    });
-    if (!originLocationId) return { error: "출발지 저장 중 오류가 발생했습니다." };
-  }
-
-  if (destId) {
-    const { data: destLoc } = await supabase
-      .from("region_locations")
-      .select("id")
-      .eq("id", destId)
-      .eq("region_id", session.regionId)
-      .eq("direction", direction)
-      .eq("location_type", "destination")
-      .single();
-    if (!destLoc) return { error: "유효하지 않은 도착지입니다." };
-    destLocationId = destLoc.id;
-  } else if (destNew) {
+  if (direction === "up") {
+    // 가는편 출발지 = 지도 지정 (지역 픽업)
+    if (originId) {
+      const { data: originLoc } = await supabase
+        .from("region_locations")
+        .select("id")
+        .eq("id", originId)
+        .eq("region_id", session.regionId)
+        .eq("direction", direction)
+        .eq("location_type", "origin")
+        .single();
+      if (!originLoc) return { error: "유효하지 않은 출발지입니다." };
+      originLocationId = originLoc.id;
+    } else if (originNew) {
+      originLocationId = await resolveNewLocation(supabase, {
+        regionId: session.regionId,
+        operatorId: session.operatorId,
+        direction,
+        locationType: "origin",
+        place: originNew,
+      });
+      if (!originLocationId) return { error: "출발지 저장 중 오류가 발생했습니다." };
+    }
+    // 가는편 도착지 = 평창 휘닉스파크 고정
     destLocationId = await resolveNewLocation(supabase, {
       regionId: session.regionId,
       operatorId: session.operatorId,
       direction,
       locationType: "destination",
-      place: destNew,
+      place: PYEONGCHANG_VENUE,
     });
     if (!destLocationId) return { error: "도착지 저장 중 오류가 발생했습니다." };
+  } else {
+    // 오는편 출발지 = 평창 텍스트 안내 (좌표 없음)
+    originLocationId = await resolveTextLocation(supabase, {
+      regionId: session.regionId,
+      operatorId: session.operatorId,
+      direction,
+      locationType: "origin",
+      address: originText,
+    });
+    if (!originLocationId) return { error: "출발지 저장 중 오류가 발생했습니다." };
+    // 오는편 도착지 = 지도 지정 (지역 하차)
+    if (destId) {
+      const { data: destLoc } = await supabase
+        .from("region_locations")
+        .select("id")
+        .eq("id", destId)
+        .eq("region_id", session.regionId)
+        .eq("direction", direction)
+        .eq("location_type", "destination")
+        .single();
+      if (!destLoc) return { error: "유효하지 않은 도착지입니다." };
+      destLocationId = destLoc.id;
+    } else if (destNew) {
+      destLocationId = await resolveNewLocation(supabase, {
+        regionId: session.regionId,
+        operatorId: session.operatorId,
+        direction,
+        locationType: "destination",
+        place: destNew,
+      });
+      if (!destLocationId) return { error: "도착지 저장 중 오류가 발생했습니다." };
+    }
   }
 
   if (!originLocationId) return { error: "유효하지 않은 출발지입니다." };

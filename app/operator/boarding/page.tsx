@@ -114,7 +114,7 @@ export default async function Page() {
         탑승을 조율하세요.
       </p>
       <p className="mb-6 text-xs leading-relaxed text-gray-600 sm:text-sm">
-        채팅은 지구별이 아니라 차량(상/하행)별 방에서 진행됩니다 · 지구 차량 상세에서 입장하세요.
+        채팅은 지구별이 아니라 차량(가는편/오는편)별 방에서 진행됩니다 · 지구 차량 상세에서 입장하세요.
       </p>
 
       <BoardingGroups boarders={boarders} />

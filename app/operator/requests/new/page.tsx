@@ -53,8 +53,9 @@ export default async function Page() {
       (ACTIVE_MATCH_STATUSES as readonly string[]).includes(m.status ?? ""),
     ).length;
     const direction: "up" | "down" = t.direction === "down" ? "down" : "up";
-    // 평창 픽업 위치 = 상행이면 도착지(평창), 하행이면 출발지(평창).
-    const pyeongchang = direction === "up" ? dest : origin;
+    // 지도 핀 = '지역(우리 동네)' 지점 — 가는편은 출발지(지역), 오는편은 도착지(지역).
+    // 평창 쪽 지점은 좌표 없음(오는편 출발=텍스트)/고정이라 핀 대신 텍스트로만 안내.
+    const local = direction === "up" ? origin : dest;
     return {
       id: t.id,
       direction,
@@ -64,9 +65,10 @@ export default async function Page() {
       regionArea: one(t.region)?.area ?? null,
       originLabel: origin?.label ?? origin?.address ?? "출발지",
       destinationLabel: dest?.label ?? dest?.address ?? "도착지",
-      pyeongchangLabel: pyeongchang?.label ?? pyeongchang?.address ?? "평창 픽업",
-      pyeongchangLat: pyeongchang?.lat ?? null,
-      pyeongchangLng: pyeongchang?.lng ?? null,
+      mapLabel:
+        local?.label ?? local?.address ?? (direction === "up" ? "출발지" : "도착지"),
+      mapLat: local?.lat ?? null,
+      mapLng: local?.lng ?? null,
       availableSeats: Math.max(0, openSeats - activeMatches),
     };
   });

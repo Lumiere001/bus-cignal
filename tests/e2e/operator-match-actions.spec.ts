@@ -12,9 +12,30 @@ test("거절: 신청 전체 거절(사유 필수) → 큐에서 사라짐", asyn
 
     await page.getByRole("button", { name: "거절", exact: true }).click();
     await page.getByPlaceholder(/거절 사유/).fill("E2E 자동화 거절 사유 — 좌석 사정");
-    await page.getByRole("button", { name: "거절 확정" }).click();
+    // 학생 미선택 → 신청 전체 거절(경고 후 진행).
+    await page.getByRole("button", { name: "신청 전체 거절" }).click();
 
     await expect(page.getByText("대기 중인 신청이 없습니다")).toBeVisible();
+  } finally {
+    await scn.cleanup();
+  }
+});
+
+test("선택 거절: 체크한 학생만 큐에서 빠지고 나머지는 대기 유지", async ({ page }) => {
+  const scn = await createApproveScenario({ passengers: 2 });
+  try {
+    await page.goto(`/operator/trips/${scn.tripId}`);
+    await expect(page.getByText("E2E학생1")).toBeVisible();
+    await expect(page.getByText("E2E학생2")).toBeVisible();
+
+    // 학생1만 체크 → [거절] → 선택 거절([1명 거절]).
+    await page.getByRole("checkbox").first().check();
+    await page.getByRole("button", { name: "거절", exact: true }).click();
+    await page.getByRole("button", { name: "1명 거절" }).click();
+
+    // 학생1은 큐에서 사라지고, 학생2는 그대로 남아야 함(전체 삭제 아님).
+    await expect(page.getByText("E2E학생1")).toHaveCount(0);
+    await expect(page.getByText("E2E학생2")).toBeVisible();
   } finally {
     await scn.cleanup();
   }

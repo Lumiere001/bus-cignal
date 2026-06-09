@@ -126,7 +126,7 @@ export function RequestsList({ requests }: { requests: RequestRow[] }) {
           options={DIRECTION_FILTERS}
           value={direction}
           onChange={setDirection}
-          ariaLabel="상하행 필터"
+          ariaLabel="방향 필터"
         />
         <div className="ml-auto">
           <Segmented

@@ -7,7 +7,8 @@ import { DIRECTION_SHORT } from "@/lib/labels";
 import { formatKstDateTime, formatWon } from "@/lib/datetime";
 import { createRequest, type PassengerInput } from "../actions";
 
-// page.tsx 에서 내려주는 차량 1건. 평창 픽업 좌표는 상행=도착지/하행=출발지 위치(평창 쪽).
+// page.tsx 에서 내려주는 차량 1건.
+// 지도 핀 좌표(map*)는 '지역(우리 동네)' 지점 — 가는편=출발지, 오는편=도착지.
 export type WizardTrip = {
   id: string;
   direction: "up" | "down";
@@ -17,9 +18,9 @@ export type WizardTrip = {
   regionArea: string | null;
   originLabel: string;
   destinationLabel: string;
-  pyeongchangLabel: string;
-  pyeongchangLat: number | null;
-  pyeongchangLng: number | null;
+  mapLabel: string;
+  mapLat: number | null;
+  mapLng: number | null;
   availableSeats: number;
 };
 
@@ -115,15 +116,15 @@ export function RequestWizard({
   const allResults = useMemo(() => [...exact, ...recommended], [exact, recommended]);
   const selectedTrip = allResults.find((t) => t.id === selectedId) ?? null;
 
-  // 지도 핀 — 평창 픽업 좌표가 있는 차량만. title=공급지구명, subtitle=노선/시각.
+  // 지도 핀 — '지역' 지점 좌표가 있는 차량만. title=공급지구명, subtitle=노선/시각.
   const pins: MapPin[] = useMemo(() => {
     return allResults
-      .filter((t) => t.pyeongchangLat !== null && t.pyeongchangLng !== null)
+      .filter((t) => t.mapLat !== null && t.mapLng !== null)
       .map((t) => ({
         id: t.id,
-        lat: t.pyeongchangLat as number,
-        lng: t.pyeongchangLng as number,
-        title: `${t.regionName} (${t.pyeongchangLabel})`,
+        lat: t.mapLat as number,
+        lng: t.mapLng as number,
+        title: `${t.regionName} (${t.mapLabel})`,
         subtitle: `[${DIRECTION_SHORT[t.direction]}] ${t.originLabel} → ${t.destinationLabel} · ${formatKstDateTime(t.departureAt)}`,
       }));
   }, [allResults]);
@@ -394,7 +395,7 @@ export function RequestWizard({
             </div>
           ) : (
             <>
-              {/* 평창 픽업 위치 지도 */}
+              {/* 지역(지구) 지점 지도 — 가는편 출발지 / 오는편 도착지 */}
               <KakaoMultiMap pins={pins} selectedId={selectedId} onSelect={(id) => setSelectedId(id)} />
 
               {/* 정확 일치 — 선택한 지구 차량 */}
@@ -448,7 +449,7 @@ export function RequestWizard({
               {formatWon(selectedTrip.pricePerSeat)}/인 · 잔여 {selectedTrip.availableSeats}석
             </div>
             <div className="text-muted-foreground mt-1 text-xs">
-              탑승 위치: {selectedTrip.pyeongchangLabel} (공급 지구 지정)
+              탑승 위치: {selectedTrip.originLabel} (공급 지구 지정)
             </div>
           </div>
 

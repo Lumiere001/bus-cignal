@@ -12,6 +12,8 @@ export type TripDetail = {
   originLng: number | null;
   destinationLabel: string;
   destinationAddress: string;
+  destinationLat: number | null;
+  destinationLng: number | null;
   operatorName: string | null;
   operatorPhone: string | null;
   treasurerName: string | null;
@@ -97,6 +99,8 @@ export async function getTripForPassenger(
     originLng: origin?.lng ?? null,
     destinationLabel: dest?.label ?? dest?.address ?? "도착지",
     destinationAddress: dest?.address ?? "",
+    destinationLat: dest?.lat ?? null,
+    destinationLng: dest?.lng ?? null,
     operatorName: operator?.name ?? null,
     operatorPhone: operator?.phone ?? null,
     treasurerName: trip.treasurer_name ?? null,

@@ -28,6 +28,10 @@ export default async function TripDetailPage({ params }: Props) {
       ? DIRECTION_SHORT[trip.direction]
       : "";
 
+  // 지도로 보여줄 '지역(우리 동네)' 지점 — 가는편(up)은 출발지(지역), 오는편(down)은 도착지(지역).
+  // 평창 쪽 지점은 텍스트로만 안내(오는편 출발=좌표 없음, 가는편 도착=고정).
+  const mappedPoint = trip.direction === "down" ? "destination" : "origin";
+
   return (
     <main className="mx-auto flex max-w-md flex-1 flex-col gap-4 p-4">
       <nav>
@@ -68,34 +72,31 @@ export default async function TripDetailPage({ params }: Props) {
         </Link>
       )}
 
-      {/* 탑승 장소 상세 */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold">탑승 장소</h2>
-        <dl className="flex flex-col gap-1 text-sm">
-          <div className="flex gap-2">
-            <dt className="w-16 shrink-0 text-muted-foreground">장소명</dt>
-            <dd className="min-w-0 break-words">{trip.originLabel}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="w-16 shrink-0 text-muted-foreground">주소</dt>
-            <dd className="min-w-0 break-all">
-              {trip.originAddress || "주소 정보 없음"}
-            </dd>
-          </div>
-        </dl>
+      {/* 탑승 안내 — 가는편(up): 출발지(지역) 지도 / 오는편(down): 도착지(지역) 지도.
+          평창 쪽 지점은 텍스트로만 안내(오는편 출발=좌표 없음, 가는편 도착=고정). */}
+      <section className="flex flex-col gap-4">
+        <h2 className="text-base font-semibold">탑승 안내</h2>
 
-        {trip.originLat !== null && trip.originLng !== null ? (
-          <KakaoMap
-            lat={trip.originLat}
-            lng={trip.originLng}
-            label={trip.originLabel}
-          />
-        ) : (
-          <div className="rounded-lg border border-dashed bg-muted px-4 py-6 text-center text-sm text-muted-foreground">
-            지도 좌표 정보가 아직 등록되지 않았어요.
-            <br />위 주소를 지도 앱에서 검색해 보세요.
-          </div>
-        )}
+        <PointBlock
+          role="출발"
+          label={trip.originLabel}
+          address={trip.originAddress}
+          map={
+            mappedPoint === "origin"
+              ? { lat: trip.originLat, lng: trip.originLng }
+              : null
+          }
+        />
+        <PointBlock
+          role="도착"
+          label={trip.destinationLabel}
+          address={trip.destinationAddress}
+          map={
+            mappedPoint === "destination"
+              ? { lat: trip.destinationLat, lng: trip.destinationLng }
+              : null
+          }
+        />
       </section>
 
       {/* 문의 연락처 — 담당(공급) 간사·총무 (§S5). 안내 목적 노출. */}
@@ -138,5 +139,43 @@ export default async function TripDetailPage({ params }: Props) {
         </section>
       )}
     </main>
+  );
+}
+
+// 출발/도착 한 지점 — 라벨·주소 + (해당 지점이 '지도 대상'이면) 지도.
+// 좌표가 없으면(텍스트 전용 지점) 주소 검색 안내 fallback.
+function PointBlock({
+  role,
+  label,
+  address,
+  map,
+}: {
+  role: string;
+  label: string;
+  address: string;
+  map: { lat: number | null; lng: number | null } | null;
+}) {
+  const hasCoords = map != null && map.lat !== null && map.lng !== null;
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <span className="bg-muted text-muted-foreground rounded-md px-2 py-0.5 text-xs font-medium">
+          {role}
+        </span>
+        <span className="min-w-0 break-words text-sm font-medium">{label}</span>
+      </div>
+      {address && (
+        <p className="text-muted-foreground text-sm break-all">{address}</p>
+      )}
+      {map != null &&
+        (hasCoords ? (
+          <KakaoMap lat={map.lat as number} lng={map.lng as number} label={label} />
+        ) : (
+          <div className="bg-muted text-muted-foreground rounded-lg border border-dashed px-4 py-6 text-center text-sm">
+            지도 좌표 정보가 아직 등록되지 않았어요.
+            <br />위 주소를 지도 앱에서 검색해 보세요.
+          </div>
+        ))}
+    </div>
   );
 }

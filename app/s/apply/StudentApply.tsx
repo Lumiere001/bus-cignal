@@ -7,7 +7,8 @@ import { DIRECTION_SHORT } from "@/lib/labels";
 import { formatKstDateTime, formatWon } from "@/lib/datetime";
 import { createStudentRequest } from "../actions";
 
-// page.tsx 에서 내려주는 신청 가능 차량 1건 (published + 잔여>0). 평창 픽업 좌표는 상행=도착/하행=출발.
+// page.tsx 에서 내려주는 신청 가능 차량 1건 (published + 잔여>0).
+// 지도 핀 좌표(map*)는 '지역(우리 동네)' 지점 — 가는편=출발지, 오는편=도착지.
 export type WizardTrip = {
   id: string;
   direction: "up" | "down";
@@ -17,9 +18,9 @@ export type WizardTrip = {
   regionArea: string | null;
   originLabel: string;
   destinationLabel: string;
-  pyeongchangLabel: string;
-  pyeongchangLat: number | null;
-  pyeongchangLng: number | null;
+  mapLabel: string;
+  mapLat: number | null;
+  mapLng: number | null;
   availableSeats: number;
 };
 
@@ -110,12 +111,12 @@ export function StudentApply({
 
   const pins: MapPin[] = useMemo(() => {
     return allResults
-      .filter((t) => t.pyeongchangLat !== null && t.pyeongchangLng !== null)
+      .filter((t) => t.mapLat !== null && t.mapLng !== null)
       .map((t) => ({
         id: t.id,
-        lat: t.pyeongchangLat as number,
-        lng: t.pyeongchangLng as number,
-        title: `${t.regionName} (${t.pyeongchangLabel})`,
+        lat: t.mapLat as number,
+        lng: t.mapLng as number,
+        title: `${t.regionName} (${t.mapLabel})`,
         subtitle: `[${DIRECTION_SHORT[t.direction]}] ${t.originLabel} → ${t.destinationLabel} · ${formatKstDateTime(t.departureAt)}`,
       }));
   }, [allResults]);
@@ -341,7 +342,7 @@ export function StudentApply({
               {formatWon(selectedTrip.pricePerSeat)}/인 · 잔여 {selectedTrip.availableSeats}석
             </div>
             <div className="text-muted-foreground mt-1 text-xs">
-              탑승 위치: {selectedTrip.pyeongchangLabel} (공급 지구 지정)
+              탑승 위치: {selectedTrip.originLabel} (공급 지구 지정)
             </div>
           </div>
 
