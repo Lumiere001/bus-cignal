@@ -1,0 +1,28 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { randomBytes } from "node:crypto";
+import { cccBase, buildConsentUrl, CCC_CLIENT_ID } from "@/lib/ccc/handoff";
+
+export const dynamic = "force-dynamic";
+
+/** state(CSRF) 임시 보관 쿠키 — 콜백에서 일치 검증 후 즉시 삭제. */
+const STATE_COOKIE = "bc_ccc_state";
+
+/**
+ * 간사 CCC 로그인 진입 — /login/ccc.
+ * state를 발급해 쿠키에 저장하고 ccc-summer 동의 화면으로 리다이렉트.
+ * redirect_uri는 등록된 기본값(/api/ccc/callback)을 ccc-summer가 자동 사용.
+ */
+export async function GET(_req: NextRequest) {
+  const state = randomBytes(16).toString("hex");
+  const url = buildConsentUrl(cccBase(), CCC_CLIENT_ID, state);
+
+  const res = NextResponse.redirect(url);
+  res.cookies.set(STATE_COOKIE, state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 600, // 10분 — 동의 흐름 동안만
+    path: "/",
+  });
+  return res;
+}
