@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPassengerSession } from "@/lib/auth/passenger";
 import { cancelMatch } from "@/lib/passenger/cancel";
@@ -33,5 +34,6 @@ export async function cancelMatchAction(
     redirect(`/me/cancel/${matchId}?error=${result.reason}`);
   }
 
+  revalidatePath("/status"); // 매칭 취소 → 좌석 복귀, 전국 현황 즉시 갱신
   redirect("/me?cancelled=1");
 }

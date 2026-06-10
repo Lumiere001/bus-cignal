@@ -127,6 +127,7 @@ export async function approveRequest(
   }
 
   revalidatePath(`/operator/trips/${tripId}`);
+  revalidatePath("/status");
   return { ok: true };
 }
 
@@ -187,6 +188,7 @@ export async function rejectRequest(
   }
 
   revalidatePath(`/operator/trips/${tripId}`);
+  revalidatePath("/status");
   return { ok: true };
 }
 
@@ -291,6 +293,7 @@ export async function declinePassengers(
   }
 
   revalidatePath(`/operator/trips/${tripId}`);
+  revalidatePath("/status");
   return { ok: true };
 }
 
@@ -464,6 +467,7 @@ export async function releaseSeat(matchId: string): Promise<ActionResult> {
   }
 
   revalidatePath(`/operator/trips/${match.trip_id}`);
+  revalidatePath("/status");
   return { ok: true };
 }
 
@@ -514,6 +518,7 @@ export async function cancelMatch(matchId: string, reason: string): Promise<Acti
   }
 
   revalidatePath(`/operator/trips/${match.trip_id}`);
+  revalidatePath("/status");
   return { ok: true };
 }
 
@@ -582,6 +587,7 @@ export async function editSeatOffer(
 
   revalidatePath(`/operator/trips/${tripId}`);
   revalidatePath("/operator/trips");
+  revalidatePath("/status");
   return { ok: true };
 }
 
@@ -694,5 +700,6 @@ export async function cancelTrip(
 
   revalidatePath(`/operator/trips/${tripId}`);
   revalidatePath("/operator/trips");
+  revalidatePath("/status");
   return { ok: true };
 }
