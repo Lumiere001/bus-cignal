@@ -24,10 +24,10 @@ insert into region_locations (id, region_id, direction, location_type, address, 
 on conflict (id) do nothing;
 
 -- Trip (하행 평창→광주, 44석, 35,000원) + published
-insert into trips (id, operator_region_id, direction, origin_location_id, destination_location_id, departure_at, capacity, price_per_seat, note, status, created_by) values
+insert into trips (id, operator_region_id, direction, origin_location_id, destination_location_id, departure_at, capacity, price_per_seat, note, bank_name, account_number, account_holder, status, created_by) values
   ('c0000000-0000-0000-0000-000000000001', (select id from regions where code = '2601'), 'down',
    'b0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002',
-   now() + interval '30 days', 44, 35000, '[DEV seed] 평창→광주 하행 테스트 차량', 'published', 'a0000000-0000-0000-0000-000000000001')
+   now() + interval '30 days', 44, 35000, '[DEV seed] 평창→광주 하행 테스트 차량', '카카오뱅크', '3333-12-3456789', '광주지구 총무', 'published', 'a0000000-0000-0000-0000-000000000001')
 on conflict (id) do nothing;
 
 -- 남는 자리 공개 (10석)

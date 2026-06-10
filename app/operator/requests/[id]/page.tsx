@@ -10,6 +10,7 @@ import {
 import { one } from "@/lib/supabase/relation";
 import { formatKstDateTime } from "@/lib/datetime";
 import { ReservationLink } from "@/components/operator/ReservationLink";
+import { AccountInfo } from "@/components/payment/AccountInfo";
 import { RequestActions } from "./RequestActions";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,9 @@ type Request = {
     direction: "up" | "down";
     departure_at: string;
     price_per_seat: number;
+    bank_name: string | null;
+    account_number: string | null;
+    account_holder: string | null;
     region: { name: string } | null;
   } | null;
   request_passengers: Passenger[];
@@ -49,7 +53,7 @@ export default async function RequestDetailPage({
       `
       id, region_id, status, reject_reason, requested_at, seat_count,
       trip:trips!trip_id(
-        direction, departure_at, price_per_seat,
+        direction, departure_at, price_per_seat, bank_name, account_number, account_holder,
         region:regions!operator_region_id(name)
       ),
       request_passengers(id, name, phone, school_or_role, priority)
@@ -79,6 +83,10 @@ export default async function RequestDetailPage({
 
   // 수정·취소 가능 = 대기중 + 진행 중 매칭 없음 (서버 액션에서도 동일 가드로 재검증).
   const canModify = req.status === "queued" && (matchRows?.length ?? 0) === 0;
+  // 송금 대기/보고(=입금 전) 매칭이 있으면 공급 차량 입금 계좌를 안내.
+  const needsPayment = (matchRows ?? []).some(
+    (m) => m.status === "awaiting_payment" || m.status === "payment_reported",
+  );
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 px-4 py-8">
@@ -123,6 +131,29 @@ export default async function RequestDetailPage({
           </p>
         )}
       </section>
+
+      {needsPayment && trip && (
+        <section className="rounded-xl border p-4">
+          <h2 className="mb-3 text-sm font-semibold">입금 안내</h2>
+          {trip.account_number ? (
+            <>
+              <AccountInfo
+                bankName={trip.bank_name}
+                accountNumber={trip.account_number}
+                accountHolder={trip.account_holder}
+              />
+              <p className="text-muted-foreground mt-2 text-xs">
+                매칭된 학생에게 위 계좌로 송금 안내해 주세요. 송금 후 공급 지구가 입금을 확인하면
+                예약번호가 발급됩니다.
+              </p>
+            </>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              공급 지구가 계좌를 아직 등록하지 않았어요. 담당 간사에게 입금 계좌를 문의해 주세요.
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="rounded-xl border p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

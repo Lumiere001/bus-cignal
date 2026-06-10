@@ -8,6 +8,7 @@ import { formatKstDateTime } from "@/lib/datetime";
 import { CancelRequestButton } from "./CancelRequestButton";
 import { LinkPending } from "./LinkPending";
 import { studentLogout } from "./actions";
+import { AccountInfo } from "@/components/payment/AccountInfo";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,9 @@ type TripEmbed = {
   direction: string;
   departure_at: string;
   status: string;
+  bank_name: string | null;
+  account_number: string | null;
+  account_holder: string | null;
   origin: { label: string | null; address: string } | { label: string | null; address: string }[] | null;
   destination: { label: string | null; address: string } | { label: string | null; address: string }[] | null;
   region: { name: string } | { name: string }[] | null;
@@ -49,7 +53,7 @@ export default async function StudentHomePage({
       `
       id, status, requested_at, reject_reason,
       trip:trips!trip_id(
-        id, direction, departure_at, status,
+        id, direction, departure_at, status, bank_name, account_number, account_holder,
         origin:region_locations!origin_location_id(label, address),
         destination:region_locations!destination_location_id(label, address),
         region:regions!operator_region_id(name)
@@ -187,10 +191,19 @@ function PendingCard({ item }: { item: PendingItem }) {
       <div className="mt-0.5 text-xs text-gray-500">{regionName} 공급 차량</div>
 
       {active && (
-        <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">
-          {MATCH_STATUS_LABEL[active.status ?? ""] ?? "매칭됨"} · 입금 안내는 담당 간사 안내를
-          따라 주세요. 입금 확인되면 <b>예약 확인</b>에 표시돼요.
-        </p>
+        <div className="mt-3 space-y-2">
+          <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">
+            {MATCH_STATUS_LABEL[active.status ?? ""] ?? "매칭됨"} · 아래 계좌로 입금 후 담당 간사
+            안내를 따라 주세요. 입금 확인되면 <b>예약 확인</b>에 표시돼요.
+          </p>
+          {trip && (
+            <AccountInfo
+              bankName={trip.bank_name}
+              accountNumber={trip.account_number}
+              accountHolder={trip.account_holder}
+            />
+          )}
+        </div>
       )}
 
       {status === "rejected" && rejectReason && (
