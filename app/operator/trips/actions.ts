@@ -167,6 +167,11 @@ export async function createTrip(
   // 총무(학생 담당) 연락처 — DB는 nullable이나 폼 필수화는 앱레이어 책임 (이슈 #25 마이그 주석)
   const treasurerName = ((formData.get("treasurer_name") as string) ?? "").trim();
   const treasurerPhone = cleanPhone((formData.get("treasurer_phone") as string) ?? "");
+  // 입금 계좌 — 매칭 후 신청 지구·학생 안내용 (사용자 요청 2026-06-10). DB nullable, 폼 필수화는 여기서.
+  const bankName = ((formData.get("bank_name") as string) ?? "").trim();
+  const accountHolder = ((formData.get("account_holder") as string) ?? "").trim();
+  const accountNumber = ((formData.get("account_number") as string) ?? "").trim();
+  const accountDigits = accountNumber.replace(/[^0-9]/g, "");
 
   if (!["up", "down"].includes(direction)) return { error: "방향을 선택해주세요." };
   if (direction === "up" && !originId && !originNew) {
@@ -187,6 +192,12 @@ export async function createTrip(
     return { error: "총무 이름을 1~50자로 입력해주세요." };
   if (treasurerPhone.length < 10 || treasurerPhone.length > 11)
     return { error: "총무 연락처를 올바르게 입력해주세요." };
+  if (bankName.length < 1 || bankName.length > 30)
+    return { error: "은행명을 입력해주세요." };
+  if (accountHolder.length < 1 || accountHolder.length > 30)
+    return { error: "예금주를 입력해주세요." };
+  if (accountNumber.length > 30 || accountDigits.length < 6 || accountDigits.length > 20)
+    return { error: "계좌번호를 올바르게 입력해주세요." };
 
   // datetime-local → KST timestamptz
   const departure_at = rawDeparture + ":00+09:00";
@@ -286,6 +297,9 @@ export async function createTrip(
     note,
     treasurer_name: treasurerName,
     treasurer_phone: treasurerPhone,
+    bank_name: bankName,
+    account_number: accountNumber,
+    account_holder: accountHolder,
     status: "draft",
   });
 

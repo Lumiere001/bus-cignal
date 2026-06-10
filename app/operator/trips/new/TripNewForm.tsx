@@ -242,6 +242,56 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
         </p>
       </div>
 
+      {/* 입금 계좌 — 매칭(송금 대기) 후 신청 지구 간사·학생에게 안내될 계좌 */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700" htmlFor="bank_name">
+            은행
+          </label>
+          <input
+            id="bank_name"
+            type="text"
+            name="bank_name"
+            required
+            maxLength={30}
+            placeholder="예) 카카오뱅크"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700" htmlFor="account_holder">
+            예금주
+          </label>
+          <input
+            id="account_holder"
+            type="text"
+            name="account_holder"
+            required
+            maxLength={30}
+            placeholder="예) 홍길동"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          />
+        </div>
+        <div className="col-span-2 space-y-1">
+          <label className="text-sm font-medium text-gray-700" htmlFor="account_number">
+            계좌번호
+          </label>
+          <input
+            id="account_number"
+            type="text"
+            name="account_number"
+            required
+            inputMode="numeric"
+            maxLength={30}
+            placeholder="예) 3333-12-3456789"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          />
+        </div>
+        <p className="col-span-2 text-xs text-gray-400">
+          매칭(송금 대기) 후 신청 지구 간사·학생에게 입금 안내로 함께 표시됩니다.
+        </p>
+      </div>
+
       {/* 메모 */}
       <div className="space-y-1">
         <label className="text-sm font-medium text-gray-700" htmlFor="note">
