@@ -49,7 +49,8 @@ const TEXT = "#ECECEE"; // 본문
 const MUTED = "#9a9aa2"; // 보조 텍스트
 const VIOLET = "#7c3aed"; // 액센트(내 버블·읽음 수·액티브)
 const BORDER = "#26262c";
-const FONT_STACK = "Pretendard, -apple-system, system-ui, sans-serif";
+// 전역 번들 폰트(globals.css의 dynamic-subset)는 family명이 'Pretendard Variable'.
+const FONT_STACK = "'Pretendard Variable', Pretendard, -apple-system, system-ui, sans-serif";
 
 /** 상태 화면(loading/forbidden/unconfigured/error) — 다크 테마. 모듈 스코프(렌더 중 컴포넌트 생성 금지). */
 function StatusScreen({ children }: { children: ReactNode }) {
@@ -62,10 +63,6 @@ function StatusScreen({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-/** Pretendard CDN — 이 화면에서만 로드(프로젝트 전역 폰트 미변경). */
-const PRETENDARD_CDN =
-  "https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css";
 
 // 아바타 색 팔레트 — displayName에서 결정적으로 선택(KCCC 톤 + 가독성).
 const AVATAR_PALETTE = [
@@ -467,9 +464,6 @@ export function ChatRoom({ tripId }: Props) {
 
   return (
     <>
-      {/* Pretendard 폰트 — 이 화면에서만 로드(전역 폰트 미변경) */}
-      <link rel="stylesheet" href={PRETENDARD_CDN} />
-
       <div
         className="flex min-h-0 flex-1 flex-col"
         style={{ backgroundColor: SURFACE, color: TEXT, fontFamily: FONT_STACK }}
