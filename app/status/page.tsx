@@ -4,7 +4,9 @@ import { one } from "@/lib/supabase/relation";
 import { BackButton } from "@/components/ui/back-button";
 import { StatusView, type RegionSupply } from "./StatusView";
 
-export const dynamic = "force-dynamic";
+// 무로그인 공개 집계 — 30초 ISR로 CDN 캐시(콜드스타트·DB 조회 없이 즉시 응답).
+// 잔여석 수치는 30초 지연 허용(매칭 확정은 어차피 간사 수동 처리).
+export const revalidate = 30;
 
 export const metadata = {
   title: "전국 잔여석 현황 — Bus Cignal",
@@ -23,7 +25,14 @@ const ACTIVE_MATCH = ["awaiting_payment", "payment_reported", "paid"];
  * 학생 이름·전화·예약번호·간사 이름·차량 간사 연락처 등 PII는 한 글자도 select 하지 않는다.
  */
 async function loadStatus(): Promise<RegionSupply[]> {
-  const db = createAdminClient();
+  // ISR 빌드 타임 프리렌더는 Supabase env 없는 환경(CI)에서도 돌므로,
+  // createAdminClient throw 시 빈 집계로 폴백 — 런타임 revalidate가 실데이터로 채움.
+  let db: ReturnType<typeof createAdminClient>;
+  try {
+    db = createAdminClient();
+  } catch {
+    return [];
+  }
 
   // 공급: published 차량 + 좌석 슬라이스 + 매칭 상태 (PII 컬럼 미포함).
   // 공급 지구명은 operator_region_id로 묶인 regions.name만 가져온다.
