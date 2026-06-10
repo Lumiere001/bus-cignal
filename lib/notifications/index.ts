@@ -9,7 +9,7 @@ import type {
 } from "./events";
 import { formatPush, sendPush } from "./push";
 import { isRetryDue, reducePushAttempt } from "./retry";
-import { resolveTargets } from "./targets";
+import { resolveTargets, expandOperatorTargets } from "./targets";
 import { reportOpsIssue } from "@/lib/ops/report-issue";
 
 export { NOTIFICATION_EVENTS } from "./events";
@@ -57,8 +57,43 @@ export async function emit<E extends NotificationEvent>(
   payload: PayloadFor<E>,
   opts: EmitOptions = {},
 ): Promise<void> {
-  const targets = resolveTargets(event, recipients, opts.push !== false);
-  if (targets.length === 0) return;
+  const baseTargets = resolveTargets(event, recipients, opts.push !== false);
+  if (baseTargets.length === 0) return;
+
+  const db = createAdminClient();
+
+  // 같은 지구 간사 전원에게 — operator 대상을 그 지구의 모든 승인 간사로 확장 (사용자 요청 2026-06-10).
+  //   best-effort: 조회 실패 시 원본 대상 유지(최소한 등록·신청 당사자에겐 전달).
+  let targets = baseTargets;
+  try {
+    const opIds = [
+      ...new Set(
+        baseTargets.filter((t) => t.operatorId).map((t) => t.operatorId as string),
+      ),
+    ];
+    if (opIds.length > 0) {
+      const { data: ops } = await db
+        .from("operators")
+        .select("region_id")
+        .in("id", opIds);
+      const regionIds = [
+        ...new Set((ops ?? []).map((o) => o.region_id).filter(Boolean)),
+      ] as string[];
+      if (regionIds.length > 0) {
+        const { data: regionOps } = await db
+          .from("operators")
+          .select("id")
+          .in("region_id", regionIds)
+          .eq("approval_status", "approved");
+        targets = expandOperatorTargets(
+          baseTargets,
+          (regionOps ?? []).map((o) => o.id),
+        );
+      }
+    }
+  } catch {
+    targets = baseTargets;
+  }
 
   const now = new Date().toISOString();
   const payloadJson = payload as NotificationInsert["payload"];
@@ -85,7 +120,6 @@ export async function emit<E extends NotificationEvent>(
     }
   }
 
-  const db = createAdminClient();
   await db.from("notifications").insert(rows);
 
   if (rows.some((row) => row.channel === "push")) {

@@ -13,7 +13,8 @@
 -- 간사 (CCC 로그인 전 — ccc_id 'dev-*', 마스터 승인 완료 상태)
 insert into operators (id, region_id, ccc_id, name, phone, approval_status, approved_at, role) values
   ('a0000000-0000-0000-0000-000000000001', (select id from regions where code = '2601'), 'dev-op-gwangju', '김광주', '010-1000-0001', 'approved', now(), 'operator'),
-  ('a0000000-0000-0000-0000-000000000002', (select id from regions where code = '2801'), 'dev-op-busan',   '박부산', '010-2000-0002', 'approved', now(), 'operator')
+  ('a0000000-0000-0000-0000-000000000002', (select id from regions where code = '2801'), 'dev-op-busan',   '박부산', '010-2000-0002', 'approved', now(), 'operator'),
+  ('a0000000-0000-0000-0000-000000000003', (select id from regions where code = '2601'), 'dev-op-gwangju2', '이광주', '010-1000-0003', 'approved', now(), 'operator')
 on conflict (id) do nothing;
 
 -- 출발/도착지 (광주 간사 등록)
