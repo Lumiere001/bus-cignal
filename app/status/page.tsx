@@ -3,10 +3,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { one } from "@/lib/supabase/relation";
 import { BackButton } from "@/components/ui/back-button";
 import { StatusView, type RegionSupply } from "./StatusView";
+import { AutoRefresh } from "./AutoRefresh";
 
-// 무로그인 공개 집계 — 30초 ISR로 CDN 캐시(콜드스타트·DB 조회 없이 즉시 응답).
-// 잔여석 수치는 30초 지연 허용(매칭 확정은 어차피 간사 수동 처리).
-export const revalidate = 30;
+// 무로그인 공개 집계 — ISR 캐시로 즉시 응답(콜드스타트·매 요청 DB 조회 제거).
+// 실시간성: 차량 공개·신청·매칭 변경 액션들이 revalidatePath("/status")로 즉시 무효화하고,
+// 10초 주기는 누락 경로 대비 안전망. 켜둔 화면은 <AutoRefresh>가 주기 갱신.
+export const revalidate = 10;
 
 export const metadata = {
   title: "전국 잔여석 현황 — Bus Cignal",
@@ -172,6 +174,7 @@ export default async function StatusPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:py-10">
+      <AutoRefresh />
       <div className="mb-4">
         <BackButton />
       </div>

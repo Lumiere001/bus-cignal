@@ -151,6 +151,7 @@ export async function createStudentRequest(
   }
 
   revalidatePath("/s");
+  revalidatePath("/status");
   redirect("/s");
 }
 
@@ -196,6 +197,7 @@ export async function cancelStudentRequest(
   if (!updated) return { error: "이미 처리된 신청입니다." };
 
   revalidatePath("/s");
+  revalidatePath("/status");
   return { ok: true };
 }
 

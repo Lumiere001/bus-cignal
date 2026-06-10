@@ -161,6 +161,7 @@ export async function createRequest(
     // 알림 발송 실패는 무시 (신청은 이미 저장됨)
   }
 
+  revalidatePath("/status");
   redirect("/operator/requests");
 }
 
@@ -251,6 +252,7 @@ export async function cancelRequest(
 
   revalidatePath("/operator/requests");
   revalidatePath(`/operator/requests/${requestId}`);
+  revalidatePath("/status");
   return { ok: true };
 }
 
@@ -377,5 +379,6 @@ export async function updateRequest(
 
   revalidatePath("/operator/requests");
   revalidatePath(`/operator/requests/${requestId}`);
+  revalidatePath("/status");
   return { ok: true };
 }

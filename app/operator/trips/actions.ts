@@ -2,6 +2,7 @@
 
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 type ActionResult = { error: string } | undefined;
@@ -353,5 +354,6 @@ export async function publishTrip(tripId: string): Promise<ActionResult> {
     return { error: "오류가 발생했습니다." };
   }
 
+  revalidatePath("/status");
   redirect("/operator/trips");
 }

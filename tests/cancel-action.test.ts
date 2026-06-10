@@ -3,16 +3,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 // vi.mock 팩토리는 호이스팅되므로 vi.hoisted()로 mock 함수를 먼저 선언
-const { mockRedirect, mockGetPassengerSession, mockCancelMatch } = vi.hoisted(
-  () => ({
+const { mockRedirect, mockGetPassengerSession, mockCancelMatch, mockRevalidatePath } =
+  vi.hoisted(() => ({
     mockRedirect: vi.fn(),
     mockGetPassengerSession: vi.fn(),
     mockCancelMatch: vi.fn(),
-  }),
-);
+    mockRevalidatePath: vi.fn(),
+  }));
 
 // next/navigation의 redirect는 특수 에러를 throw. NEXT_REDIRECT:<url> 형태로 식별.
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
+// revalidatePath는 요청 컨텍스트 밖(vitest)에서 throw하므로 mock — 취소 성공 시 /status 무효화 검증에도 사용.
+vi.mock("next/cache", () => ({ revalidatePath: mockRevalidatePath }));
 vi.mock("@/lib/auth/passenger", () => ({
   getPassengerSession: mockGetPassengerSession,
 }));
@@ -29,6 +31,7 @@ describe("cancelMatchAction — confirm 서버 검증", () => {
     mockRedirect.mockReset();
     mockGetPassengerSession.mockReset();
     mockCancelMatch.mockReset();
+    mockRevalidatePath.mockReset();
     mockGetPassengerSession.mockResolvedValue(MOCK_SESSION);
     mockRedirect.mockImplementation((url: string) => {
       throw new Error(`NEXT_REDIRECT:${url}`);
@@ -65,6 +68,8 @@ describe("cancelMatchAction — confirm 서버 검증", () => {
       "NEXT_REDIRECT:/me?cancelled=1",
     );
     expect(mockCancelMatch).toHaveBeenCalledWith("mp-1", "m-1", "일정 변경");
+    // 취소 성공 → 전국 현황 캐시 즉시 무효화
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/status");
   });
 
   it("confirm = 'on' + 사유 없음 → reason null로 cancelMatch 호출", async () => {
