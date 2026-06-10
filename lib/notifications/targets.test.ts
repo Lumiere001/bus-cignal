@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveTargets } from "./targets";
+import { resolveTargets, expandOperatorTargets } from "./targets";
 
 describe("resolveTargets (SPEC §8 대상 매핑)", () => {
   it("request_new → 공급 간사만", () => {
@@ -69,6 +69,41 @@ describe("resolveTargets (SPEC §8 대상 매핑)", () => {
       requestOperatorId: "r",
       passengerId: "p",
     }, false);
+    expect(t.every((x) => x.push === false)).toBe(true);
+  });
+});
+
+describe("expandOperatorTargets (같은 지구 간사 전원 확장)", () => {
+  it("operator 대상 → 지구 간사 전원 합집합 (원본 보존·중복 제거)", () => {
+    const base = [{ operatorId: "s", passengerId: null, push: true }];
+    const t = expandOperatorTargets(base, ["s", "s2", "s3"]);
+    expect(t.map((x) => x.operatorId).sort()).toEqual(["s", "s2", "s3"]);
+    expect(t.every((x) => x.push === true && x.passengerId === null)).toBe(true);
+  });
+
+  it("operator 대상 없으면 원본 그대로 (학생/마스터)", () => {
+    const base = [
+      { operatorId: null, passengerId: "p", push: true },
+      { operatorId: null, passengerId: null, push: false },
+    ];
+    expect(expandOperatorTargets(base, ["x"])).toEqual(base);
+  });
+
+  it("학생·마스터 대상은 유지하고 operator만 확장", () => {
+    const base = [
+      { operatorId: "s", passengerId: null, push: true },
+      { operatorId: null, passengerId: "p", push: true },
+    ];
+    const t = expandOperatorTargets(base, ["s", "s2"]);
+    expect(
+      t.filter((x) => x.operatorId).map((x) => x.operatorId).sort(),
+    ).toEqual(["s", "s2"]);
+    expect(t.some((x) => x.passengerId === "p")).toBe(true);
+  });
+
+  it("push=false면 확장 대상도 push=false", () => {
+    const base = [{ operatorId: "s", passengerId: null, push: false }];
+    const t = expandOperatorTargets(base, ["s", "s2"]);
     expect(t.every((x) => x.push === false)).toBe(true);
   });
 });

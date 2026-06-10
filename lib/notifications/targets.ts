@@ -74,3 +74,31 @@ export function resolveTargets<E extends NotificationEvent>(
   }
   return targets;
 }
+
+/**
+ * operator 대상을 그 지구의 모든 간사로 확장 — 같은 지구 간사 전원에게 알림 (사용자 요청 2026-06-10).
+ * 순수 함수: caller(emit)가 DB로 '대상 간사들이 속한 지구의 승인 간사 id 전체'를 조회해 넘긴다.
+ *  - 학생(passengerId)·마스터 대상은 그대로 유지, operator 대상만 합집합으로 확장.
+ *  - push 플래그는 기존 operator 대상과 동일(같은 emit 내 operator 대상은 모두 같은 allowPush).
+ *  - operator 대상이 없으면 원본 그대로.
+ */
+export function expandOperatorTargets(
+  baseTargets: ResolvedTarget[],
+  regionOperatorIds: string[],
+): ResolvedTarget[] {
+  const operatorTargets = baseTargets.filter((t) => t.operatorId);
+  if (operatorTargets.length === 0) return baseTargets;
+
+  const push = operatorTargets.some((t) => t.push);
+  const ids = new Set<string>();
+  for (const t of operatorTargets) ids.add(t.operatorId as string); // 원본 대상 보존
+  for (const id of regionOperatorIds) ids.add(id);
+
+  const nonOperator = baseTargets.filter((t) => !t.operatorId);
+  const expanded: ResolvedTarget[] = [...ids].map((id) => ({
+    operatorId: id,
+    passengerId: null,
+    push,
+  }));
+  return [...expanded, ...nonOperator];
+}
