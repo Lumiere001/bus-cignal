@@ -145,9 +145,9 @@ export default async function StudentHomePage({
       {operatorBooked.length > 0 && (
         <section className="space-y-3">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">간사님이 등록해주신 예약</h2>
+            <h2 className="text-base font-semibold text-gray-900">간사님께서 등록해주신 예약</h2>
             <p className="text-muted-foreground mt-0.5 text-xs">
-              담당 간사님이 대신 신청해주신 예약이에요. (CCC 전화번호로 자동 연결)
+              담당 간사님이 대신 신청해주신 예약이에요.
             </p>
           </div>
           <ul className="space-y-3">
