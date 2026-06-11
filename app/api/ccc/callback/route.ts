@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { exchangeCode } from "@/lib/ccc/handoff";
+import { isEligibleStaff } from "@/lib/ccc/handoff";
+import { resolveLoginExchange } from "@/lib/ccc/resolve-login";
 import { provisionOperatorFromCcc } from "@/lib/ccc/provision";
 import { provisionStudentFromCcc } from "@/lib/ccc/student-provision";
 import {
@@ -23,6 +24,13 @@ const STUDENT_SESSION_SEC = STUDENT_SESSION_DAYS * 24 * 60 * 60;
  * CCC 핸드오프 콜백 — /api/ccc/callback?code&state.
  *  1) state(CSRF) 검증  2) 서버↔서버 exchange로 payload 수신
  *  3) 간사 프로비저닝(자동 승인·지구 매핑)  4) 간사 세션 발급 → /operator
+ *
+ * 간사/학생 분기(간사 요청 2026-06-11 — 학생 QR로 들어와도 학생 로그인으로 작동):
+ *  - CCC가 "간사 아님" 오류를 돌려주면 → /s/login/ccc 로 자동 재시작
+ *    (CCC에는 이미 로그인된 상태라 학생 동의 한 번으로 바로 /s 입장).
+ *  - 학생용 client로 발급된 코드가 이 콜백에 도착하면 → 학생 client로 재교환해
+ *    학생 세션 발급 → /s.
+ *  - 간사 코드인데 payload가 학생(is_staff=false)이면 → 학생 프로비저닝 → /s (기존).
  * 실패는 모두 /login?error=ccc_<reason> 으로 친절히 안내(상세/시크릿 비노출).
  */
 export async function GET(req: NextRequest) {
@@ -39,8 +47,40 @@ export async function GET(req: NextRequest) {
     return res;
   };
 
+  const studentSession = async (prov: {
+    studentId: string;
+    cccId: string;
+    regionId: string | null;
+  }) => {
+    const sjwt = await signStudentToken({
+      studentId: prov.studentId,
+      cccId: prov.cccId,
+      regionId: prov.regionId,
+    });
+    const sres = NextResponse.redirect(new URL("/s", base));
+    sres.cookies.set(STUDENT_COOKIE, sjwt, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: STUDENT_SESSION_SEC,
+      path: "/",
+    });
+    sres.cookies.delete(STATE_COOKIE);
+    return sres;
+  };
+
   // ccc-summer가 거부/오류를 넘긴 경우(access_denied, not-staff 등)
-  if (upstreamError) return fail(upstreamError.replace(/[^a-z_]/gi, ""));
+  if (upstreamError) {
+    const clean = upstreamError.replace(/[^a-z_]/gi, "");
+    // "간사 아님" 계열(not_staff·not-staff 등) = 학생이 간사 입구로 들어온 것 →
+    // 오류 화면 대신 학생 CCC 로그인으로 자동 재시작.
+    if (/staff/i.test(clean)) {
+      const res = NextResponse.redirect(new URL("/s/login/ccc", base));
+      res.cookies.delete(STATE_COOKIE);
+      return res;
+    }
+    return fail(clean);
+  }
   if (!code) return fail("no_code");
 
   // state(CSRF): 우리 로그인 버튼(/login/ccc)으로 시작한 흐름엔 쿠키가 있고, 그땐 반드시 일치해야 한다.
@@ -49,38 +89,26 @@ export async function GET(req: NextRequest) {
   //   등록된 redirect_uri + 서버↔서버 exchange로도 성립하므로 안전 표면은 유지된다.
   if (cookieState && state !== cookieState) return fail("state");
 
-  // exchange는 발급 때와 동일한 redirect_uri를 보내야 함 = 등록된 콜백 URL.
-  const redirectUri = `${base}/api/ccc/callback`;
-  const ex = await exchangeCode(code, redirectUri);
+  // 간사 client 먼저, 실패 시 학생 client로 재교환(학생 QR 코드가 여기 도착하는 경우).
+  const ex = await resolveLoginExchange(code, base, "staff");
   if (!ex.ok) return fail(ex.error.replace(/[^a-z_]/gi, ""));
 
-  const prov = await provisionOperatorFromCcc(ex.subjectId, ex.payload);
-  if (!prov.ok) {
-    // 간사 계정이 아니면(학생) → 학생으로 프로비저닝 후 학생 허브(/s)로 우회.
-    //   학생이 실수로 '간사 로그인'으로 들어와도 오류 대신 본인 화면으로 가게 한다.
-    //   (CCC가 payload를 돌려준 경우. is_staff=false라 student-provision은 그대로 통과.)
-    if (prov.error === "not_staff") {
-      const sprov = await provisionStudentFromCcc(ex.subjectId, ex.payload);
-      if (sprov.ok) {
-        const sjwt = await signStudentToken({
-          studentId: sprov.studentId,
-          cccId: sprov.cccId,
-          regionId: sprov.regionId,
-        });
-        const sres = NextResponse.redirect(new URL("/s", base));
-        sres.cookies.set(STUDENT_COOKIE, sjwt, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: STUDENT_SESSION_SEC,
-          path: "/",
-        });
-        sres.cookies.delete(STATE_COOKIE);
-        return sres;
-      }
-    }
-    return fail(prov.error);
+  // 학생용 client 코드 → 학생 로그인으로 작동.
+  if (ex.intent === "student") {
+    const sprov = await provisionStudentFromCcc(ex.subjectId, ex.payload);
+    if (!sprov.ok) return fail(sprov.error);
+    return studentSession(sprov);
   }
+
+  // 간사 코드인데 학생 신원(is_staff=false) → 학생으로 우회(기존 동작).
+  if (!isEligibleStaff(ex.payload)) {
+    const sprov = await provisionStudentFromCcc(ex.subjectId, ex.payload);
+    if (sprov.ok) return studentSession(sprov);
+    return fail("not_staff");
+  }
+
+  const prov = await provisionOperatorFromCcc(ex.subjectId, ex.payload);
+  if (!prov.ok) return fail(prov.error);
 
   const jwt = await signOperatorToken({
     operatorId: prov.operatorId,
