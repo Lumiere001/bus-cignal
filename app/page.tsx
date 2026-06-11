@@ -1,10 +1,29 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { Logo } from "@/components/brand/logo";
 import { StatusPill } from "@/components/ui/status-pill";
 import { cn } from "@/lib/utils";
+import {
+  OPERATOR_COOKIE,
+  verifyOperatorToken,
+} from "@/lib/auth/operator-session";
+import { STUDENT_COOKIE, verifyStudentToken } from "@/lib/auth/student-session";
 
-export default function Home() {
+export default async function Home() {
+  // QR(랜딩 직링크) 재방문: 이미 로그인된 사용자는 본인 화면으로 바로 보낸다
+  // (간사 보고 2026-06-11 — 학생이 로그인했는데도 QR로 오면 랜딩에 멈춤).
+  // 세션 쿠키는 브라우저 컨텍스트별이라 iOS 설치형 PWA↔Safari·인앱 브라우저 간엔
+  // 공유되지 않음 — 그 경우는 비로그인과 동일하게 랜딩을 보여준다(아래).
+  const jar = await cookies();
+  if (await verifyOperatorToken(jar.get(OPERATOR_COOKIE)?.value)) {
+    redirect("/operator");
+  }
+  if (await verifyStudentToken(jar.get(STUDENT_COOKIE)?.value)) {
+    redirect("/s");
+  }
+
   return (
     <main className="flex flex-1 flex-col">
       {/* 상단 브랜드 바 */}

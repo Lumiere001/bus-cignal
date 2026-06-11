@@ -2,9 +2,12 @@
 // 바로 신청·예약 확인이 가능. (예약번호 /r 경로는 그대로 별도 유지.)
 
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/brand/logo";
+import { STUDENT_COOKIE, verifyStudentToken } from "@/lib/auth/student-session";
 
 const CCC_ERRORS: Record<string, string> = {
   ccc_access_denied: "동의를 취소하셨어요. 다시 시도해 주세요.",
@@ -28,6 +31,13 @@ export default async function StudentLoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+
+  // 이미 학생 세션이 있으면 다시 로그인 누를 필요 없이 바로 입장.
+  const jar = await cookies();
+  if (await verifyStudentToken(jar.get(STUDENT_COOKIE)?.value)) {
+    redirect("/s");
+  }
+
   const cccMsg = ccErrorMessage(error);
 
   return (

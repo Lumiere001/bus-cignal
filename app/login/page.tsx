@@ -2,8 +2,14 @@
 // 공개 로그인 폼 없음(간사 명단·지구는 PII). CCC 로그인은 /login/ccc → ccc-summer 동의.
 
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  OPERATOR_COOKIE,
+  verifyOperatorToken,
+} from "@/lib/auth/operator-session";
 
 // ccc_<reason> 에러 → 사용자 안내 문구.
 const CCC_ERRORS: Record<string, string> = {
@@ -32,6 +38,13 @@ export default async function Page({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+
+  // 이미 간사 세션이 있으면 다시 로그인 누를 필요 없이 바로 입장.
+  const jar = await cookies();
+  if (await verifyOperatorToken(jar.get(OPERATOR_COOKIE)?.value)) {
+    redirect("/operator");
+  }
+
   const cccMsg = ccErrorMessage(error);
 
   return (
