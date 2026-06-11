@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { editSeatOffer } from "./actions";
 
 /**
- * 잔여 좌석(타지구에 내놓는 좌석) 변경 — draft/published 차량에서만 렌더(page.tsx 가드).
- * 정원(capacity)은 그대로, 내놓는 좌석만 조정한다. 이미 매칭된 인원(matched) 이상, 정원 이하.
- * 표시 잔여 = 내놓는 좌석 − 활성 매칭. (간사 요청 2026-06-09: 라벨 '잔여 좌석'으로 통일)
+ * 정원(= 타지구에 공개하는 좌석) 변경 — draft/published 차량에서만 렌더(page.tsx 가드).
+ * 공개 좌석 수를 조정한다. 이미 매칭된 인원(matched) 이상, 등록 최대(capacity) 이하.
+ * 표시 잔여 = 공개 좌석 − 활성 매칭. ('정원' = 다른 지구에 공개하는 좌석 개념, 2026-06-11)
  */
 export function SeatCountEditButton({
   tripId,
@@ -58,7 +58,7 @@ export function SeatCountEditButton({
           setOpen(true);
         }}
       >
-        잔여 좌석 변경
+        정원(공개 좌석) 변경
       </Button>
 
       {open && (
@@ -73,16 +73,15 @@ export function SeatCountEditButton({
             onClick={(e) => e.stopPropagation()}
           >
             <div>
-              <h3 className="text-base font-semibold">잔여 좌석 변경</h3>
+              <h3 className="text-base font-semibold">정원(공개 좌석) 변경</h3>
               <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                타지구에 내놓는 좌석 수를 조정합니다. 이미 매칭된 {matched}명 이상,
-                정원 {capacity}석 이하로만 가능해요. (정원과 확정된 매칭 인원은 바뀌지
-                않아요.)
+                다른 지구에 공개하는 좌석 수(정원)를 조정합니다. 이미 매칭된 {matched}명 이상,
+                등록 최대 {capacity}석 이하로만 가능해요. (확정된 매칭 인원은 줄일 수 없어요.)
               </p>
             </div>
             <div className="flex items-center gap-2">
               <label htmlFor="seat-count" className="text-sm font-medium">
-                잔여 좌석
+                정원
               </label>
               <input
                 id="seat-count"

@@ -6,6 +6,7 @@ import {
   PASSENGER_SESSION_DAYS,
   signPassengerToken,
 } from "@/lib/auth/passenger-session";
+import { normalizePhone, phoneCandidates } from "@/lib/passenger/operator-booked";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,10 @@ export const dynamic = "force-dynamic";
  * 학생 "예약 확인" — 본인의 확정(paid) 예약 신원(match_passengers)으로 passenger 세션을
  * 발급하고 기존 `/me` 화면으로 보낸다. (/me·지도·예약취소 코드는 그대로 재사용 → 회귀 0)
  *
- * 신원 매핑: students → 본인 seat_requests → paid matches → match_passengers.id.
- * 본인 신청에서만 출발하므로 남의 예약으로 넘어갈 수 없다. 확정 예약이 없으면 허브로 안내.
+ * 신원 매핑 두 갈래:
+ *  1) students → 본인 seat_requests → paid matches → match_passengers (직접 신청분)
+ *  2) students.phone과 같은 전화의 match_passengers (간사가 대신 잡아준 예약 — student_id 없음)
+ * 둘 다 본인 신원(전화)에서만 출발하므로 남의 예약으로 넘어갈 수 없다. 없으면 허브로 안내.
  */
 export async function GET(req: NextRequest) {
   const base = req.nextUrl.origin;
@@ -45,6 +48,25 @@ export async function GET(req: NextRequest) {
         .from("match_passengers")
         .select("id")
         .in("match_id", matchIds)
+        .limit(1);
+      passengerId = mp?.[0]?.id ?? null;
+    }
+  }
+
+  // 2-b. 간사가 대신 잡아준 예약 — 본인 신청(student_id) 없이도 같은 전화의 확정 예약을 연결.
+  //      match_passengers는 입금 확인(paid) 시 생성되므로, 전화로 찾으면 곧 확정 예약이다.
+  if (!passengerId) {
+    const { data: student } = await db
+      .from("students")
+      .select("phone")
+      .eq("id", session.studentId)
+      .maybeSingle();
+    const digits = normalizePhone(student?.phone);
+    if (digits.length >= 10) {
+      const { data: mp } = await db
+        .from("match_passengers")
+        .select("id")
+        .in("phone", phoneCandidates(digits))
         .limit(1);
       passengerId = mp?.[0]?.id ?? null;
     }

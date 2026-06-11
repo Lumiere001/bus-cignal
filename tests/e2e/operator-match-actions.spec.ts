@@ -8,6 +8,8 @@ test("거절: 신청 전체 거절(사유 필수) → 큐에서 사라짐", asyn
   const scn = await createApproveScenario({ passengers: 2 });
   try {
     await page.goto(`/operator/trips/${scn.tripId}`);
+    // '신청 전체 거절'은 지구별(묶음) 뷰의 기능 — 기본 시간순 뷰에서 전환.
+    await page.getByRole("button", { name: "지구별" }).click();
     await expect(page.getByText("E2E학생1")).toBeVisible();
 
     await page.getByRole("button", { name: "거절", exact: true }).click();
@@ -68,15 +70,15 @@ test("매칭 취소: 승인 매칭에 실수 방지 확인 모달 + 설명", asy
   }
 });
 
-test("잔여 좌석 변경: 정원 고정, 잔여만 반영", async ({ page }) => {
+test("정원(공개 좌석) 변경: 정원·잔여 함께 반영", async ({ page }) => {
   const scn = await createApproveScenario({ passengers: 1, offered: 10 });
   try {
     await page.goto(`/operator/trips/${scn.tripId}`);
-    // 시나리오: 정원 44 · 내놓는 좌석 10 · 매칭 0 → 잔여 10
-    await expect(page.getByText("정원 44석", { exact: true })).toBeVisible();
+    // '정원' = 타지구 공개 좌석(=내놓는 좌석 10). 매칭 0 → 잔여 10.
+    await expect(page.getByText("정원 10석", { exact: true })).toBeVisible();
     await expect(page.getByText("잔여 10석", { exact: true })).toBeVisible();
 
-    await page.getByRole("button", { name: "잔여 좌석 변경" }).click();
+    await page.getByRole("button", { name: "정원(공개 좌석) 변경" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     const input = dialog.getByRole("spinbutton");
@@ -84,19 +86,19 @@ test("잔여 좌석 변경: 정원 고정, 잔여만 반영", async ({ page }) =
     await dialog.getByRole("button", { name: "변경 저장" }).click();
     await expect(dialog).toBeHidden(); // 저장 후 모달 닫힘
 
-    // 내놓는 좌석 10→6: 정원은 그대로 44, 잔여만 6(=6 − 매칭 0)으로 반영.
-    await expect(page.getByText("정원 44석", { exact: true })).toBeVisible();
+    // 공개 좌석 10→6: 정원(=공개 좌석) 6, 잔여 6(=6 − 매칭 0)으로 함께 반영.
+    await expect(page.getByText("정원 6석", { exact: true })).toBeVisible();
     await expect(page.getByText("잔여 6석", { exact: true })).toBeVisible();
   } finally {
     await scn.cleanup();
   }
 });
 
-test("잔여 좌석 변경: 빈 값이면 저장 비활성 + 정원 초과 거부", async ({ page }) => {
+test("정원(공개 좌석) 변경: 빈 값이면 저장 비활성 + 등록 최대 초과 거부", async ({ page }) => {
   const scn = await createApproveScenario({ passengers: 1, offered: 10 });
   try {
     await page.goto(`/operator/trips/${scn.tripId}`);
-    await page.getByRole("button", { name: "잔여 좌석 변경" }).click();
+    await page.getByRole("button", { name: "정원(공개 좌석) 변경" }).click();
     const dialog = page.getByRole("dialog");
     const input = dialog.getByRole("spinbutton");
     const save = dialog.getByRole("button", { name: "변경 저장" });
@@ -106,7 +108,7 @@ test("잔여 좌석 변경: 빈 값이면 저장 비활성 + 정원 초과 거�
     await expect(input).toHaveValue("");
     await expect(save).toBeDisabled();
 
-    // 정원(44) 초과 → 저장 비활성.
+    // 등록 최대(버스 정원 44) 초과 → 저장 비활성.
     await input.fill("99");
     await expect(save).toBeDisabled();
 

@@ -55,22 +55,23 @@ export default async function OperatorLayout({ children }: { children: React.Rea
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-border bg-card/80 sticky top-0 z-30 border-b backdrop-blur-md">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-5">
+        {/* 헤더는 본문(max-w-3xl)보다 넓게 — 8개 메뉴가 한 줄에 가로로 들어가도록(세로 줄바꿈 방지). */}
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+          <div className="flex min-w-0 flex-1 items-center gap-5">
             <Logo size="sm" href="/operator" />
-            <nav className="hidden items-center gap-4 text-sm md:flex">
+            <nav className="hidden min-w-0 items-center gap-4 overflow-x-auto text-sm [scrollbar-width:none] md:flex [&::-webkit-scrollbar]:hidden">
               {NAV.map((n) => (
                 <Link
                   key={n.href}
                   href={n.href}
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary shrink-0 whitespace-nowrap transition-colors"
                 >
                   {n.label}
                 </Link>
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex shrink-0 items-center gap-2.5">
             {/* 전국 잔여석 현황(/status) — 로그인 후에도 한 번에 (공개 페이지) */}
             <Link
               href="/status"

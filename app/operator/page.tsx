@@ -84,7 +84,8 @@ async function loadDashboard(regionId: string) {
       direction: t.direction as "up" | "down",
       route: `${origin?.label ?? origin?.address ?? "출발지"} → ${dest?.label ?? dest?.address ?? "도착지"}`,
       departureAt: t.departure_at,
-      capacity: t.capacity,
+      // '정원' = 다른 지구에 공개한 좌석(공개 후 openSeats, 공개 전 등록값 capacity).
+      capacity: t.status === "published" ? openSeats : t.capacity,
       available: Math.max(0, openSeats - active),
       queuedTeams: queuedByTrip.get(t.id)?.teams ?? 0,
       queuedPeople: queuedByTrip.get(t.id)?.people ?? 0,
@@ -147,6 +148,12 @@ export default async function OperatorDashboardPage() {
             className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-card h-10 px-4")}
           >
             ＋ 타지구 신청
+          </Link>
+          <Link
+            href="/operator/import"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-card h-10 px-4")}
+          >
+            📥 사전 신청 가져오기
           </Link>
         </div>
       </div>

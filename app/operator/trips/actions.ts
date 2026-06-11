@@ -5,10 +5,45 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-type ActionResult = { error: string } | undefined;
+// 검증 실패 시 폼이 입력값을 잃지 않도록 제출값을 함께 돌려준다(React 19 form auto-reset 대응).
+export type TripFormFieldValues = {
+  direction: string;
+  originText: string;
+  departureLocal: string;
+  capacity: string;
+  price: string;
+  treasurerName: string;
+  treasurerPhone: string;
+  bankName: string;
+  accountHolder: string;
+  accountNumber: string;
+  refundPolicy: string;
+  note: string;
+};
+
+type ActionResult = { error: string; values?: TripFormFieldValues } | undefined;
 
 // admin(service_role) 클라이언트 타입 — Database 제네릭 유지를 위해 함수 반환 타입에서 도출.
 type AdminClient = ReturnType<typeof createAdminClient>;
+
+/** 제출된 폼 원본 값 — 검증 실패 시 폼에 그대로 되돌려 채우기 위함. */
+function rawTripFormValues(formData: FormData): TripFormFieldValues {
+  const s = (k: string) => (formData.get(k) as string) ?? "";
+  return {
+    direction: s("direction"),
+    originText: s("origin_text"),
+    departureLocal: s("departure_at"),
+    capacity: s("capacity"),
+    price: s("price_per_seat"),
+    treasurerName: s("treasurer_name"),
+    treasurerPhone: s("treasurer_phone"),
+    bankName: s("bank_name"),
+    accountHolder: s("account_holder"),
+    accountNumber: s("account_number"),
+    refundPolicy: s("refund_policy"),
+    note: s("note"),
+  };
+}
 
 // 전화번호 정규화 — 숫자만 (신청 흐름 actions.ts와 동일 규칙)
 function cleanPhone(raw: string): string {
@@ -142,16 +177,33 @@ async function resolveTextLocation(
 
 // ─── Trip 등록 ────────────────────────────────────────────────────────────────
 
-export async function createTrip(
-  _prev: ActionResult,
+// 차량 폼 확정 값 — createTrip(신규)·updateTrip(수정) 공용.
+type ResolvedTripValues = {
+  direction: "up" | "down";
+  originLocationId: string;
+  destLocationId: string;
+  departure_at: string;
+  capacity: number;
+  price: number;
+  note: string | null;
+  treasurerName: string;
+  treasurerPhone: string;
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+  refundPolicy: string | null;
+};
+
+/**
+ * 차량 폼(등록·수정 공용) 파싱 + 검증 + 출발지/도착지 location id 확정.
+ * createTrip·updateTrip이 같은 규칙을 쓰도록 단일화 — 규칙 drift 방지.
+ * 성공 시 확정 값, 실패 시 { error }(호출부가 그대로 반환).
+ */
+async function resolveTripFromForm(
   formData: FormData,
-): Promise<ActionResult> {
-  const session = await requireOperator();
-
-  if (!session.regionId) {
-    return { error: "소속 지구 정보가 없습니다. 관리자에게 문의해주세요." };
-  }
-
+  session: { regionId: string; operatorId: string },
+  supabase: AdminClient,
+): Promise<ResolvedTripValues | { error: string }> {
   const direction = formData.get("direction") as string;
   // 방향별 위치 입력 (사용자 요청 2026-06-10):
   //  · 가는편(up):  출발지=지도 지정(등록 id 또는 새 장소 JSON), 도착지=평창 휘닉스파크 고정.
@@ -173,6 +225,8 @@ export async function createTrip(
   const accountHolder = ((formData.get("account_holder") as string) ?? "").trim();
   const accountNumber = ((formData.get("account_number") as string) ?? "").trim();
   const accountDigits = accountNumber.replace(/[^0-9]/g, "");
+  // 환불 정책 — 선택 입력 (사용자 요청 2026-06-11). 미입력 차량도 등록 가능.
+  const refundPolicy = ((formData.get("refund_policy") as string) ?? "").trim() || null;
 
   if (!["up", "down"].includes(direction)) return { error: "방향을 선택해주세요." };
   if (direction === "up" && !originId && !originNew) {
@@ -199,6 +253,8 @@ export async function createTrip(
     return { error: "예금주를 입력해주세요." };
   if (accountNumber.length > 30 || accountDigits.length < 6 || accountDigits.length > 20)
     return { error: "계좌번호를 올바르게 입력해주세요." };
+  if (refundPolicy && refundPolicy.length > 500)
+    return { error: "환불 정책은 500자 이하로 입력해주세요." };
 
   // datetime-local → KST timestamptz
   const departure_at = rawDeparture + ":00+09:00";
@@ -207,8 +263,6 @@ export async function createTrip(
   if (new Date(departure_at) <= new Date()) {
     return { error: "출발 시각은 현재 이후여야 합니다." };
   }
-
-  const supabase = createAdminClient();
 
   // 출발지·도착지를 최종 region_location id로 확정 (방향별 분기, 사용자 요청 2026-06-10).
   //  - 지도 지정 슬롯: 등록 id면 본인 지구·방향·타입 일치 검증(FormData 위조 방지), 새 장소면 upsert.
@@ -286,27 +340,150 @@ export async function createTrip(
   if (!originLocationId) return { error: "유효하지 않은 출발지입니다." };
   if (!destLocationId) return { error: "유효하지 않은 도착지입니다." };
 
+  return {
+    direction: direction as "up" | "down",
+    originLocationId,
+    destLocationId,
+    departure_at,
+    capacity,
+    price,
+    note,
+    treasurerName,
+    treasurerPhone,
+    bankName,
+    accountNumber,
+    accountHolder,
+    refundPolicy,
+  };
+}
+
+// 인원을 받기 전(활성 매칭 0건)에만 차량 상세 수정 허용 — 한 명이라도 매칭되면 잠금.
+const ACTIVE_MATCH_STATUSES = ["awaiting_payment", "payment_reported", "paid"] as const;
+
+export async function createTrip(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const session = await requireOperator();
+  if (!session.regionId) {
+    return { error: "소속 지구 정보가 없습니다. 관리자에게 문의해주세요." };
+  }
+
+  const supabase = createAdminClient();
+  const resolved = await resolveTripFromForm(
+    formData,
+    { regionId: session.regionId, operatorId: session.operatorId },
+    supabase,
+  );
+  if ("error" in resolved) return { error: resolved.error, values: rawTripFormValues(formData) };
+
   const { error } = await supabase.from("trips").insert({
     operator_region_id: session.regionId,
     created_by: session.operatorId,
-    direction,
-    origin_location_id: originLocationId,
-    destination_location_id: destLocationId,
-    departure_at,
-    capacity,
-    price_per_seat: price,
-    note,
-    treasurer_name: treasurerName,
-    treasurer_phone: treasurerPhone,
-    bank_name: bankName,
-    account_number: accountNumber,
-    account_holder: accountHolder,
+    direction: resolved.direction,
+    origin_location_id: resolved.originLocationId,
+    destination_location_id: resolved.destLocationId,
+    departure_at: resolved.departure_at,
+    capacity: resolved.capacity,
+    price_per_seat: resolved.price,
+    note: resolved.note,
+    treasurer_name: resolved.treasurerName,
+    treasurer_phone: resolved.treasurerPhone,
+    bank_name: resolved.bankName,
+    account_number: resolved.accountNumber,
+    account_holder: resolved.accountHolder,
+    refund_policy: resolved.refundPolicy,
     status: "draft",
   });
 
   if (error) return { error: "저장 중 오류가 발생했습니다." };
 
   redirect("/operator/trips");
+}
+
+/**
+ * 차량 상세 수정 — 일정·정원·요금·연락처·계좌·환불·메모·위치 수정 (사용자 요청 2026-06-11).
+ * 인원을 한 명이라도 받으면(활성 매칭) 잠금 — 학생에게 안내된 정보와 어긋나지 않도록.
+ */
+export async function updateTrip(
+  tripId: string,
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const session = await requireOperator();
+  if (!session.regionId) {
+    return { error: "소속 지구 정보가 없습니다. 관리자에게 문의해주세요." };
+  }
+
+  const supabase = createAdminClient();
+
+  // 소유권 + 상태 가드 — 본인 지구 차량, draft/published만.
+  const { data: trip } = await supabase
+    .from("trips")
+    .select("id, status, capacity, operator_region_id")
+    .eq("id", tripId)
+    .eq("operator_region_id", session.regionId)
+    .maybeSingle();
+  if (!trip) return { error: "차량을 찾을 수 없습니다." };
+  if (trip.status !== "draft" && trip.status !== "published") {
+    return { error: "마감·취소된 차량은 수정할 수 없습니다." };
+  }
+
+  // 인원을 한 명이라도 받았으면(활성 매칭) 수정 잠금.
+  const { count } = await supabase
+    .from("matches")
+    .select("id", { count: "exact", head: true })
+    .eq("trip_id", tripId)
+    .in("status", [...ACTIVE_MATCH_STATUSES]);
+  if ((count ?? 0) > 0) {
+    return {
+      error:
+        "이미 매칭된 학생이 있어 차량 정보를 수정할 수 없어요. 먼저 학생들의 매칭을 취소한 뒤 수정할 수 있습니다.",
+    };
+  }
+
+  const resolved = await resolveTripFromForm(
+    formData,
+    { regionId: session.regionId, operatorId: session.operatorId },
+    supabase,
+  );
+  if ("error" in resolved) return { error: resolved.error, values: rawTripFormValues(formData) };
+
+  const { error } = await supabase
+    .from("trips")
+    .update({
+      direction: resolved.direction,
+      origin_location_id: resolved.originLocationId,
+      destination_location_id: resolved.destLocationId,
+      departure_at: resolved.departure_at,
+      capacity: resolved.capacity,
+      price_per_seat: resolved.price,
+      note: resolved.note,
+      treasurer_name: resolved.treasurerName,
+      treasurer_phone: resolved.treasurerPhone,
+      bank_name: resolved.bankName,
+      account_number: resolved.accountNumber,
+      account_holder: resolved.accountHolder,
+      refund_policy: resolved.refundPolicy,
+    })
+    .eq("id", tripId)
+    .eq("operator_region_id", session.regionId)
+    .eq("status", trip.status); // 동시 상태 변경 방어
+  if (error) return { error: "저장 중 오류가 발생했습니다." };
+
+  // 공개 중 차량의 정원을 바꾸면 열린 좌석(seat_offer)도 맞춤 — 활성 매칭 0건이라 안전.
+  if (trip.status === "published" && resolved.capacity !== trip.capacity) {
+    await supabase
+      .from("seat_offers")
+      .update({ seat_count: resolved.capacity })
+      .eq("trip_id", tripId)
+      .eq("status", "open");
+  }
+
+  revalidatePath(`/operator/trips/${tripId}`);
+  revalidatePath("/operator/trips");
+  revalidatePath("/status");
+  redirect(`/operator/trips/${tripId}`);
 }
 
 // ─── Trip 공개 (draft → published + seat_offer 생성) ─────────────────────────

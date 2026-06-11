@@ -8,7 +8,10 @@ import {
 } from "@/components/kakao/KakaoSearchPicker";
 import type { MapPin } from "@/components/kakao/KakaoMultiMap";
 import { DIRECTION_LABEL } from "@/lib/labels";
-import { createTrip } from "../actions";
+import { createTrip, type TripFormFieldValues } from "../actions";
+
+type ActionResult = { error: string; values?: TripFormFieldValues } | undefined;
+type TripFormAction = (prev: ActionResult, formData: FormData) => Promise<ActionResult>;
 
 type Location = {
   id: string;
@@ -18,6 +21,24 @@ type Location = {
   label: string | null;
   lat: number | null;
   lng: number | null;
+};
+
+// 수정 시 미리 채울 기본값 (신규 등록 시 undefined).
+export type TripFormDefaults = {
+  direction: "up" | "down";
+  originText: string; // 오는편 출발 텍스트
+  departureLocal: string; // datetime-local "YYYY-MM-DDTHH:mm" (KST)
+  capacity: number;
+  price: number;
+  treasurerName: string;
+  treasurerPhone: string;
+  bankName: string;
+  accountHolder: string;
+  accountNumber: string;
+  refundPolicy: string;
+  note: string;
+  originLocationId: string | null; // 가는편 출발(지도) 현재값
+  destLocationId: string | null; // 오는편 도착(지도) 현재값
 };
 
 // 한 지점(출발지/도착지) 선택 결과. id가 있으면 등록 장소, place가 있으면 새 장소.
@@ -31,15 +52,60 @@ const PYEONGCHANG_VENUE_LABEL = "평창 휘닉스파크";
 // 오는편(down) 출발지 기본 텍스트 — 지구 상황에 맞게 간사가 자유 수정 가능.
 const DEFAULT_RETURN_ORIGIN = "블루캐니언 옆 주차장";
 
+/** 신규 등록 폼 — TripForm을 createTrip 액션으로 감싼 얇은 래퍼. */
 export function TripNewForm({ locations }: { locations: Location[] }) {
-  const [direction, setDirection] = useState<"up" | "down">("down");
-  const [state, formAction, isPending] = useActionState(createTrip, undefined);
+  return <TripForm locations={locations} action={createTrip} submitLabel="임시저장" />;
+}
+
+/**
+ * 차량 폼(등록·수정 공용). defaults가 있으면 수정 모드로 값을 미리 채운다.
+ * 위치(지도 지정)는 현재 등록 장소를 초기 선택으로, 그대로 두거나 다시 고를 수 있다.
+ */
+export function TripForm({
+  locations,
+  action,
+  submitLabel,
+  defaults,
+}: {
+  locations: Location[];
+  action: TripFormAction;
+  submitLabel: string;
+  defaults?: TripFormDefaults;
+}) {
+  const [direction, setDirection] = useState<"up" | "down">(defaults?.direction ?? "down");
+  const [state, formAction, isPending] = useActionState(action, undefined);
+
+  // 검증 실패로 서버가 돌려준 입력값 — 폼 리셋(React 19) 후에도 그대로 채워 둔다.
+  // 없으면(첫 렌더·수정 모드) defaults 사용. 우선순위: 되돌려받은 값 > 수정 기본값.
+  const fv = state?.values;
+  const dv = {
+    originText: fv?.originText ?? defaults?.originText ?? DEFAULT_RETURN_ORIGIN,
+    departureLocal: fv?.departureLocal ?? defaults?.departureLocal,
+    capacity: fv?.capacity ?? defaults?.capacity,
+    price: fv?.price ?? defaults?.price,
+    treasurerName: fv?.treasurerName ?? defaults?.treasurerName,
+    treasurerPhone: fv?.treasurerPhone ?? defaults?.treasurerPhone,
+    bankName: fv?.bankName ?? defaults?.bankName,
+    accountHolder: fv?.accountHolder ?? defaults?.accountHolder,
+    accountNumber: fv?.accountNumber ?? defaults?.accountNumber,
+    refundPolicy: fv?.refundPolicy ?? defaults?.refundPolicy,
+    note: fv?.note ?? defaults?.note,
+  };
 
   // 방식 B: 지도/직접입력 모드 토글 (localhost 지도 미동작 시 select fallback).
   const [manual, setManual] = useState(false);
 
-  const [origin, setOrigin] = useState<Selection>(null);
-  const [dest, setDest] = useState<Selection>(null);
+  // 수정 모드: 현재 지도 지정 위치를 초기 선택으로 (가는편=출발지, 오는편=도착지).
+  const [origin, setOrigin] = useState<Selection>(
+    defaults?.direction === "up" && defaults.originLocationId
+      ? { kind: "registered", id: defaults.originLocationId }
+      : null,
+  );
+  const [dest, setDest] = useState<Selection>(
+    defaults?.direction === "down" && defaults.destLocationId
+      ? { kind: "registered", id: defaults.destLocationId }
+      : null,
+  );
 
   const origins = locations.filter(
     (l) => l.direction === direction && l.location_type === "origin",
@@ -126,7 +192,7 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
               id="origin_text"
               type="text"
               name="origin_text"
-              defaultValue={DEFAULT_RETURN_ORIGIN}
+              defaultValue={dv.originText}
               maxLength={100}
               required
               placeholder="예) 블루캐니언 옆 주차장"
@@ -164,6 +230,7 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
           name="departure_at"
           required
           min={minDatetime}
+          defaultValue={dv.departureLocal}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
         />
       </div>
@@ -181,9 +248,13 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
             required
             min={1}
             max={200}
-            placeholder="예) 44"
+            defaultValue={dv.capacity}
+            placeholder="예) 10"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           />
+          <p className="text-xs text-gray-400">
+            다른 지구에 공개할 좌석 수예요. (우리 지구 학생용 좌석은 빼고, 타지구에 열어줄 자리만)
+          </p>
         </div>
         <div className="space-y-1">
           <label className="text-sm font-medium text-gray-700" htmlFor="price">
@@ -195,6 +266,7 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
             name="price_per_seat"
             required
             min={0}
+            defaultValue={dv.price}
             placeholder="예) 35000"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           />
@@ -216,6 +288,7 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
             name="treasurer_name"
             required
             maxLength={50}
+            defaultValue={dv.treasurerName}
             placeholder="예) 홍길동"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           />
@@ -233,6 +306,7 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
             name="treasurer_phone"
             required
             inputMode="numeric"
+            defaultValue={dv.treasurerPhone}
             placeholder="예) 010-1234-5678"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           />
@@ -254,6 +328,7 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
             name="bank_name"
             required
             maxLength={30}
+            defaultValue={dv.bankName}
             placeholder="예) 카카오뱅크"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           />
@@ -268,6 +343,7 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
             name="account_holder"
             required
             maxLength={30}
+            defaultValue={dv.accountHolder}
             placeholder="예) 홍길동"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           />
@@ -283,12 +359,33 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
             required
             inputMode="numeric"
             maxLength={30}
+            defaultValue={dv.accountNumber}
             placeholder="예) 3333-12-3456789"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
         <p className="col-span-2 text-xs text-gray-400">
           매칭(송금 대기) 후 신청 지구 간사·학생에게 입금 안내로 함께 표시됩니다.
+        </p>
+      </div>
+
+      {/* 환불 정책 — 선택. 입금 계좌와 함께 신청 지구 간사·학생에게 안내 */}
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-gray-700" htmlFor="refund_policy">
+          환불 정책{" "}
+          <span className="font-normal text-gray-400">(선택, 최대 500자)</span>
+        </label>
+        <textarea
+          id="refund_policy"
+          name="refund_policy"
+          rows={3}
+          maxLength={500}
+          defaultValue={dv.refundPolicy}
+          placeholder="예) 출발 3일 전까지 전액 환불, 이후 환불 불가"
+          className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        />
+        <p className="text-xs text-gray-400">
+          입금 계좌 안내와 함께 표시됩니다. 비워두면 표시되지 않아요.
         </p>
       </div>
 
@@ -303,6 +400,7 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
           name="note"
           rows={3}
           maxLength={500}
+          defaultValue={dv.note}
           placeholder="탑승 안내, 집결 위치 등"
           className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
         />
@@ -318,7 +416,7 @@ export function TripNewForm({ locations }: { locations: Location[] }) {
       {/* 제출 */}
       <div className="flex justify-end gap-2 pt-2">
         <Button type="submit" disabled={isPending}>
-          {isPending ? "저장중..." : "임시저장"}
+          {isPending ? "저장중..." : submitLabel}
         </Button>
       </div>
     </form>

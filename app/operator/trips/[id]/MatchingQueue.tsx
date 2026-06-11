@@ -3,19 +3,21 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { formatKstDateTime } from "@/lib/datetime";
+import { formatKstDateTime, formatKstShort } from "@/lib/datetime";
 import { approveRequest, rejectRequest, declinePassengers } from "./actions";
 
-type QueuePassenger = {
+export type QueuePassenger = {
   id: string;
   name: string;
   phone: string;
   schoolOrRole: string | null;
   priority: number;
   note: string | null;
+  /** 개인 신청 시각(KST ISO) — 사전 수합분은 개별, 일반 신청은 신청 시각 폴백. */
+  appliedAt: string;
 };
 
-type QueueRequest = {
+export type QueueRequest = {
   id: string;
   requestedAt: string;
   regionName: string;
@@ -220,6 +222,9 @@ function RequestCard({
                 {p.schoolOrRole && (
                   <span className="text-gray-400">{p.schoolOrRole}</span>
                 )}
+                <span className="text-[11px] tabular-nums text-gray-400">
+                  {formatKstShort(p.appliedAt)}
+                </span>
                 {/* 전화번호 풀 노출 — 간사 운영 연락용 (팀장 승인, 마스킹 금지) */}
                 <a
                   href={`tel:${p.phone}`}

@@ -10,7 +10,7 @@ import {
 } from "@/lib/labels";
 import { one } from "@/lib/supabase/relation";
 import { formatKstDateTime } from "@/lib/datetime";
-import { MatchingQueue } from "./MatchingQueue";
+import { QueuePanel } from "./QueuePanel";
 import { MatchTable, type MatchRow } from "./MatchTable";
 import { TripCancelButton } from "./TripCancelButton";
 import { SeatCountEditButton } from "./SeatCountEditButton";
@@ -73,7 +73,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       `
       id, requested_at, seat_count, status, operator_id, requester_kind,
       region:regions!region_id(name, code),
-      request_passengers(id, name, phone, school_or_role, priority, note, declined_at)
+      request_passengers(id, name, phone, school_or_role, priority, note, declined_at, applied_at)
     `,
     )
     .eq("trip_id", id)
@@ -113,6 +113,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     (ACTIVE_MATCH_STATUSES as readonly string[]).includes(m.status ?? ""),
   );
   const availableSeats = Math.max(0, openSeats - activeMatches.length);
+  // '정원' = 이 차량이 다른 지구에 공개한 좌석 수(공급 지구 자기 학생용 좌석은 제외).
+  // 공개 후엔 실제 공개 좌석(openSeats), 공개 전(draft)엔 등록 정원(capacity).
+  const offeredSeats = status === "published" ? openSeats : trip.capacity;
 
   // 이미 매칭된(활성) 학생은 큐에서 제외 — 재선택·이중 매칭 방지 (SPEC §S3: 매칭 안 된 학생만 잔류)
   const matchedPassengerIds = new Set(
@@ -145,10 +148,32 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             schoolOrRole: p.school_or_role,
             priority: p.priority,
             note: p.note,
+            // 개인 신청 시각 — 사전 수합분은 개별 시각, 일반 신청은 신청 시각으로 폴백.
+            appliedAt: p.applied_at ?? r.requested_at,
           })),
       };
     })
     .filter((r) => r.passengers.length > 0); // 남은 학생 없는 신청 카드는 숨김
+
+  // 시간순(메인) 뷰 — 지구를 가로질러 학생 개개인을 신청 시각으로 정렬.
+  // 같은 시각이면 같은 신청(지구)끼리 우선순위로 안정 정렬. 승인은 신청 단위로 다시 묶어 처리.
+  const flatQueue = queue
+    .flatMap((req) =>
+      req.passengers.map((p) => ({
+        ...p,
+        requestId: req.id,
+        regionName: req.regionName,
+        operatorName: req.operatorName,
+        operatorPhone: req.operatorPhone,
+        requesterKind: req.requesterKind,
+      })),
+    )
+    .sort((a, b) => {
+      const t = a.appliedAt.localeCompare(b.appliedAt);
+      if (t !== 0) return t;
+      if (a.requestId !== b.requestId) return a.requestId.localeCompare(b.requestId);
+      return a.priority - b.priority;
+    });
 
   // 매칭 현황 표 행 — 최근 매칭순. 전화 풀 노출(간사 운영 연락용, 팀장 승인).
   // 진행 순서로 정렬(awaiting→reported→paid→…). 입금 확인 클릭 후에도 자리가 튀지 않도록
@@ -207,10 +232,15 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-gray-600">
-          <span>정원 {trip.capacity}석</span>
+          <span>정원 {offeredSeats}석</span>
           <span className="font-medium text-gray-900">잔여 {availableSeats}석</span>
           <span>{trip.price_per_seat.toLocaleString()}원/인</span>
         </div>
+        {/* 정원 = 다른 지구에 공개한 좌석. 잔여 = 정원 − 매칭 확정(대기 신청은 차감 안 됨). */}
+        <p className="mt-1 text-xs text-gray-400">
+          정원 = 다른 지구에 공개한 좌석 수예요. 잔여 {availableSeats}석 = 정원 {offeredSeats}석 − 매칭
+          확정 {activeMatches.length}명 (대기 신청은 잔여에서 빠지지 않아요).
+        </p>
 
         {trip.note && (
           <p className="mt-3 whitespace-pre-wrap rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600">
@@ -226,10 +256,19 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           💬 버스 채팅 ({DIRECTION_SHORT[direction]})
         </Link>
 
-        {/* 관리 — draft/published 에서만: 잔여 좌석 변경 + 차량 취소. */}
+        {/* 관리 — draft/published 에서만: 차량 수정 + 잔여 좌석 변경 + 차량 취소. */}
         {(status === "draft" || status === "published") && (
           <>
             <div className="mt-4 flex flex-wrap items-center gap-2">
+              {/* 인원(활성 매칭) 받기 전에만 상세 수정 — 매칭되면 숨기고 안내(edit 페이지에서 잠금). */}
+              {activeMatches.length === 0 && (
+                <Link
+                  href={`/operator/trips/${trip.id}/edit`}
+                  className="inline-flex h-9 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  ✏️ 차량 수정
+                </Link>
+              )}
               <SeatCountEditButton
                 tripId={trip.id}
                 currentCount={openSeats}
@@ -267,7 +306,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             공개(published) 상태의 Trip만 매칭할 수 있습니다.
           </p>
         ) : (
-          <MatchingQueue tripId={trip.id} availableSeats={availableSeats} queue={queue} />
+          <QueuePanel
+            tripId={trip.id}
+            availableSeats={availableSeats}
+            queue={queue}
+            flatQueue={flatQueue}
+          />
         )}
       </section>
 

@@ -528,6 +528,7 @@ export type Database = {
       request_passengers: {
         Row: {
           anonymized: boolean
+          applied_at: string | null
           created_at: string
           decline_reason: string | null
           declined_at: string | null
@@ -541,6 +542,7 @@ export type Database = {
         }
         Insert: {
           anonymized?: boolean
+          applied_at?: string | null
           created_at?: string
           decline_reason?: string | null
           declined_at?: string | null
@@ -554,6 +556,7 @@ export type Database = {
         }
         Update: {
           anonymized?: boolean
+          applied_at?: string | null
           created_at?: string
           decline_reason?: string | null
           declined_at?: string | null
@@ -805,6 +808,7 @@ export type Database = {
           operator_region_id: string
           origin_location_id: string
           price_per_seat: number
+          refund_policy: string | null
           status: string
           treasurer_name: string | null
           treasurer_phone: string | null
@@ -826,6 +830,7 @@ export type Database = {
           operator_region_id: string
           origin_location_id: string
           price_per_seat: number
+          refund_policy?: string | null
           status?: string
           treasurer_name?: string | null
           treasurer_phone?: string | null
@@ -847,6 +852,7 @@ export type Database = {
           operator_region_id?: string
           origin_location_id?: string
           price_per_seat?: number
+          refund_policy?: string | null
           status?: string
           treasurer_name?: string | null
           treasurer_phone?: string | null

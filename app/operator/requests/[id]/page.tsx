@@ -33,6 +33,7 @@ type Request = {
     bank_name: string | null;
     account_number: string | null;
     account_holder: string | null;
+    refund_policy: string | null;
     region: { name: string } | null;
   } | null;
   request_passengers: Passenger[];
@@ -53,7 +54,7 @@ export default async function RequestDetailPage({
       `
       id, region_id, status, reject_reason, requested_at, seat_count,
       trip:trips!trip_id(
-        direction, departure_at, price_per_seat, bank_name, account_number, account_holder,
+        direction, departure_at, price_per_seat, bank_name, account_number, account_holder, refund_policy,
         region:regions!operator_region_id(name)
       ),
       request_passengers(id, name, phone, school_or_role, priority)
@@ -141,6 +142,7 @@ export default async function RequestDetailPage({
                 bankName={trip.bank_name}
                 accountNumber={trip.account_number}
                 accountHolder={trip.account_holder}
+                refundPolicy={trip.refund_policy}
               />
               <p className="text-muted-foreground mt-2 text-xs">
                 매칭된 학생에게 위 계좌로 송금 안내해 주세요. 송금 후 공급 지구가 입금을 확인하면
