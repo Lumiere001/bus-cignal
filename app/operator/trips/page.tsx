@@ -60,6 +60,8 @@ export default async function Page() {
               .length;
             const availableSeats = Math.max(0, openSeats - activeMatches);
             const status = trip.status as TripStatus;
+            // '정원' = 다른 지구에 공개한 좌석 수 (공개 후 openSeats, 공개 전 등록값 capacity).
+            const offeredSeats = status === "published" ? openSeats : trip.capacity;
             const direction = trip.direction as "up" | "down";
 
             return (
@@ -89,7 +91,7 @@ export default async function Page() {
                 </div>
 
                 <div className="flex items-center gap-4 text-xs text-gray-500">
-                  <span>정원 {trip.capacity}석</span>
+                  <span>정원 {offeredSeats}석</span>
                   {status === "published" && (
                     <span>잔여 {availableSeats}석</span>
                   )}

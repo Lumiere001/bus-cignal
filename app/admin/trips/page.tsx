@@ -58,7 +58,8 @@ async function loadTrips(): Promise<TripRow[]> {
       id: t.id,
       direction: t.direction,
       departureAt: t.departure_at,
-      capacity: t.capacity,
+      // '정원' = 다른 지구에 공개한 좌석(공개 후 openSeats, 공개 전 등록값 capacity).
+      capacity: t.status === "published" ? openSeats : t.capacity,
       remaining: Math.max(0, openSeats - active),
       pricePerSeat: t.price_per_seat,
       status: t.status,

@@ -108,7 +108,9 @@ async function loadStatus(): Promise<RegionSupply[]> {
     const avail = Math.max(0, openSeats - active);
 
     acc.tripCount += 1;
-    acc.totalCapacity += t.capacity;
+    // '정원' = 다른 지구에 공개한 좌석(openSeats). 버스 전체 정원(capacity)이 아니라
+    // 타지구가 신청 가능한 좌석 기준 — 잔여석과 같은 분모라 두 숫자가 일관된다.
+    acc.totalCapacity += openSeats;
     acc.available += avail;
     if (t.direction === "up") {
       acc.upTrips += 1;

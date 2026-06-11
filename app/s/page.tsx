@@ -9,6 +9,10 @@ import { CancelRequestButton } from "./CancelRequestButton";
 import { LinkPending } from "./LinkPending";
 import { studentLogout } from "./actions";
 import { AccountInfo } from "@/components/payment/AccountInfo";
+import {
+  getOperatorBookedByPhone,
+  type OperatorBooked,
+} from "@/lib/passenger/operator-booked";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +24,7 @@ type TripEmbed = {
   bank_name: string | null;
   account_number: string | null;
   account_holder: string | null;
+  refund_policy: string | null;
   origin: { label: string | null; address: string } | { label: string | null; address: string }[] | null;
   destination: { label: string | null; address: string } | { label: string | null; address: string }[] | null;
   region: { name: string } | { name: string }[] | null;
@@ -39,12 +44,16 @@ export default async function StudentHomePage({
 
   const { data: student } = await db
     .from("students")
-    .select("name, regions:regions!region_id(name)")
+    .select("name, phone, regions:regions!region_id(name)")
     .eq("id", session.studentId)
     .maybeSingle();
 
   const name = student?.name ?? "학생";
   const region = one(student?.regions)?.name ?? null;
+
+  // 간사가 대신 잡아준 예약(구글폼/사전등록) — 같은 전화의 간사-등록 탑승자를 찾아 노출.
+  // CCC 로그인 학생이 본인이 직접 신청하지 않았어도 자기 예약을 확인할 수 있게 한다.
+  const operatorBooked = await getOperatorBookedByPhone(student?.phone);
 
   // 진행 중 신청 — 최신순. paid(확정)·cancelled는 허브에서 숨김(확정은 '예약 확인'에서).
   const { data: requests } = await db
@@ -53,7 +62,7 @@ export default async function StudentHomePage({
       `
       id, status, requested_at, reject_reason,
       trip:trips!trip_id(
-        id, direction, departure_at, status, bank_name, account_number, account_holder,
+        id, direction, departure_at, status, bank_name, account_number, account_holder, refund_policy,
         origin:region_locations!origin_location_id(label, address),
         destination:region_locations!destination_location_id(label, address),
         region:regions!operator_region_id(name)
@@ -132,6 +141,23 @@ export default async function StudentHomePage({
         </p>
       )}
 
+      {/* 간사가 등록해준 예약 — CCC 전화번호로 연동 (본인 직접 신청과 별개) */}
+      {operatorBooked.length > 0 && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">간사가 등록해준 예약</h2>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              담당 간사가 대신 신청해준 예약이에요. (CCC 전화번호로 자동 연결)
+            </p>
+          </div>
+          <ul className="space-y-3">
+            {operatorBooked.map((b) => (
+              <OperatorBookedCard key={b.passengerId} item={b} />
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* 진행 중 신청 */}
       {pending.length > 0 && (
         <section className="space-y-3">
@@ -144,6 +170,65 @@ export default async function StudentHomePage({
         </section>
       )}
     </main>
+  );
+}
+
+function OperatorBookedCard({ item }: { item: OperatorBooked }) {
+  const badge =
+    item.status === "paid"
+      ? { label: "예약 확정", cls: "bg-green-100 text-green-700" }
+      : item.status === "queued"
+        ? { label: "대기중", cls: "bg-amber-100 text-amber-700" }
+        : { label: MATCH_STATUS_LABEL[item.status] ?? "매칭됨", cls: "bg-blue-100 text-blue-700" };
+
+  // 송금 대기 상태(확정 전)에서만 입금 계좌 안내.
+  const needsPayment = item.status === "awaiting_payment" || item.status === "payment_reported";
+
+  return (
+    <li className="rounded-xl border bg-white p-4 shadow-sm">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
+          {badge.label}
+        </span>
+        {item.departureAt && (
+          <span className="text-xs text-gray-400">
+            {formatKstDateTime(item.departureAt)} 출발
+          </span>
+        )}
+      </div>
+
+      <div className="text-sm font-semibold text-gray-900">
+        [{DIRECTION_SHORT[item.direction]}] {item.originLabel ?? "출발지"} →{" "}
+        {item.destLabel ?? "도착지"}
+      </div>
+      <div className="mt-0.5 text-xs text-gray-500">{item.regionName} 공급 차량</div>
+
+      {item.status === "paid" && item.reservationCode && (
+        <p className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">
+          예약번호 <b className="tabular-nums">{item.reservationCode}</b> · 예약이 확정됐어요.
+        </p>
+      )}
+
+      {needsPayment && (
+        <div className="mt-3 space-y-2">
+          <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">
+            아래 계좌로 입금 후 담당 간사 안내를 따라 주세요. 입금 확인되면 예약번호가 발급돼요.
+          </p>
+          <AccountInfo
+            bankName={item.bankName}
+            accountNumber={item.accountNumber}
+            accountHolder={item.accountHolder}
+            refundPolicy={item.refundPolicy}
+          />
+        </div>
+      )}
+
+      {item.status === "queued" && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          간사가 등록해 대기열에 있어요. 매칭(좌석 배정)되면 입금 안내가 표시돼요.
+        </p>
+      )}
+    </li>
   );
 }
 
@@ -201,6 +286,7 @@ function PendingCard({ item }: { item: PendingItem }) {
               bankName={trip.bank_name}
               accountNumber={trip.account_number}
               accountHolder={trip.account_holder}
+              refundPolicy={trip.refund_policy}
             />
           )}
         </div>
