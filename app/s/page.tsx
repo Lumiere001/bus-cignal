@@ -145,9 +145,9 @@ export default async function StudentHomePage({
       {operatorBooked.length > 0 && (
         <section className="space-y-3">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">간사가 등록해준 예약</h2>
+            <h2 className="text-base font-semibold text-gray-900">간사님이 등록해주신 예약</h2>
             <p className="text-muted-foreground mt-0.5 text-xs">
-              담당 간사가 대신 신청해준 예약이에요. (CCC 전화번호로 자동 연결)
+              담당 간사님이 대신 신청해주신 예약이에요. (CCC 전화번호로 자동 연결)
             </p>
           </div>
           <ul className="space-y-3">
@@ -204,9 +204,18 @@ function OperatorBookedCard({ item }: { item: OperatorBooked }) {
       <div className="mt-0.5 text-xs text-gray-500">{item.regionName} 공급 차량</div>
 
       {item.status === "paid" && item.reservationCode && (
-        <p className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">
-          예약번호 <b className="tabular-nums">{item.reservationCode}</b> · 예약이 확정됐어요.
-        </p>
+        <div className="mt-3 space-y-2">
+          <p className="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">
+            예약번호 <b className="tabular-nums">{item.reservationCode}</b> · 예약이 확정됐어요.
+          </p>
+          {/* 확정 예약 → /s/reservations 에서 passenger 세션 발급 → /me(지도·버스 채팅) */}
+          <Link
+            href="/s/reservations"
+            className="flex items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            🗺️ 지도 · 버스 채팅 보기 →
+          </Link>
+        </div>
       )}
 
       {needsPayment && (

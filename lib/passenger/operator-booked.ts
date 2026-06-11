@@ -114,7 +114,7 @@ export function mapOperatorBooked(rows: RawBookedRow[]): OperatorBooked[] {
  * 전화가 없거나 형식 미달이면 빈 배열 (연동 불가 — 조용히 미표시).
  */
 /** 숫자 전화 → 저장됐을 수 있는 후보 형식들(숫자만 = 앱 기본, 표준 하이픈 = 레거시/시드). */
-function phoneCandidates(digits: string): string[] {
+export function phoneCandidates(digits: string): string[] {
   const out = new Set([digits]);
   if (digits.length === 11) out.add(`${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`);
   if (digits.length === 10) out.add(`${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`);
