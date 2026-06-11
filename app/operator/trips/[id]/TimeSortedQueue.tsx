@@ -157,6 +157,11 @@ export function TimeSortedQueue({
                 <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500">
                   {p.regionName}
                 </span>
+                {p.requesterKind === "student" && (
+                  <span className="rounded-md bg-violet-100 px-1.5 py-0.5 text-[11px] font-medium text-violet-700">
+                    학생 직접 신청
+                  </span>
+                )}
                 {p.schoolOrRole && <span className="text-gray-400">{p.schoolOrRole}</span>}
                 <a
                   href={`tel:${p.phone}`}
