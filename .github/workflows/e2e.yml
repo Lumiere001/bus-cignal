@@ -44,7 +44,10 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # latest 사용 시 CLI 릴리즈에 따라 `supabase status -o env` 출력 키가 바뀌어
+          # env 추출(.env.development.local)이 깨질 수 있음(2026-06-11 전 PR 일괄 실패).
+          # 로컬 개발 머신과 동일한 검증된 버전으로 고정 — 올릴 땐 로컬 먼저 검증 후 함께.
+          version: 2.75.0
 
       - name: Start Supabase (local stack)
         run: supabase start
