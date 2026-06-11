@@ -1,9 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   buildConsentUrl,
   parseExchangeResponse,
   branchCode,
   isEligibleStaff,
+  cccBase,
+  cccBases,
+  exchangeCode,
   type HandoffPayload,
 } from "./handoff";
 
@@ -53,6 +56,128 @@ describe("parseExchangeResponse", () => {
   it("객체 아님(null/문자열) → invalid_response", () => {
     expect(parseExchangeResponse(null).ok).toBe(false);
     expect(parseExchangeResponse("nope").ok).toBe(false);
+  });
+});
+
+describe("cccBases / cccBase — 허용 베이스 목록", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("env 없음 → 기본 2개(테스트·실수련회) 모두 허용", () => {
+    vi.stubEnv("CCC_SUMMER_BASE", "");
+    expect(cccBases()).toEqual([
+      "https://ccc-summer.vercel.app",
+      "https://sc2026.kccc.org",
+    ]);
+  });
+
+  it("env 단일 값 = primary로 맨 앞, 기본 2개는 항상 허용(중복 제거)", () => {
+    vi.stubEnv("CCC_SUMMER_BASE", "https://sc2026.kccc.org/");
+    expect(cccBases()).toEqual([
+      "https://sc2026.kccc.org",
+      "https://ccc-summer.vercel.app",
+    ]);
+    expect(cccBase()).toBe("https://sc2026.kccc.org");
+  });
+
+  it("쉼표 구분 복수 값 — 공백·끝 슬래시 정리, 순서 보존", () => {
+    vi.stubEnv(
+      "CCC_SUMMER_BASE",
+      " https://sc2026.kccc.org/ , https://ccc-summer.vercel.app ",
+    );
+    expect(cccBases()).toEqual([
+      "https://sc2026.kccc.org",
+      "https://ccc-summer.vercel.app",
+    ]);
+  });
+});
+
+describe("exchangeCode — 멀티 베이스 순차 시도", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  const OK_JSON = {
+    subject_id: "uuid-1",
+    payload: { name: "홍길동", is_staff: false },
+  };
+  const json = (body: unknown) =>
+    new Response(JSON.stringify(body), {
+      headers: { "Content-Type": "application/json" },
+    });
+
+  it("primary가 코드를 모르면 다음 베이스에서 성공", async () => {
+    vi.stubEnv("CCC_SUMMER_BASE", "");
+    const calls: { url: string; body: Record<string, unknown> }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+        calls.push({ url: String(url), body: JSON.parse(String(init?.body)) });
+        return String(url).startsWith("https://ccc-summer.vercel.app")
+          ? json({ error: "invalid_or_expired_code" })
+          : json(OK_JSON);
+      }),
+    );
+
+    const r = await exchangeCode("c1", "https://app.test/api/ccc/callback");
+    expect(r).toEqual({ ok: true, subjectId: "uuid-1", payload: OK_JSON.payload });
+    expect(calls.map((c) => c.url)).toEqual([
+      "https://ccc-summer.vercel.app/api/handoff/exchange",
+      "https://sc2026.kccc.org/api/handoff/exchange",
+    ]);
+    // 두 시도 모두 동일한 code·client_id·redirect_uri를 보낸다.
+    for (const c of calls) {
+      expect(c.body).toEqual({
+        code: "c1",
+        client_id: "bus-cignal",
+        redirect_uri: "https://app.test/api/ccc/callback",
+      });
+    }
+  });
+
+  it("primary 성공 시 다른 베이스는 호출하지 않는다", async () => {
+    vi.stubEnv("CCC_SUMMER_BASE", "");
+    const fetchMock = vi.fn(async () => json(OK_JSON));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const r = await exchangeCode("c1", "https://app.test/api/ccc/callback");
+    expect(r.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("한 베이스가 다운(네트워크 오류)이어도 다음 베이스로 진행", async () => {
+    vi.stubEnv("CCC_SUMMER_BASE", "");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: RequestInfo | URL) => {
+        if (String(url).startsWith("https://ccc-summer.vercel.app")) {
+          throw new Error("ECONNREFUSED");
+        }
+        return json(OK_JSON);
+      }),
+    );
+
+    const r = await exchangeCode("c1", "https://app.test/api/ccc/callback");
+    expect(r.ok).toBe(true);
+  });
+
+  it("전부 실패 → primary의 에러를 돌려준다", async () => {
+    vi.stubEnv("CCC_SUMMER_BASE", "");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: RequestInfo | URL) =>
+        String(url).startsWith("https://ccc-summer.vercel.app")
+          ? json({ error: "invalid_or_expired_code" })
+          : json({ error: "unknown_client" }),
+      ),
+    );
+
+    expect(await exchangeCode("c1", "https://app.test/api/ccc/callback")).toEqual({
+      ok: false,
+      error: "invalid_or_expired_code",
+    });
   });
 });
 

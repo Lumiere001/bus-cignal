@@ -2,9 +2,17 @@
 //
 // 흐름: /login/ccc → consent(브라우저) → /api/ccc/callback?code → exchange(서버↔서버) → payload.
 // 시크릿 없음 — 보안은 등록된 redirect_uri + 1회용 5분 code + state(CSRF)로 성립.
-// Base URL은 env로 분리(현재 ccc-summer.vercel.app → 추후 sc2026.kccc.org는 키만 교체).
+//
+// Base URL은 복수 허용(CCC 간사 요청 2026-06-11): 테스트(ccc-summer.vercel.app)와
+// 실수련회(sc2026.kccc.org) 양쪽에서 발급된 코드를 모두 받는다.
+//  - consent(로그인 버튼)는 primary(목록 첫 항목) 한 곳으로 보낸다.
+//  - exchange는 코드 발급처를 알 수 없으므로 허용 목록을 순서대로 시도한다.
+//    (다른 베이스 코드는 그 베이스가 모르는 값이라 거부될 뿐 소모되지 않음.)
 
-const DEFAULT_BASE = "https://ccc-summer.vercel.app";
+const DEFAULT_BASES = [
+  "https://ccc-summer.vercel.app", // 테스트용
+  "https://sc2026.kccc.org", // 실제 수련회
+];
 
 /** 등록된 client_id (CCC 게시판 등록값과 일치해야 함). 간사용. */
 export const CCC_CLIENT_ID = process.env.CCC_HANDOFF_CLIENT_ID ?? "bus-cignal";
@@ -13,9 +21,25 @@ export const CCC_CLIENT_ID = process.env.CCC_HANDOFF_CLIENT_ID ?? "bus-cignal";
 export const CCC_STUDENT_CLIENT_ID =
   process.env.CCC_HANDOFF_STUDENT_CLIENT_ID ?? "bus-cignal-student";
 
-/** ccc-summer Base URL (끝 슬래시 제거). */
+function normalizeBase(raw: string): string {
+  return raw.trim().replace(/\/+$/, "");
+}
+
+/**
+ * 허용 베이스 목록 — env `CCC_SUMMER_BASE`(쉼표 구분, 첫 항목=primary) ∪ 기본 2개.
+ * env가 한 곳만 가리켜도 기본 2개는 항상 허용되어 테스트·실수련회 코드가 같이 동작한다.
+ */
+export function cccBases(): string[] {
+  const fromEnv = (process.env.CCC_SUMMER_BASE ?? "")
+    .split(",")
+    .map(normalizeBase)
+    .filter(Boolean);
+  return [...new Set([...fromEnv, ...DEFAULT_BASES])];
+}
+
+/** primary Base URL — consent(로그인 버튼) 목적지. 허용 목록의 첫 항목. */
 export function cccBase(): string {
-  return (process.env.CCC_SUMMER_BASE ?? DEFAULT_BASE).replace(/\/+$/, "");
+  return cccBases()[0];
 }
 
 /** 동의 화면 URL — 사용자를 여기로 리다이렉트. state는 CSRF 방지용. */
@@ -77,18 +101,16 @@ export function isEligibleStaff(payload: HandoffPayload): boolean {
   return payload.is_staff === true;
 }
 
-/**
- * code → payload 교환 (서버↔서버). redirect_uri는 발급 때와 동일해야 한다.
- * 브라우저에서 호출 금지(payload 누출). 네트워크/JSON 실패는 error로 평탄화.
- */
-export async function exchangeCode(
+/** 한 베이스에 대한 단일 exchange 시도. 네트워크/JSON 실패는 error로 평탄화. */
+async function exchangeCodeAt(
+  base: string,
   code: string,
   redirectUri: string,
-  clientId: string = CCC_CLIENT_ID,
+  clientId: string,
 ): Promise<ExchangeResult> {
   let res: Response;
   try {
-    res = await fetch(`${cccBase()}/api/handoff/exchange`, {
+    res = await fetch(`${base}/api/handoff/exchange`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -108,4 +130,24 @@ export async function exchangeCode(
     return { ok: false, error: "invalid_json" };
   }
   return parseExchangeResponse(json);
+}
+
+/**
+ * code → payload 교환 (서버↔서버). redirect_uri는 발급 때와 동일해야 한다.
+ * 브라우저에서 호출 금지(payload 누출).
+ * 코드가 어느 베이스에서 발급됐는지 모르므로 허용 베이스를 순서대로 시도하고,
+ * 전부 실패하면 primary의 에러를 돌려준다(사용자 안내 기준점).
+ */
+export async function exchangeCode(
+  code: string,
+  redirectUri: string,
+  clientId: string = CCC_CLIENT_ID,
+): Promise<ExchangeResult> {
+  let primaryError: ExchangeResult | null = null;
+  for (const base of cccBases()) {
+    const result = await exchangeCodeAt(base, code, redirectUri, clientId);
+    if (result.ok) return result;
+    primaryError ??= result;
+  }
+  return primaryError ?? { ok: false, error: "network_error" };
 }
