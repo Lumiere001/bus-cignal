@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { SearchBox } from "@/components/ui/search-box";
 import { DIRECTION_SHORT, REQUEST_STATUS_LABEL } from "@/lib/labels";
-import { formatKstDateTime } from "@/lib/datetime";
+import { formatDateOnly, formatKstDateTime } from "@/lib/datetime";
 import { RequestGraph } from "./RequestGraph";
 
 const REQUEST_STATUS_COLOR: Record<string, string> = {
@@ -25,6 +25,10 @@ export type RequestRow = {
   passengerNames: string[];
   /** 'student' = 학생 본인 직접 신청, 'operator' = 간사가 대신 신청. */
   requesterKind: "student" | "operator";
+  /** true = 버스 미배정 대기큐 신청(trip 없음) — regionName은 대기 대상(공급) 지구명. */
+  isWait: boolean;
+  /** 대기큐 희망 출발일 "YYYY-MM-DD" (미지정이면 null). */
+  waitDesiredDate: string | null;
 };
 
 function statusLabel(status: string): string {
@@ -104,6 +108,7 @@ export function RequestsList({ requests }: { requests: RequestRow[] }) {
         r.regionName ?? "",
         DIRECTION_SHORT[r.direction],
         statusLabel(r.status),
+        r.isWait ? "대기큐 버스 미배정" : "",
       ]
         .join(" ")
         .toLowerCase();
@@ -173,6 +178,12 @@ export function RequestsList({ requests }: { requests: RequestRow[] }) {
                       >
                         {statusLabel(status)}
                       </span>
+                      {/* 버스 미배정 대기큐 신청 — trip 신청과 구분 (대기큐·Step3 안내와 동일 amber 톤). */}
+                      {r.isWait && (
+                        <span className="inline-block whitespace-nowrap rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                          버스 미배정
+                        </span>
+                      )}
                       {/* 학생 본인이 직접 신청한 건 — 간사 대신신청과 구분 (공급측 큐와 동일 톤). */}
                       {r.requesterKind === "student" && (
                         <span className="inline-block whitespace-nowrap rounded-md bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
@@ -197,10 +208,18 @@ export function RequestsList({ requests }: { requests: RequestRow[] }) {
                   )}
 
                   <div className="flex items-center gap-3 text-xs text-gray-500">
-                    {r.regionName && (
-                      <span className="truncate" title={`${r.regionName} 차량`}>
-                        {r.regionName} 차량
+                    {r.isWait ? (
+                      // 대기큐 신청 — 차량 대신 대기 대상 지구 + 희망일 표기.
+                      <span className="truncate" title={`${r.regionName ?? "타지구"} 대기큐`}>
+                        {r.regionName ?? "타지구"} 대기큐 · 희망일{" "}
+                        {r.waitDesiredDate ? formatDateOnly(r.waitDesiredDate) : "미지정"}
                       </span>
+                    ) : (
+                      r.regionName && (
+                        <span className="truncate" title={`${r.regionName} 차량`}>
+                          {r.regionName} 차량
+                        </span>
+                      )
                     )}
                     <span className="whitespace-nowrap">학생 {paxCount}명</span>
                     <span className="ml-auto shrink-0 whitespace-nowrap text-blue-600">

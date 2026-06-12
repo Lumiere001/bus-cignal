@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { KakaoMultiMap, type MapPin } from "@/components/kakao/KakaoMultiMap";
 import { DIRECTION_SHORT } from "@/lib/labels";
 import { formatKstDateTime, formatWon } from "@/lib/datetime";
-import { createRequest, type PassengerInput } from "../actions";
+import { createRequest, createWaitRequest, type PassengerInput } from "../actions";
 
 // page.tsx 에서 내려주는 차량 1건.
 // 지도 핀 좌표(map*)는 '지역(우리 동네)' 지점 — 가는편=출발지, 오는편=도착지.
@@ -24,7 +24,9 @@ export type WizardTrip = {
   availableSeats: number;
 };
 
-type RegionOption = { name: string; area: string | null };
+// 지구 선택지 — 전체 지구(본인 제외). 차량 없는 지구도 포함(대기큐 신청 대상).
+// id는 대기 신청(createWaitRequest)의 waitRegionId 해석용.
+export type RegionOption = { id: string; name: string; area: string | null };
 
 type Step = 1 | 2 | 3;
 
@@ -76,7 +78,13 @@ export function RequestWizard({
   // Step1: 조회 조건.
   //  - regionName = 어느 지구의 차량을 탈지(공급 지구). 예) 부산.
   //  - direction = 상행(선택지구→평창) / 하행(평창→선택지구). 스왑으로 전환.
-  const [regionName, setRegionName] = useState<string>(regionOptions[0]?.name ?? "");
+  //  - 기본 선택 = 공급 차량이 있는 첫 지구(가나다순). 없으면 첫 지구.
+  const [regionName, setRegionName] = useState<string>(
+    () =>
+      regionOptions.find((o) => trips.some((t) => t.regionName === o.name))?.name ??
+      regionOptions[0]?.name ??
+      "",
+  );
   const [direction, setDirection] = useState<"up" | "down">("up");
   const [date, setDate] = useState<string>(""); // "YYYY-MM-DD" (KST), 비우면 전체
   const [headcount, setHeadcount] = useState<number>(1);
@@ -90,6 +98,10 @@ export function RequestWizard({
   const [rows, setRows] = useState<PassengerRow[]>([emptyRow(0)]);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // 대기큐 모드 — 선택 지구 차량이 0대일 때 trip 없이 그 지구 대기큐에 신청 (#대기큐).
+  const [waitMode, setWaitMode] = useState(false);
+  const [desiredDate, setDesiredDate] = useState<string>(""); // 희망 출발일 (선택)
 
   const selectedArea = regionOptions.find((o) => o.name === regionName)?.area ?? null;
   const selectedKwon = kwonyeokOf(selectedArea);
@@ -116,6 +128,13 @@ export function RequestWizard({
   const allResults = useMemo(() => [...exact, ...recommended], [exact, recommended]);
   const selectedTrip = allResults.find((t) => t.id === selectedId) ?? null;
 
+  // 선택 지구에 (날짜 무관) 이 방향 차량이 하나라도 있는지 — 대기큐 안내 문구 분기용
+  // (있으면 "그 날짜엔 없음", 없으면 "아직 안 올림" — 학생 위저드와 동일 기준).
+  const exactAnyDate = useMemo(
+    () => trips.some((t) => t.direction === direction && t.regionName === regionName),
+    [trips, direction, regionName],
+  );
+
   // 지도 핀 — '지역' 지점 좌표가 있는 차량만. title=공급지구명, subtitle=노선/시각.
   const pins: MapPin[] = useMemo(() => {
     return allResults
@@ -132,6 +151,7 @@ export function RequestWizard({
   function runSearch() {
     setError(null);
     setSelectedId(null);
+    setWaitMode(false);
     setSearched(true);
     setStep(2);
   }
@@ -141,10 +161,8 @@ export function RequestWizard({
     return headcount > t.availableSeats;
   }
 
-  function selectAndContinue(t: WizardTrip) {
-    setSelectedId(t.id);
-    setError(null);
-    // 인원 수만큼 명단 행 미리 준비 (이미 입력값 있으면 보존)
+  // 인원 수만큼 명단 행 미리 준비 (이미 입력값 있으면 보존) — trip 선택·대기큐 공용.
+  function prepareRows() {
     setRows((prev) => {
       if (prev.length >= headcount) return prev;
       const next = [...prev];
@@ -152,6 +170,23 @@ export function RequestWizard({
       while (next.length < headcount) next.push(emptyRow(key++));
       return next;
     });
+  }
+
+  function selectAndContinue(t: WizardTrip) {
+    setSelectedId(t.id);
+    setWaitMode(false);
+    setError(null);
+    prepareRows();
+    setStep(3);
+  }
+
+  // 대기큐 모드로 Step3 진행 — 선택 지구가 버스를 안 올렸을 때(차량 선택 없이 명단 입력).
+  function startWaitQueue() {
+    setSelectedId(null);
+    setWaitMode(true);
+    setError(null);
+    setDesiredDate(date); // Step1 날짜 필터를 희망일 초기값으로 (비워뒀으면 공란)
+    prepareRows();
     setStep(3);
   }
 
@@ -178,17 +213,40 @@ export function RequestWizard({
 
   function handleSubmit() {
     setError(null);
-    if (!selectedTrip) {
-      setError("신청할 차량을 다시 선택해주세요.");
-      setStep(2);
-      return;
-    }
     const payload: PassengerInput[] = rows.map((r) => ({
       name: r.name,
       phone: r.phone,
       schoolOrRole: r.schoolOrRole,
       note: r.note,
     }));
+
+    // 대기큐 모드 — trip 없이 대상 지구 대기큐로 신청 (waitRegionId는 선택지에서 해석).
+    if (waitMode) {
+      const waitRegionId = regionOptions.find((o) => o.name === regionName)?.id;
+      if (!waitRegionId) {
+        setError("지구 정보를 찾을 수 없습니다. 조회 조건을 다시 확인해주세요.");
+        setStep(1);
+        return;
+      }
+      startTransition(async () => {
+        const result = await createWaitRequest({
+          waitRegionId,
+          direction,
+          desiredDate: desiredDate || null,
+          passengers: payload,
+          consent,
+        });
+        if (result?.error) setError(result.error);
+        // 성공 시 서버 액션이 /operator/requests 로 redirect
+      });
+      return;
+    }
+
+    if (!selectedTrip) {
+      setError("신청할 차량을 다시 선택해주세요.");
+      setStep(2);
+      return;
+    }
     startTransition(async () => {
       const result = await createRequest(selectedTrip.id, payload, consent);
       if (result?.error) setError(result.error);
@@ -386,47 +444,53 @@ export function RequestWizard({
             {date ? ` · ${date}` : " · 전체 날짜"} · {headcount}명
           </div>
 
-          {allResults.length === 0 ? (
-            <div className="rounded-xl border border-dashed py-16 text-center text-sm text-gray-400">
-              {regionName}의 {DIRECTION_SHORT[direction]} 공급 차량이 없고, 근처 권역 추천도
-              없습니다.
-              <br />
-              지구·방향·날짜를 바꿔 다시 조회해보세요.
-            </div>
-          ) : (
-            <>
-              {/* 지역(지구) 지점 지도 — 가는편 출발지 / 오는편 도착지 */}
-              <KakaoMultiMap pins={pins} selectedId={selectedId} onSelect={(id) => setSelectedId(id)} />
+          {/* 지역(지구) 지점 지도 — 가는편 출발지 / 오는편 도착지 */}
+          {allResults.length > 0 && (
+            <KakaoMultiMap pins={pins} selectedId={selectedId} onSelect={(id) => setSelectedId(id)} />
+          )}
 
-              {/* 정확 일치 — 선택한 지구 차량 */}
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-gray-700">
-                  {regionName} 차량{" "}
-                  <span className="font-normal text-gray-400">({exact.length})</span>
-                </h3>
-                {exact.length === 0 ? (
-                  <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-gray-400">
-                    {regionName}의 {DIRECTION_SHORT[direction]} 공급 차량이 아직 없어요. 아래 권역
-                    추천을 확인해보세요.
-                  </p>
-                ) : (
-                  <ul className="space-y-2">{exact.map(tripCard)}</ul>
-                )}
+          {/* 정확 일치 — 선택한 지구 차량 */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-gray-700">
+              {regionName} 차량{" "}
+              <span className="font-normal text-gray-400">({exact.length})</span>
+            </h3>
+            {exact.length === 0 ? (
+              // 대기큐 안내 — 선택 지구 차량 0대면(권역 추천 유무와 무관) 미배정 대기 신청 제안.
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
+                <p className="text-sm font-medium text-amber-800">
+                  {exactAnyDate
+                    ? `「${regionName}」는 ${date}에 출발하는 ${DIRECTION_SHORT[direction]} 버스가 없어요.`
+                    : `「${regionName}」는 아직 ${DIRECTION_SHORT[direction]} 버스를 올리지 않았어요.`}
+                </p>
+                <p className="mt-1 text-xs text-amber-700">
+                  대기큐에 신청을 넣어두면 버스가 생길 때 {regionName} 간사가 배정해요.
+                  {recommended.length > 0 && " 아래 권역 추천 차량을 먼저 확인해봐도 좋아요."}
+                </p>
+                <button
+                  type="button"
+                  onClick={startWaitQueue}
+                  className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-lg bg-amber-500 text-sm font-medium text-white hover:bg-amber-600"
+                >
+                  {regionName} 대기큐에 신청 넣기
+                </button>
               </div>
+            ) : (
+              <ul className="space-y-2">{exact.map(tripCard)}</ul>
+            )}
+          </div>
 
-              {/* 권역 추천 */}
-              {recommended.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-gray-700">
-                    🔁 근처 권역 추천{" "}
-                    <span className="font-normal text-gray-400">
-                      ({selectedKwon ?? "권역"} · {recommended.length})
-                    </span>
-                  </h3>
-                  <ul className="space-y-2">{recommended.map(tripCard)}</ul>
-                </div>
-              )}
-            </>
+          {/* 권역 추천 */}
+          {recommended.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-gray-700">
+                🔁 근처 권역 추천{" "}
+                <span className="font-normal text-gray-400">
+                  ({selectedKwon ?? "권역"} · {recommended.length})
+                </span>
+              </h3>
+              <ul className="space-y-2">{recommended.map(tripCard)}</ul>
+            </div>
           )}
 
           <Button type="button" variant="outline" onClick={() => setStep(1)} className="w-full">
@@ -436,28 +500,72 @@ export function RequestWizard({
       )}
 
       {/* ───────── Step 3: 명단 ───────── */}
-      {step === 3 && selectedTrip && (
+      {step === 3 && (waitMode || selectedTrip) && (
         <div className="space-y-5">
-          {/* 선택한 차량 요약 */}
-          <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
-            <div className="text-sm font-medium text-gray-900">
-              [{DIRECTION_SHORT[selectedTrip.direction]}] {selectedTrip.originLabel} →{" "}
-              {selectedTrip.destinationLabel}
+          {/* 요약 — 대기큐 모드는 차량 대신 대기 신청 안내, 아니면 선택한 차량 */}
+          {waitMode ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+              <div className="text-sm font-medium text-gray-900">
+                버스 미배정 대기 신청 — {regionName} 대기큐
+              </div>
+              <div className="mt-0.5 text-xs text-gray-500">
+                [{DIRECTION_SHORT[direction]}] {fromLabel} → {toLabel}
+              </div>
+              <div className="mt-1 text-xs text-amber-700">
+                버스가 생기면 {regionName} 간사가 배정해요. 배정되면 알림으로 알려드립니다.
+              </div>
             </div>
-            <div className="mt-0.5 text-xs text-gray-500">
-              {selectedTrip.regionName} · {formatKstDateTime(selectedTrip.departureAt)} 출발 ·{" "}
-              {formatWon(selectedTrip.pricePerSeat)}/인 · 잔여 {selectedTrip.availableSeats}석
-            </div>
-            <div className="text-muted-foreground mt-1 text-xs">
-              탑승 위치: {selectedTrip.originLabel} (공급 지구 지정)
-            </div>
-          </div>
+          ) : (
+            selectedTrip && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
+                <div className="text-sm font-medium text-gray-900">
+                  [{DIRECTION_SHORT[selectedTrip.direction]}] {selectedTrip.originLabel} →{" "}
+                  {selectedTrip.destinationLabel}
+                </div>
+                <div className="mt-0.5 text-xs text-gray-500">
+                  {selectedTrip.regionName} · {formatKstDateTime(selectedTrip.departureAt)} 출발 ·{" "}
+                  {formatWon(selectedTrip.pricePerSeat)}/인 · 잔여 {selectedTrip.availableSeats}석
+                </div>
+                <div className="text-muted-foreground mt-1 text-xs">
+                  탑승 위치: {selectedTrip.originLabel} (공급 지구 지정)
+                </div>
+              </div>
+            )
+          )}
 
-          {isWaitlist(selectedTrip) && (
+          {!waitMode && selectedTrip && isWaitlist(selectedTrip) && (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
               ⚠ 잔여 {selectedTrip.availableSeats}석보다 많은 {headcount}명을 신청합니다. 자리가 없어
               일부 인원은 이용이 어려울 수 있습니다. (대기열 등록)
             </p>
+          )}
+
+          {/* 희망 출발일 — 대기큐 모드 전용 (선택, 배정 시 공급 간사 참고용) */}
+          {waitMode && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                희망 출발일{" "}
+                <span className="font-normal text-gray-400">(선택 — 배정 시 참고용)</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={desiredDate}
+                  onChange={(e) => setDesiredDate(e.target.value)}
+                  disabled={isPending}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                />
+                {desiredDate && (
+                  <button
+                    type="button"
+                    onClick={() => setDesiredDate("")}
+                    className="text-xs text-gray-400 hover:text-gray-600"
+                  >
+                    지우기
+                  </button>
+                )}
+              </div>
+            </div>
           )}
 
           {/* 학생 명단 */}
@@ -558,10 +666,16 @@ export function RequestWizard({
 
           <div className="flex items-center gap-2">
             <Button type="button" variant="outline" onClick={() => setStep(2)} disabled={isPending}>
-              ← 차량 다시 선택
+              {waitMode ? "← 결과로 돌아가기" : "← 차량 다시 선택"}
             </Button>
             <Button onClick={handleSubmit} disabled={isPending} className="flex-1">
-              {isPending ? "신청중..." : isWaitlist(selectedTrip) ? "대기 신청하기" : "신청하기"}
+              {isPending
+                ? "신청중..."
+                : waitMode
+                  ? "대기큐 신청하기"
+                  : selectedTrip && isWaitlist(selectedTrip)
+                    ? "대기 신청하기"
+                    : "신청하기"}
             </Button>
           </div>
         </div>

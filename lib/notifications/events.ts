@@ -1,5 +1,5 @@
 /**
- * 알림 이벤트 카탈로그 — SPEC §8 (18개 + 권한 해제).
+ * 알림 이벤트 카탈로그 — SPEC §8 (18개 + 권한 해제 + 대기큐 3종).
  * 채널: 인앱 + PWA 푸시(옵트인). 이메일·SMS·알림톡 X.
  *
  * 이 파일은 순수(server-only X) — 상수·타입만. 실제 발송은 ./index 의 emit().
@@ -26,6 +26,9 @@ export const NOTIFICATION_EVENTS = {
   SYSTEM_ERROR: "system_error", // 시스템 장애 → 마스터
   CHAT_MESSAGE: "chat_message", // 채팅 새 메시지 → 양쪽 + 학생 (푸시 ON/OFF)
   OPERATOR_REVOKED: "operator_revoked", // 간사 권한 해제 → 해당 + 동지구 간사
+  WAIT_REQUEST_NEW: "wait_request_new", // 버스 미배정 대기 신청 → 대상 지구 승인 간사 전원
+  WAIT_REQUEST_CANCELLED: "wait_request_cancelled", // 대기 신청 취소 → 대상 지구 승인 간사 전원
+  WAIT_ASSIGNED: "wait_assigned", // 대기 신청에 버스 배정 → 수요측 신청 주체
 } as const;
 
 export type NotificationEvent =
@@ -75,6 +78,13 @@ export const EVENT_SLOTS = {
   system_error: ["master"],
   chat_message: ["supplyOperatorId", "requestOperatorId", "passengerId"],
   operator_revoked: ["operatorIds"],
+  // 대기큐 이벤트 — 대상 지구는 간사 row가 특정되지 않으므로 호출자가
+  // approvedOperatorIdsForRegions(targets.ts)로 지구→승인 간사 전원을 풀어 operatorIds로 전달.
+  wait_request_new: ["operatorIds"],
+  wait_request_cancelled: ["operatorIds"],
+  // 수요측 주체 — operator 신청이면 requestOperatorId(지구 fan-out은 emit 기존 정책),
+  // 학생 신청이면 passengerId(연결 가능한 match_passengers 있을 때만 — 없으면 null로 skip).
+  wait_assigned: ["requestOperatorId", "passengerId"],
 } as const satisfies Record<
   NotificationEvent,
   readonly (keyof RecipientSlots)[]
@@ -106,6 +116,9 @@ export interface NotificationPayloads {
   system_error: { context: string; detail?: string };
   chat_message: { tripId: string; preview?: string };
   operator_revoked: { operatorId: string };
+  wait_request_new: { requestId: string; waitRegionId: string; seatCount: number };
+  wait_request_cancelled: { requestId: string; waitRegionId: string };
+  wait_assigned: { requestId: string; tripId: string };
 }
 
 /** 이벤트가 요구하는 수신자 객체 타입 (슬롯 키만 강제). */

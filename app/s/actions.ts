@@ -5,7 +5,16 @@ import { revalidatePath } from "next/cache";
 import { requireStudent, clearStudentSession } from "@/lib/auth/student";
 import { clearPassengerSession } from "@/lib/auth/passenger";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { emit, NOTIFICATION_EVENTS } from "@/lib/notifications";
+import {
+  emit,
+  NOTIFICATION_EVENTS,
+  approvedOperatorIdsForRegions,
+} from "@/lib/notifications";
+import {
+  hasDuplicateWaitRequest,
+  isWaitDirection,
+  validateDesiredDate,
+} from "@/lib/wait-queue/validate";
 import { isMaintenanceMode, isPastRequestDeadline } from "@/lib/system-config";
 
 /**
@@ -145,6 +154,138 @@ export async function createStudentRequest(
       NOTIFICATION_EVENTS.REQUEST_NEW,
       { supplyOperatorId: trip.created_by },
       { requestId: request.id, tripId, seatCount: 1 },
+    );
+  } catch {
+    /* 알림 실패 무시 (신청은 이미 저장됨) */
+  }
+
+  revalidatePath("/s");
+  revalidatePath("/status");
+  redirect("/s");
+}
+
+// 버스 미배정 대기 신청 입력 (학생) — trip 대신 대상(공급) 지구 + 방향(+희망일 선택).
+export type StudentWaitRequestInput = {
+  /** 대기큐 대상(공급) 지구 — 아직 버스를 올리지 않은 지구 */
+  waitRegionId: string;
+  /** 가는편(up)/오는편(down) */
+  direction: "up" | "down";
+  /** 희망 출발일 YYYY-MM-DD (선택 — 없으면 null) */
+  desiredDate: string | null;
+  consent: boolean;
+};
+
+/**
+ * 버스 미배정 대기 신청 (학생 본인 1명) — 대상 지구가 버스를 안 올렸을 때 trip 없이
+ * (trip_id=null) 그 지구 대기큐에 걸어둔다. createStudentRequest와 동일하게 명단은
+ * CCC 제공 본인 정보로 서버가 채우며(seat_count=1), 본인 지구 제한은 없다(전 지구 허용).
+ * 중복 가드: 같은 학생 + 같은 지구 + 같은 방향의 미배정 queued 신청이 있으면 차단.
+ */
+export async function createStudentWaitRequest(
+  input: StudentWaitRequestInput,
+): Promise<CreateResult> {
+  const session = await requireStudent();
+
+  // 출신 지구는 신청 주체 식별·정산 단위라 필수 (createStudentRequest와 동일).
+  if (!session.regionId) {
+    return {
+      error:
+        "출신 지구가 확인되지 않았어요. 담당 간사에게 지구(branch) 등록을 요청해 주세요.",
+    };
+  }
+
+  // UI 차단을 우회한 직접 호출도 서버에서 방어 (기존 신청과 동일 가드).
+  if (await isMaintenanceMode()) {
+    return { error: "시스템 점검 중입니다. 잠시 후 다시 시도해주세요." };
+  }
+  if (await isPastRequestDeadline()) {
+    return { error: "신청이 마감되었습니다. (마감일 이후에는 신청할 수 없습니다.)" };
+  }
+  if (!input.consent) {
+    return { error: "개인정보 수집·이용 동의가 필요합니다." };
+  }
+  if (!isWaitDirection(input.direction)) {
+    return { error: "방향(가는편/오는편)을 선택해주세요." };
+  }
+  const desired = validateDesiredDate(input.desiredDate);
+  if (!desired.ok) return { error: desired.error };
+
+  const db = createAdminClient();
+
+  // 본인 명단 = CCC 제공 정보 (클라이언트 입력 신뢰 안 함 — createStudentRequest와 동일).
+  const { data: student } = await db
+    .from("students")
+    .select("name, phone, campus")
+    .eq("id", session.studentId)
+    .maybeSingle();
+  const name = (student?.name ?? "").trim();
+  const phone = cleanPhone(student?.phone ?? "");
+  if (!name || phone.length < 10 || phone.length > 11) {
+    return {
+      error:
+        "이름·전화번호 정보가 없어 신청할 수 없어요. CCC 계정 정보를 확인한 뒤 다시 로그인해 주세요.",
+    };
+  }
+
+  // 대상 지구 실존 확인. (본인 지구 제한 없음 — 기존 학생 차량 조회와 동일하게 전 지구 허용.)
+  const { data: region } = await db
+    .from("regions")
+    .select("id")
+    .eq("id", input.waitRegionId)
+    .maybeSingle();
+  if (!region) return { error: "지구를 찾을 수 없습니다." };
+
+  // 중복 가드 — 같은 지구·방향의 미배정(queued + trip_id null) 대기 신청이 이미 있으면 차단.
+  // 본인의 미배정 대기 신청만 좁혀 조회하고, 지구·방향 일치 판정은 순수 함수로(테스트 대상).
+  const { data: existingWaits } = await db
+    .from("seat_requests")
+    .select("wait_region_id, wait_direction")
+    .eq("student_id", session.studentId)
+    .eq("status", "queued")
+    .is("trip_id", null);
+  if (hasDuplicateWaitRequest(existingWaits ?? [], input.waitRegionId, input.direction)) {
+    return { error: "이미 이 지구 대기큐에 신청했어요. ‘내 신청’에서 확인해 주세요." };
+  }
+
+  // seat_request 생성 — trip_id=null이 "미배정 대기" 표식. 주체=학생(operator_id null).
+  const { data: request, error: reqErr } = await db
+    .from("seat_requests")
+    .insert({
+      trip_id: null,
+      wait_region_id: input.waitRegionId,
+      wait_direction: input.direction,
+      wait_desired_date: desired.value,
+      region_id: session.regionId,
+      requester_kind: "student",
+      student_id: session.studentId,
+      seat_count: 1,
+      status: "queued",
+      consent_confirmed_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+  if (reqErr || !request) return { error: "신청 저장 중 오류가 발생했습니다." };
+
+  // 본인 1명 명단 — 실패 시 신청 롤백(고아 seat_request 방지).
+  const { error: paxErr } = await db.from("request_passengers").insert({
+    request_id: request.id,
+    name,
+    phone,
+    school_or_role: (student?.campus ?? "").trim() || null,
+    priority: 1,
+  });
+  if (paxErr) {
+    await db.from("seat_requests").delete().eq("id", request.id);
+    return { error: "학생 정보 저장 중 오류가 발생했습니다." };
+  }
+
+  // 대상 지구 승인 간사 전원에게 "대기큐 신규 신청" 알림 — 베스트에포트(간사 대기 신청과 동일).
+  try {
+    const operatorIds = await approvedOperatorIdsForRegions(db, [input.waitRegionId]);
+    await emit(
+      NOTIFICATION_EVENTS.WAIT_REQUEST_NEW,
+      { operatorIds },
+      { requestId: request.id, waitRegionId: input.waitRegionId, seatCount: 1 },
     );
   } catch {
     /* 알림 실패 무시 (신청은 이미 저장됨) */

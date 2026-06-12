@@ -46,6 +46,7 @@ export async function getTripRoster(tripIds: string[]): Promise<RosterEntry[]> {
 
   const roster: RosterEntry[] = [];
   for (const req of data ?? []) {
+    if (!req.trip_id) continue; // .in("trip_id", ...) 필터로 도달 불가 — 타입상 null 가드(대기큐로 trip_id nullable)
     const trip = Array.isArray(req.trip) ? req.trip[0] : req.trip;
     if (!trip || trip.operator_region_id !== session.regionId) continue; // 본인 차량만
     for (const p of req.request_passengers ?? []) {

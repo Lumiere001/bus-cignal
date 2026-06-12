@@ -51,9 +51,10 @@ async function loadStatus(): Promise<RegionSupply[]> {
   // 수요: 대기(queued) 신청 — 신청이 걸린 "버스의 공급 지구"(trips.operator_region_id)
   // 기준으로 건수/인원만. 학생·간사 식별 컬럼은 select 안 함.
   // 잔여석도 공급 지구 기준이므로 같은 기준으로 묶어 일관성을 맞춘다.
+  // 버스 미배정 대기큐 신청(trip_id null)은 대기 대상 지구(wait_region_id)가 같은 역할.
   const { data: queued } = await db
     .from("seat_requests")
-    .select("seat_count, trip:trips!trip_id(operator_region_id)")
+    .select("seat_count, wait_region_id, trip:trips!trip_id(operator_region_id)")
     .eq("status", "queued");
 
   type Acc = {
@@ -129,8 +130,9 @@ async function loadStatus(): Promise<RegionSupply[]> {
   const unknownRegionIds = new Set<string>();
   for (const r of queued ?? []) {
     const trip = one(r.trip);
-    if (!trip) continue; // 공급 지구를 알 수 없는 신청은 집계 제외
-    const supplyRegionId = trip.operator_region_id;
+    // trip 미배정(대기큐) 신청은 대기 대상 지구(wait_region_id) 기준 — 같은 "그 지구 버스" 수요.
+    const supplyRegionId = trip?.operator_region_id ?? r.wait_region_id;
+    if (!supplyRegionId) continue; // 공급 지구를 알 수 없는 신청은 집계 제외
     const cur = waitingByRegion.get(supplyRegionId) ?? { teams: 0, people: 0 };
     waitingByRegion.set(supplyRegionId, {
       teams: cur.teams + 1,

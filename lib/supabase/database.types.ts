@@ -652,7 +652,10 @@ export type Database = {
           seat_count: number
           status: string
           student_id: string | null
-          trip_id: string
+          trip_id: string | null
+          wait_desired_date: string | null
+          wait_direction: string | null
+          wait_region_id: string | null
         }
         Insert: {
           consent_confirmed_at?: string | null
@@ -668,7 +671,10 @@ export type Database = {
           seat_count: number
           status?: string
           student_id?: string | null
-          trip_id: string
+          trip_id?: string | null
+          wait_desired_date?: string | null
+          wait_direction?: string | null
+          wait_region_id?: string | null
         }
         Update: {
           consent_confirmed_at?: string | null
@@ -684,7 +690,10 @@ export type Database = {
           seat_count?: number
           status?: string
           student_id?: string | null
-          trip_id?: string
+          trip_id?: string | null
+          wait_desired_date?: string | null
+          wait_direction?: string | null
+          wait_region_id?: string | null
         }
         Relationships: [
           {
@@ -727,6 +736,13 @@ export type Database = {
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seat_requests_wait_region_id_fkey"
+            columns: ["wait_region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
             referencedColumns: ["id"]
           },
         ]

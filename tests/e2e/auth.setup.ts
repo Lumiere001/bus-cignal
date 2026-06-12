@@ -5,6 +5,7 @@ import {
   MASTER_STATE,
   OPERATOR_GWANGJU_STATE,
   OPERATOR_BUSAN_STATE,
+  OPERATOR_DAEJEON_STATE,
   STUDENT_STATE,
 } from "./support/auth-paths";
 
@@ -33,6 +34,15 @@ setup("부산(수요) 간사 세션 저장", async ({ page }) => {
   await page.getByRole("button", { name: /박부산/ }).click();
   await page.waitForURL(/\/operator/);
   await page.context().storageState({ path: OPERATOR_BUSAN_STATE });
+});
+
+// 대전(공급) 간사 — seed:dev의 김대전(dev-op-daejeon, 지구 2401). 버스를 아직 안 올린 지구라
+// 버스 미배정 대기큐(/operator/wait-queue) 표시·배정 흐름을 이 세션으로 검증한다.
+setup("대전(공급·대기큐) 간사 세션 저장", async ({ page }) => {
+  await page.goto("/dev/login");
+  await page.getByRole("button", { name: /김대전/ }).click();
+  await page.waitForURL(/\/operator/);
+  await page.context().storageState({ path: OPERATOR_DAEJEON_STATE });
 });
 
 // CCC 학생 — seed:dev의 최학생(dev-student-busan, 지구 2801). 학생 직접신청·예약·채팅 흐름 검증.

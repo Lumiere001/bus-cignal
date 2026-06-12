@@ -9,7 +9,11 @@ import type {
 } from "./events";
 import { formatPush, sendPush } from "./push";
 import { isRetryDue, reducePushAttempt } from "./retry";
-import { resolveTargets, expandOperatorTargets } from "./targets";
+import {
+  resolveTargets,
+  expandOperatorTargets,
+  approvedOperatorIdsForRegions,
+} from "./targets";
 import { reportOpsIssue } from "@/lib/ops/report-issue";
 
 export { NOTIFICATION_EVENTS } from "./events";
@@ -20,7 +24,7 @@ export type {
   RecipientsFor,
   RecipientSlots,
 } from "./events";
-export { resolveTargets } from "./targets";
+export { resolveTargets, approvedOperatorIdsForRegions } from "./targets";
 export type { ResolvedTarget } from "./targets";
 export {
   isExhausted,
@@ -80,14 +84,9 @@ export async function emit<E extends NotificationEvent>(
         ...new Set((ops ?? []).map((o) => o.region_id).filter(Boolean)),
       ] as string[];
       if (regionIds.length > 0) {
-        const { data: regionOps } = await db
-          .from("operators")
-          .select("id")
-          .in("region_id", regionIds)
-          .eq("approval_status", "approved");
         targets = expandOperatorTargets(
           baseTargets,
-          (regionOps ?? []).map((o) => o.id),
+          await approvedOperatorIdsForRegions(db, regionIds),
         );
       }
     }

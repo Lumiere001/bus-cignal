@@ -62,6 +62,12 @@ export function formatPush(type: string, payload: unknown): PushCopy {
       return { title: "새 메시지", body: typeof p.preview === "string" && p.preview ? p.preview : "채팅에 새 메시지가 있어요." };
     case "operator_revoked":
       return { title: "권한 변경", body: "간사 권한이 해제됐어요." };
+    case "wait_request_new":
+      return { title: "대기큐 신규 신청", body: "버스 미배정 대기 신청이 들어왔어요. 대기큐를 확인해 주세요." };
+    case "wait_request_cancelled":
+      return { title: "대기 신청 취소", body: "대기큐에 있던 신청이 취소됐어요." };
+    case "wait_assigned":
+      return { title: "버스 배정", body: "대기 신청에 버스가 배정됐어요. 승인 절차가 진행됩니다." };
     // master 전용(rejection_occurred·system_error)은 푸시 row가 생성되지 않으므로 여기 도달 X.
     default:
       return { title: "Bus Cignal", body: "새 알림이 있어요." };

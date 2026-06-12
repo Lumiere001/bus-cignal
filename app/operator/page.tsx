@@ -46,7 +46,7 @@ async function loadDashboard(regionId: string) {
 
   // 우리 차량별 대기(queued) 신청 — 팀(요청) 수 + 인원(좌석 합) 둘 다 집계.
   // 한 요청(=한 팀)에 여러 학생이 들어가므로 "팀"과 "명"은 다르다.
-  const [queuedRows, sentRows, demandMatchesRes] = await Promise.all([
+  const [queuedRows, sentRows, demandMatchesRes, waitQueueRes] = await Promise.all([
     tripIds.length
       ? db
           .from("seat_requests")
@@ -61,8 +61,16 @@ async function loadDashboard(regionId: string) {
       .from("matches")
       .select("request:seat_requests!request_id!inner(region_id)", { count: "exact", head: true })
       .eq("request.region_id", regionId),
+    // 버스 미배정 대기큐 — 우리 지구 버스를 기다리는 신청(trip 미배정) 건수. /operator/wait-queue와 동일 조건.
+    db
+      .from("seat_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("wait_region_id", regionId)
+      .is("trip_id", null)
+      .eq("status", "queued"),
   ]);
   const demandMatches = demandMatchesRes.count ?? 0;
+  const waitQueueCount = waitQueueRes.count ?? 0;
 
   const queuedByTrip = new Map<string, { teams: number; people: number }>();
   for (const r of (queuedRows.data ?? []) as { trip_id: string; seat_count: number }[]) {
@@ -106,7 +114,15 @@ async function loadDashboard(regionId: string) {
   const totalQueuedPeople = [...queuedByTrip.values()].reduce((a, b) => a + b.people, 0);
   const totalToConfirm = supplyTrips.reduce((a, t) => a + t.toConfirm, 0);
 
-  return { supplyTrips, sent, demandMatches, totalQueuedTeams, totalQueuedPeople, totalToConfirm };
+  return {
+    supplyTrips,
+    sent,
+    demandMatches,
+    totalQueuedTeams,
+    totalQueuedPeople,
+    totalToConfirm,
+    waitQueueCount,
+  };
 }
 
 export default async function OperatorDashboardPage() {
@@ -234,6 +250,31 @@ export default async function OperatorDashboardPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      {/* ①-b 버스 미배정 대기큐 — 우리 지구 버스를 기다리는 신청(공급 역할). 0건이어도 진입점 노출. */}
+      <section>
+        <Link
+          href="/operator/wait-queue"
+          className="bg-card hover:border-primary/50 flex items-center justify-between gap-3 rounded-xl border p-4 shadow-sm transition-colors"
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-bold">
+              버스 미배정 대기큐{" "}
+              {d.waitQueueCount > 0 ? (
+                <span className="ml-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-amber-800">
+                  {d.waitQueueCount}건
+                </span>
+              ) : (
+                <span className="text-muted-foreground">0건</span>
+              )}
+            </p>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              우리 지구 버스를 기다리는 신청 — 버스를 올린 뒤 여기서 배정해요.
+            </p>
+          </div>
+          <span className="text-primary shrink-0 text-xs font-medium">대기큐 →</span>
+        </Link>
       </section>
 
       {/* ② 우리 지구가 보낸 신청 — 인라인 요약, 클릭 시 신청 목록 */}

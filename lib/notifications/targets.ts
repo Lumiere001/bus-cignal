@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
 import {
   EVENT_SLOTS,
   type NotificationEvent,
@@ -101,4 +103,24 @@ export function expandOperatorTargets(
     push,
   }));
   return [...expanded, ...nonOperator];
+}
+
+/**
+ * 지구 id → 그 지구의 **승인(approved) 간사 전원** id 목록.
+ * emit()의 지구 fan-out 쿼리를 일반화한 것 — 간사 row가 특정되지 않는 지구 단위 이벤트
+ * (wait_request_new 등)의 호출자가 이 결과를 operatorIds 슬롯으로 넘긴다.
+ * DB 클라이언트는 주입받음(이 모듈은 클라이언트를 만들지 않음 — 테스트 용이성 유지).
+ */
+export async function approvedOperatorIdsForRegions(
+  db: SupabaseClient<Database>,
+  regionIds: string[],
+): Promise<string[]> {
+  const unique = [...new Set(regionIds.filter(Boolean))];
+  if (unique.length === 0) return [];
+  const { data } = await db
+    .from("operators")
+    .select("id")
+    .in("region_id", unique)
+    .eq("approval_status", "approved");
+  return (data ?? []).map((o) => o.id);
 }
