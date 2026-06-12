@@ -64,3 +64,10 @@ insert into students (id, ccc_id, name, phone, region_id, campus, last_login_at)
   ('f5000000-0000-0000-0000-000000000001', 'dev-student-busan', '최학생', '010-7777-0001',
    (select id from regions where code = '2801'), '부산대', now())
 on conflict (id) do nothing;
+
+-- 버스 미배정 대기큐(#region-wait-queue) 시나리오 — 버스를 아직 안 올린 지구(대전 2401)의
+-- 공급 간사. 수요측(부산 간사·학생)이 대전 대기큐에 신청 → 이 간사가 /operator/wait-queue에서
+-- 본인 published trip으로 배정하는 흐름(E2E wait-queue.spec.ts) 전용.
+insert into operators (id, region_id, ccc_id, name, phone, approval_status, approved_at, role) values
+  ('a0000000-0000-0000-0000-000000000004', (select id from regions where code = '2401'), 'dev-op-daejeon', '김대전', '010-4000-0004', 'approved', now(), 'operator')
+on conflict (id) do nothing;

@@ -8,7 +8,7 @@ import {
   MATCH_STATUS_LABEL,
 } from "@/lib/labels";
 import { one } from "@/lib/supabase/relation";
-import { formatKstDateTime } from "@/lib/datetime";
+import { formatDateOnly, formatKstDateTime } from "@/lib/datetime";
 import { ReservationLink } from "@/components/operator/ReservationLink";
 import { AccountInfo } from "@/components/payment/AccountInfo";
 import { RequestActions } from "./RequestActions";
@@ -26,6 +26,10 @@ type Request = {
   reject_reason: string | null;
   requested_at: string;
   seat_count: number;
+  // 버스 미배정 대기큐 신청(trip=null)일 때 — 대상 지구·방향·희망일.
+  wait_direction: "up" | "down" | null;
+  wait_desired_date: string | null;
+  wait_region: { name: string } | { name: string }[] | null;
   trip: {
     direction: "up" | "down";
     departure_at: string;
@@ -53,6 +57,8 @@ export default async function RequestDetailPage({
     .select(
       `
       id, region_id, status, reject_reason, requested_at, seat_count,
+      wait_direction, wait_desired_date,
+      wait_region:regions!wait_region_id(name),
       trip:trips!trip_id(
         direction, departure_at, price_per_seat, bank_name, account_number, account_holder, refund_policy,
         region:regions!operator_region_id(name)
@@ -68,6 +74,9 @@ export default async function RequestDetailPage({
   if (!req || req.region_id !== session.regionId) notFound();
 
   const trip = one(req.trip);
+  // trip=null = 버스 미배정 대기큐 신청 — 버스가 생기면 대상 지구 간사가 배정(trip_id 채움).
+  const isWait = !trip;
+  const waitRegionName = one(req.wait_region)?.name ?? null;
   const passengers = [...req.request_passengers].sort((a, b) => a.priority - b.priority);
 
   // 학생별 매칭 상태·예약번호(표시용) — 본인 지구 학생이라 노출 OK.
@@ -97,10 +106,20 @@ export default async function RequestDetailPage({
         </Link>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">신청 상세</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          {trip?.region?.name ?? "?"} 차량 · {trip ? DIRECTION_SHORT[trip.direction] : "—"} ·{" "}
-          {REQUEST_STATUS_LABEL[req.status] ?? req.status}
+          {isWait
+            ? `${waitRegionName ?? "타지구"} 대기큐 · ${req.wait_direction ? DIRECTION_SHORT[req.wait_direction] : "—"}`
+            : `${trip?.region?.name ?? "?"} 차량 · ${trip ? DIRECTION_SHORT[trip.direction] : "—"}`}{" "}
+          · {REQUEST_STATUS_LABEL[req.status] ?? req.status}
         </p>
       </div>
+
+      {/* 버스 미배정 대기 신청 안내 — 대기 중일 때만 (배정·거절되면 일반 흐름으로) */}
+      {isWait && req.status === "queued" && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+          버스 미배정 대기 신청이에요. {waitRegionName ?? "대상 지구"}에 버스가 생기면 그 지구
+          간사가 배정하고, 이후 승인·입금 절차는 일반 신청과 동일하게 진행됩니다.
+        </p>
+      )}
 
       <section className="rounded-xl border p-4">
         <h2 className="mb-3 text-sm font-semibold">신청 정보</h2>
@@ -124,6 +143,14 @@ export default async function RequestDetailPage({
                 <dd className="font-medium tabular-nums">{trip.price_per_seat.toLocaleString("ko-KR")}원</dd>
               </div>
             </>
+          )}
+          {isWait && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">희망 출발일</dt>
+              <dd className="font-medium tabular-nums">
+                {req.wait_desired_date ? formatDateOnly(req.wait_desired_date) : "미지정"}
+              </dd>
+            </div>
           )}
         </dl>
         {req.status === "rejected" && req.reject_reason && (

@@ -29,6 +29,12 @@ export type OperatorBooked = {
   accountNumber: string | null;
   accountHolder: string | null;
   refundPolicy: string | null;
+  /**
+   * 버스 미배정 대기큐(간사 등록, trip 배정 전) 여부 — true면 trip 정보가 없어
+   * departureAt=""·origin/dest=null이고 regionName은 대기 대상(공급) 지구다.
+   * trip-bound 등록과 동일하게 배정 전에도 학생에게 '대기' 카드가 보이게 한다.
+   */
+  waiting: boolean;
 };
 
 // 좌석을 점유 중인(잔여 차감) 매칭 상태 — 학생에게 진행 상태로 보여줄 값들.
@@ -58,6 +64,9 @@ type RawRequest = {
   status: string | null;
   requester_kind: string | null;
   trip: Embed<RawTrip>;
+  /** 버스 미배정 대기큐 신청(trip=null)의 대상 지구·방향 — trip-bound 행은 null */
+  wait_region?: Embed<{ name: string | null }>;
+  wait_direction?: string | null;
 };
 export type RawBookedRow = {
   id: string;
@@ -85,7 +94,29 @@ export function mapOperatorBooked(rows: RawBookedRow[]): OperatorBooked[] {
     if (request.status !== "queued" && request.status !== "matched") continue; // 거절·취소 제외
 
     const trip = one(request.trip);
-    if (!trip || trip.status === "cancelled") continue;
+    if (trip?.status === "cancelled") continue;
+
+    // trip=null = 간사가 대기큐(버스 미배정)로 등록한 신청 — trip-bound 등록과 일관되게
+    // 배정 전에도 '버스 배정 대기 중' 카드로 노출한다(matched인데 trip null은 비정상이라 제외).
+    if (!trip) {
+      if (request.status !== "queued") continue;
+      out.push({
+        passengerId: p.id,
+        status: "queued",
+        reservationCode: null,
+        direction: request.wait_direction === "down" ? "down" : "up",
+        departureAt: "",
+        regionName: one(request.wait_region ?? null)?.name ?? "타지구",
+        originLabel: null,
+        destLabel: null,
+        bankName: null,
+        accountNumber: null,
+        accountHolder: null,
+        refundPolicy: null,
+        waiting: true,
+      });
+      continue;
+    }
 
     const matches = p.matches ?? [];
     const active = matches.find((m) => (ACTIVE_MATCH as readonly string[]).includes(m.status ?? ""));
@@ -104,6 +135,7 @@ export function mapOperatorBooked(rows: RawBookedRow[]): OperatorBooked[] {
       accountNumber: trip.account_number,
       accountHolder: trip.account_holder,
       refundPolicy: trip.refund_policy,
+      waiting: false,
     });
   }
   return out;
@@ -136,7 +168,8 @@ export async function getOperatorBookedByPhone(phone: string | null | undefined)
       `
       id,
       request:seat_requests!request_id(
-        status, requester_kind,
+        status, requester_kind, wait_direction,
+        wait_region:regions!wait_region_id(name),
         trip:trips!trip_id(
           direction, departure_at, status, bank_name, account_number, account_holder, refund_policy,
           origin:region_locations!origin_location_id(label, address),

@@ -45,10 +45,37 @@ export function MatchingQueue({
     );
   }
 
+  // 지구별 묶음 — 같은 지구의 신청 여러 건(직접 신청 + 대기큐 이동분 등)을 한 영역으로.
+  // 승인/거절은 신청 단위(RPC)라 카드 단위는 유지하고, 지구는 영역 헤더로 묶는다.
+  const regions = new Map<string, QueueRequest[]>();
+  for (const req of queue) {
+    const list = regions.get(req.regionName);
+    if (list) list.push(req);
+    else regions.set(req.regionName, [req]);
+  }
+
   return (
-    <ul className="space-y-3">
-      {queue.map((req) => (
-        <RequestCard key={req.id} tripId={tripId} availableSeats={availableSeats} req={req} />
+    <ul className="space-y-4">
+      {[...regions.entries()].map(([regionName, reqs]) => (
+        <li key={regionName}>
+          <div className="mb-1.5 flex items-baseline justify-between px-1">
+            <span className="text-sm font-semibold text-gray-900">{regionName}</span>
+            <span className="text-xs text-gray-400">
+              신청 {reqs.length}건 · 학생{" "}
+              {reqs.reduce((n, r) => n + r.passengers.length, 0)}명
+            </span>
+          </div>
+          <ul className="space-y-2">
+            {reqs.map((req) => (
+              <RequestCard
+                key={req.id}
+                tripId={tripId}
+                availableSeats={availableSeats}
+                req={req}
+              />
+            ))}
+          </ul>
+        </li>
       ))}
     </ul>
   );
@@ -157,15 +184,15 @@ function RequestCard({
     <li className="rounded-xl border bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <span className="text-sm font-medium text-gray-900">{req.regionName}</span>
+          {/* 지구명은 영역 헤더(지구별 묶음)로 올라감 — 카드에는 신청 주체만 표시 */}
           {req.requesterKind === "student" ? (
             // 학생 직접 신청 — 담당 간사 없음. 본인 정보는 아래 명단(이름·전화)에 그대로.
-            <span className="ml-2 rounded-md bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-violet-700">
+            <span className="rounded-md bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-violet-700">
               학생 직접 신청
             </span>
           ) : (
             // 신청 지구 담당 간사 연락처 — 운영 연락용 (팀장 승인)
-            <span className="ml-2 text-xs text-gray-500">
+            <span className="text-xs text-gray-500">
               담당 간사 {req.operatorName ?? "미지정"}
               {req.operatorPhone && (
                 <a

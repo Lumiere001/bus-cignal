@@ -2,7 +2,16 @@
 
 import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { emit, NOTIFICATION_EVENTS } from "@/lib/notifications";
+import {
+  emit,
+  NOTIFICATION_EVENTS,
+  approvedOperatorIdsForRegions,
+} from "@/lib/notifications";
+import {
+  isWaitDirection,
+  validateDesiredDate,
+  validateOperatorWaitRegion,
+} from "@/lib/wait-queue/validate";
 import { isMaintenanceMode, isPastRequestDeadline } from "@/lib/system-config";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -165,6 +174,121 @@ export async function createRequest(
   redirect("/operator/requests");
 }
 
+// 버스 미배정 대기 신청 입력 — trip 대신 대상(공급) 지구 + 방향(+희망일 선택)으로 신청.
+export type WaitRequestInput = {
+  /** 대기큐 대상(공급) 지구 — 아직 버스를 올리지 않은 타지구 */
+  waitRegionId: string;
+  /** 가는편(up)/오는편(down) */
+  direction: "up" | "down";
+  /** 희망 출발일 YYYY-MM-DD (선택 — 없으면 null) */
+  desiredDate: string | null;
+  passengers: PassengerInput[];
+  consent: boolean;
+};
+
+/**
+ * 버스 미배정 대기 신청 (간사) — 대상 지구가 버스를 안 올렸을 때 trip 없이(trip_id=null)
+ * 그 지구 대기큐에 신청을 걸어둔다. 버스가 생기면 공급 간사가 수동으로 trip에 배정.
+ * 명단 검증·insert·롤백 흐름은 createRequest와 동일(validatePassengers 공용).
+ */
+export async function createWaitRequest(
+  input: WaitRequestInput,
+): Promise<ActionResult> {
+  const session = await requireOperator();
+  if (!session.regionId) {
+    return { error: "소속 지구 정보가 없습니다. 관리자에게 문의해주세요." };
+  }
+
+  // 점검 모드·신청 마감 차단(마스터 설정) — createRequest와 동일 가드.
+  if (await isMaintenanceMode()) {
+    return { error: "시스템 점검 중입니다. 잠시 후 다시 시도해주세요." };
+  }
+  if (await isPastRequestDeadline()) {
+    return { error: "신청이 마감되었습니다. (마감일 이후에는 신청할 수 없습니다.)" };
+  }
+
+  if (!input.consent) {
+    return { error: "개인정보 수집·이용 동의가 필요합니다." };
+  }
+  if (!isWaitDirection(input.direction)) {
+    return { error: "방향(가는편/오는편)을 선택해주세요." };
+  }
+  const desired = validateDesiredDate(input.desiredDate);
+  if (!desired.ok) return { error: desired.error };
+
+  const validated = validatePassengers(input.passengers);
+  if (!validated.ok) return { error: validated.error };
+  const normalized = validated.normalized;
+
+  const db = createAdminClient();
+
+  // 대상 지구 실존 + 본인 지구 금지 (trip 신청의 "본인 지구 차량 불가"와 동일 취지).
+  const { data: region } = await db
+    .from("regions")
+    .select("id")
+    .eq("id", input.waitRegionId)
+    .maybeSingle();
+  const regionCheck = validateOperatorWaitRegion(region, session.regionId);
+  if (!regionCheck.ok) return { error: regionCheck.error };
+
+  // seat_request 생성 — trip_id=null이 "미배정 대기" 표식. wait_*는 배정 후에도 이력으로 보존.
+  const { data: request, error: reqErr } = await db
+    .from("seat_requests")
+    .insert({
+      trip_id: null,
+      wait_region_id: input.waitRegionId,
+      wait_direction: input.direction,
+      wait_desired_date: desired.value,
+      region_id: session.regionId,
+      operator_id: session.operatorId,
+      seat_count: normalized.length,
+      status: "queued",
+      consent_confirmed_at: new Date().toISOString(),
+      consent_confirmed_by: session.operatorId,
+    })
+    .select("id")
+    .single();
+
+  if (reqErr || !request) return { error: "신청 저장 중 오류가 발생했습니다." };
+
+  // 학생 명단 — 실패 시 신청 롤백 (createRequest와 동일).
+  const { error: paxErr } = await db.from("request_passengers").insert(
+    normalized.map((p) => ({
+      request_id: request.id,
+      name: p.name,
+      phone: p.phone,
+      school_or_role: p.school_or_role,
+      note: p.note,
+      priority: p.priority,
+    })),
+  );
+
+  if (paxErr) {
+    await db.from("seat_requests").delete().eq("id", request.id);
+    return { error: "학생 명단 저장 중 오류가 발생했습니다." };
+  }
+
+  // 대상 지구 승인 간사 전원에게 "대기큐 신규 신청" 알림 — 베스트에포트.
+  // trip이 없어 created_by가 없으므로 지구→간사 전원 해석은 호출자 책임(엔진은 id만 받음).
+  try {
+    const operatorIds = await approvedOperatorIdsForRegions(db, [input.waitRegionId]);
+    await emit(
+      NOTIFICATION_EVENTS.WAIT_REQUEST_NEW,
+      { operatorIds },
+      {
+        requestId: request.id,
+        waitRegionId: input.waitRegionId,
+        seatCount: normalized.length,
+      },
+    );
+  } catch {
+    // 알림 발송 실패는 무시 (신청은 이미 저장됨)
+  }
+
+  revalidatePath("/status");
+  redirect("/operator/requests");
+}
+
 // 신청 취소·수정 결과 — 클라이언트가 분기(성공 시 redirect, 실패 시 에러 표시).
 type MutationResult = { ok: true } | { error: string };
 
@@ -197,12 +321,15 @@ export async function cancelRequest(
 
   const { data } = await db
     .from("seat_requests")
-    .select("id, region_id, status, trip_id, trip:trips!trip_id(id, created_by)")
+    .select(
+      "id, region_id, status, trip_id, wait_region_id, trip:trips!trip_id(id, created_by)",
+    )
     .eq("id", requestId)
     .maybeSingle();
 
+  // trip_id null = 버스 미배정 대기 신청(대기큐) — trip embed도 null이 됨.
   const req = data as
-    | { id: string; region_id: string; status: string; trip_id: string; trip: { id: string; created_by: string | null } | { id: string; created_by: string | null }[] | null }
+    | { id: string; region_id: string; status: string; trip_id: string | null; wait_region_id: string | null; trip: { id: string; created_by: string | null } | { id: string; created_by: string | null }[] | null }
     | null;
   if (!req || req.region_id !== session.regionId) {
     return { error: "신청을 찾을 수 없습니다." };
@@ -241,11 +368,21 @@ export async function cancelRequest(
   const trip = Array.isArray(req.trip) ? (req.trip[0] ?? null) : req.trip;
   void trimmedReason; // 사유는 향후 알림 본문 확장 여지 — 현재 저장/전달 안 함.
   try {
-    await emit(
-      NOTIFICATION_EVENTS.REQUEST_CANCELLED,
-      { supplyOperatorId: trip?.created_by ?? null },
-      { requestId, tripId: req.trip_id },
-    );
+    if (req.trip_id) {
+      await emit(
+        NOTIFICATION_EVENTS.REQUEST_CANCELLED,
+        { supplyOperatorId: trip?.created_by ?? null },
+        { requestId, tripId: req.trip_id },
+      );
+    } else if (req.wait_region_id) {
+      // 대기 신청(trip 미배정) — created_by가 없으니 대상 지구 승인 간사 전원에게 같은 취지 알림.
+      const operatorIds = await approvedOperatorIdsForRegions(db, [req.wait_region_id]);
+      await emit(
+        NOTIFICATION_EVENTS.WAIT_REQUEST_CANCELLED,
+        { operatorIds },
+        { requestId, waitRegionId: req.wait_region_id },
+      );
+    }
   } catch {
     // 알림 발송 실패는 무시 (취소는 이미 반영됨)
   }

@@ -364,3 +364,161 @@ export async function createStudentPaidScenario(): Promise<StudentPaidScenario> 
     cleanup: trip.cleanup,
   };
 }
+
+// ─── 버스 미배정 대기큐(#region-wait-queue) 픽스처 ──────────────────────────────
+
+/** 대기큐 시나리오 지구 — seed-dev의 김대전(dev-op-daejeon) 소속, 버스를 안 올린 지구. */
+export const WAIT_REGION_CODE = "2401"; // 대전지구
+
+/**
+ * 대전 대기큐 잔재 제거 — wait_region_id=대전인 seat_requests 전부(배정된 것 포함) 삭제.
+ * wait_region_id는 trip 배정 후에도 이력으로 남으므로, 배정돼 trip_id가 채워진 행도 잡힌다.
+ * UI로 생성돼 id를 모르는 신청의 정리 + 재실행 시 학생 중복 가드 오작동 방지용.
+ */
+export async function purgeWaitQueueRequests(): Promise<void> {
+  const region = await regionIdByCode(WAIT_REGION_CODE);
+  const { data: reqs } = await db
+    .from("seat_requests")
+    .select("id")
+    .eq("wait_region_id", region);
+  const ids = (reqs ?? []).map((r) => r.id as string);
+  if (ids.length === 0) return;
+  await db.from("matches").delete().in("request_id", ids);
+  await db.from("rejection_log").delete().in("seat_request_id", ids);
+  await db.from("request_passengers").delete().in("request_id", ids);
+  await db.from("seat_requests").delete().in("id", ids);
+}
+
+/**
+ * 대전(공급) 간사 소유 published trip(가는편) + 기존 큐 신청 1건(학생 2명)을 격리 생성.
+ * 대기 신청을 이 trip으로 배정(assignWaitToTrip)했을 때 시간순 큐에 "기존 신청과 섞여"
+ * 정렬되는지 검증하기 위해 기존 학생 2명의 개인 시각(applied_at)을 대기 신청 시각(테스트
+ * 실행 시점) 앞뒤로 벌려둔다: early(-3h) < 대기 신청(now께) < late(+30m).
+ */
+export interface WaitQueueSupplyScenario {
+  tripId: string;
+  originLabel: string;
+  destLabel: string;
+  /** 대기 신청보다 먼저 신청한 기존 학생 (applied_at = now-3h) */
+  earlyName: string;
+  /** 대기 신청보다 늦게 신청한 기존 학생 (applied_at = now+30m) */
+  lateName: string;
+  cleanup: () => Promise<void>;
+}
+
+export async function createWaitQueueSupplyScenario(): Promise<WaitQueueSupplyScenario> {
+  const daejeon = await regionIdByCode(WAIT_REGION_CODE);
+  const busan = await regionIdByCode("2801");
+  const daejeonOp = await operatorIdByCccId("dev-op-daejeon");
+  const busanOp = await operatorIdByCccId("dev-op-busan");
+  const tag = randomUUID().replace(/-/g, "").slice(0, 6);
+  const originLabel = `E2E대전출발${tag}`;
+  const destLabel = `E2E평창도착${tag}`;
+  const earlyName = `E2E기존A${tag}`;
+  const lateName = `E2E기존B${tag}`;
+
+  const tripId = randomUUID();
+  const originLoc = randomUUID();
+  const destLoc = randomUUID();
+  const offerId = randomUUID();
+  const requestId = randomUUID();
+  const earlyPaxId = randomUUID();
+  const latePaxId = randomUUID();
+
+  // 가는편(up): 대전 → 평창. 대기 신청(위저드 기본 방향 up)과 방향이 일치해야 배정 후보가 된다.
+  await db.from("region_locations").insert([
+    {
+      id: originLoc,
+      region_id: daejeon,
+      direction: "up",
+      location_type: "origin",
+      address: "대전 서구 둔산동",
+      label: originLabel,
+      lat: 36.35,
+      lng: 127.38,
+      created_by: daejeonOp,
+    },
+    {
+      id: destLoc,
+      region_id: daejeon,
+      direction: "up",
+      location_type: "destination",
+      address: "강원 평창군 봉평면",
+      label: destLabel,
+      lat: 37.6,
+      lng: 128.7,
+      created_by: daejeonOp,
+    },
+  ]);
+  await db.from("trips").insert({
+    id: tripId,
+    operator_region_id: daejeon,
+    direction: "up",
+    origin_location_id: originLoc,
+    destination_location_id: destLoc,
+    departure_at: new Date(Date.now() + 30 * 864e5).toISOString(),
+    capacity: 44,
+    price_per_seat: 30000,
+    note: "[E2E] 대기큐 배정 대상 trip",
+    status: "published",
+    created_by: daejeonOp,
+  });
+  await db
+    .from("seat_offers")
+    .insert({ id: offerId, trip_id: tripId, seat_count: 10, status: "open" });
+
+  // 기존 큐 신청(부산 간사) — early/late 두 학생의 applied_at으로 시간순 섞임을 만든다.
+  await db.from("seat_requests").insert({
+    id: requestId,
+    trip_id: tripId,
+    region_id: busan,
+    operator_id: busanOp,
+    seat_count: 2,
+    status: "queued",
+    consent_confirmed_at: new Date().toISOString(),
+    consent_confirmed_by: busanOp,
+    requested_at: new Date(Date.now() - 3 * 36e5).toISOString(),
+  });
+  await db.from("request_passengers").insert([
+    {
+      id: earlyPaxId,
+      request_id: requestId,
+      name: earlyName,
+      phone: "010-9100-0001",
+      school_or_role: "E2E대",
+      priority: 1,
+      applied_at: new Date(Date.now() - 3 * 36e5).toISOString(),
+    },
+    {
+      id: latePaxId,
+      request_id: requestId,
+      name: lateName,
+      phone: "010-9100-0002",
+      school_or_role: "E2E대",
+      priority: 2,
+      applied_at: new Date(Date.now() + 30 * 6e4).toISOString(),
+    },
+  ]);
+
+  const cleanup = async () => {
+    // trip 기반 정리 — 배정된 대기 신청(trip_id=이 trip)도 함께 잡힌다.
+    await db.from("matches").delete().eq("trip_id", tripId);
+    const { data: reqs } = await db
+      .from("seat_requests")
+      .select("id")
+      .eq("trip_id", tripId);
+    const ids = (reqs ?? []).map((r) => r.id as string);
+    if (ids.length) {
+      await db.from("rejection_log").delete().in("seat_request_id", ids);
+      await db.from("request_passengers").delete().in("request_id", ids);
+      await db.from("seat_requests").delete().in("id", ids);
+    }
+    await db.from("seat_offers").delete().eq("trip_id", tripId);
+    await db.from("trips").delete().eq("id", tripId);
+    await db.from("region_locations").delete().in("id", [originLoc, destLoc]);
+    // 미배정으로 남은 대기 신청(학생 건 등)까지 마저 정리.
+    await purgeWaitQueueRequests();
+  };
+
+  return { tripId, originLabel, destLabel, earlyName, lateName, cleanup };
+}

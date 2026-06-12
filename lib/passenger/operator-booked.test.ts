@@ -89,4 +89,53 @@ describe("mapOperatorBooked", () => {
   it("취소된 차량은 제외", () => {
     expect(mapOperatorBooked([row({ tripStatus: "cancelled" })] as never)).toHaveLength(0);
   });
+
+  it("간사 대기큐 등록(trip=null·queued) → 배정 대기(waiting) 카드", () => {
+    const out = mapOperatorBooked([
+      {
+        id: "p1",
+        request: {
+          status: "queued",
+          requester_kind: "operator",
+          trip: null,
+          wait_region: { name: "광주지구" },
+          wait_direction: "down",
+        },
+        matches: [],
+      },
+    ] as never);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      passengerId: "p1",
+      status: "queued",
+      waiting: true,
+      direction: "down",
+      regionName: "광주지구",
+      departureAt: "",
+      originLabel: null,
+      destLabel: null,
+    });
+  });
+
+  it("trip=null이라도 queued가 아니면 제외 (rejected 대기 신청 등)", () => {
+    const out = mapOperatorBooked([
+      {
+        id: "p1",
+        request: {
+          status: "rejected",
+          requester_kind: "operator",
+          trip: null,
+          wait_region: { name: "광주지구" },
+          wait_direction: "up",
+        },
+        matches: [],
+      },
+    ] as never);
+    expect(out).toHaveLength(0);
+  });
+
+  it("trip-bound 등록은 waiting=false", () => {
+    const out = mapOperatorBooked([row({})] as never);
+    expect(out[0]?.waiting).toBe(false);
+  });
 });

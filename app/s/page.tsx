@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { one } from "@/lib/supabase/relation";
 import { Logo } from "@/components/brand/logo";
 import { DIRECTION_SHORT, MATCH_STATUS_LABEL } from "@/lib/labels";
-import { formatKstDateTime } from "@/lib/datetime";
+import { formatDateOnly, formatKstDateTime } from "@/lib/datetime";
 import { CancelRequestButton } from "./CancelRequestButton";
 import { LinkPending } from "./LinkPending";
 import { studentLogout } from "./actions";
@@ -30,6 +30,7 @@ type TripEmbed = {
   region: { name: string } | { name: string }[] | null;
 };
 type MatchEmbed = { id: string; status: string | null };
+type RegionNameEmbed = { name: string } | { name: string }[] | null;
 
 // 학생 허브 — CCC 로그인 후. 두 갈래: [예약하기](직접 신청) · [예약 확인](내 예약=/me).
 // 진행 중(대기/매칭·미입금/거절) 신청은 이 화면에서 바로 보여주고, 확정(paid) 예약은 '예약 확인'으로.
@@ -61,6 +62,8 @@ export default async function StudentHomePage({
     .select(
       `
       id, status, requested_at, reject_reason,
+      wait_direction, wait_desired_date,
+      wait_region:regions!wait_region_id(name),
       trip:trips!trip_id(
         id, direction, departure_at, status, bank_name, account_number, account_holder, refund_policy,
         origin:region_locations!origin_location_id(label, address),
@@ -81,7 +84,18 @@ export default async function StudentHomePage({
       const active = matches.find(
         (m) => m.status === "awaiting_payment" || m.status === "payment_reported",
       );
-      return { id: r.id, status: r.status, rejectReason: r.reject_reason, trip, paid, active };
+      return {
+        id: r.id,
+        status: r.status,
+        rejectReason: r.reject_reason,
+        trip,
+        // trip=null → 버스 미배정 대기큐 신청. 대상 지구·방향·희망일을 카드에 표시.
+        waitRegionName: one(r.wait_region as RegionNameEmbed)?.name ?? null,
+        waitDirection: r.wait_direction === "down" ? ("down" as const) : ("up" as const),
+        waitDesiredDate: r.wait_desired_date,
+        paid,
+        active,
+      };
     })
     // 확정(paid)·취소는 허브에서 제외 — 대기/매칭미입금/거절만 노출.
     .filter((r) => !r.paid && r.status !== "cancelled");
@@ -197,11 +211,23 @@ function OperatorBookedCard({ item }: { item: OperatorBooked }) {
         )}
       </div>
 
-      <div className="text-sm font-semibold text-gray-900">
-        [{DIRECTION_SHORT[item.direction]}] {item.originLabel ?? "출발지"} →{" "}
-        {item.destLabel ?? "도착지"}
-      </div>
-      <div className="mt-0.5 text-xs text-gray-500">{item.regionName} 공급 차량</div>
+      {item.waiting ? (
+        <>
+          {/* 버스 미배정 대기큐 등록분 — trip 정보가 없어 대상 지구·방향만 표시 */}
+          <div className="text-sm font-semibold text-gray-900">
+            버스 배정 대기 중 — {item.regionName} 대기큐
+          </div>
+          <div className="mt-0.5 text-xs text-gray-500">[{DIRECTION_SHORT[item.direction]}]</div>
+        </>
+      ) : (
+        <>
+          <div className="text-sm font-semibold text-gray-900">
+            [{DIRECTION_SHORT[item.direction]}] {item.originLabel ?? "출발지"} →{" "}
+            {item.destLabel ?? "도착지"}
+          </div>
+          <div className="mt-0.5 text-xs text-gray-500">{item.regionName} 공급 차량</div>
+        </>
+      )}
 
       {item.status === "paid" && item.reservationCode && (
         <div className="mt-3 space-y-2">
@@ -234,7 +260,9 @@ function OperatorBookedCard({ item }: { item: OperatorBooked }) {
 
       {item.status === "queued" && (
         <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          간사가 등록해 대기열에 있어요. 매칭(좌석 배정)되면 입금 안내가 표시돼요.
+          {item.waiting
+            ? `간사가 ${item.regionName} 대기큐에 등록했어요. 버스가 생겨 배정되면 승인·입금 안내가 이어져요.`
+            : "간사가 등록해 대기열에 있어요. 매칭(좌석 배정)되면 입금 안내가 표시돼요."}
         </p>
       )}
     </li>
@@ -246,12 +274,17 @@ type PendingItem = {
   status: string;
   rejectReason: string | null;
   trip: TripEmbed | null;
+  waitRegionName: string | null;
+  waitDirection: "up" | "down";
+  waitDesiredDate: string | null;
   paid: boolean;
   active: MatchEmbed | undefined;
 };
 
 function PendingCard({ item }: { item: PendingItem }) {
   const { trip, active, status, rejectReason } = item;
+  // trip=null = 버스 미배정 대기큐 신청 — 공급 지구가 버스를 올리면 간사가 배정(trip_id 채움).
+  const isWait = trip === null;
   const origin = one(trip?.origin);
   const dest = one(trip?.destination);
   const regionName = one(trip?.region)?.name ?? "타지구";
@@ -278,11 +311,27 @@ function PendingCard({ item }: { item: PendingItem }) {
         )}
       </div>
 
-      <div className="text-sm font-semibold text-gray-900">
-        [{DIRECTION_SHORT[direction]}] {origin?.label ?? origin?.address ?? "출발지"} →{" "}
-        {dest?.label ?? dest?.address ?? "도착지"}
-      </div>
-      <div className="mt-0.5 text-xs text-gray-500">{regionName} 공급 차량</div>
+      {isWait ? (
+        <>
+          <div className="text-sm font-semibold text-gray-900">
+            {/* 거절·취소된 대기 신청에 "배정 대기 중"이라 쓰면 모순 — 상태별 표기 */}
+            {status === "queued" ? "버스 배정 대기 중" : "버스 미배정 신청"} —{" "}
+            {item.waitRegionName ?? "타지구"} 대기큐
+          </div>
+          <div className="mt-0.5 text-xs text-gray-500">
+            [{DIRECTION_SHORT[item.waitDirection]}] · 희망일{" "}
+            {item.waitDesiredDate ? formatDateOnly(item.waitDesiredDate) : "무관"}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="text-sm font-semibold text-gray-900">
+            [{DIRECTION_SHORT[direction]}] {origin?.label ?? origin?.address ?? "출발지"} →{" "}
+            {dest?.label ?? dest?.address ?? "도착지"}
+          </div>
+          <div className="mt-0.5 text-xs text-gray-500">{regionName} 공급 차량</div>
+        </>
+      )}
 
       {active && (
         <div className="mt-3 space-y-2">
@@ -304,6 +353,13 @@ function PendingCard({ item }: { item: PendingItem }) {
       {status === "rejected" && rejectReason && (
         <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">
           거절 사유: {rejectReason}
+        </p>
+      )}
+
+      {isWait && status === "queued" && !active && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          버스가 생기면 {item.waitRegionName ?? "공급 지구"} 간사가 배정해요. 배정되면 승인·입금
+          안내가 이어져요.
         </p>
       )}
 

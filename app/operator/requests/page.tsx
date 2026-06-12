@@ -20,6 +20,8 @@ export default async function Page() {
     .select(
       `
       id, requested_at, seat_count, status, requester_kind,
+      wait_direction, wait_desired_date,
+      wait_region:regions!wait_region_id(name),
       trip:trips!trip_id(
         direction,
         origin:region_locations!origin_location_id(label, address),
@@ -39,14 +41,24 @@ export default async function Page() {
     const region = one(trip?.region);
     const passengers = r.request_passengers ?? [];
 
+    // trip=null = 버스 미배정 대기큐 신청 — 방향·지구는 wait_*에서. 노선 라벨은
+    // 위저드(가는편: 지구→평창)와 동일 규칙으로 만들어 일반 신청 카드와 톤을 맞춘다.
+    const isWait = !trip;
+    const waitRegionName = one(r.wait_region)?.name ?? null;
+    const direction = (trip?.direction ?? r.wait_direction ?? "down") as "up" | "down";
+    const waitFrom = direction === "up" ? (waitRegionName ?? "타지구") : "평창";
+    const waitTo = direction === "up" ? "평창" : (waitRegionName ?? "타지구");
+
     return {
       id: r.id,
       status: (r.status ?? "queued") as string,
-      direction: (trip?.direction ?? "down") as "up" | "down",
+      direction,
       requestedAt: r.requested_at ?? "",
-      originLabel: origin?.label ?? origin?.address ?? "출발지",
-      destLabel: dest?.label ?? dest?.address ?? "도착지",
-      regionName: region?.name ?? null,
+      originLabel: isWait ? waitFrom : (origin?.label ?? origin?.address ?? "출발지"),
+      destLabel: isWait ? waitTo : (dest?.label ?? dest?.address ?? "도착지"),
+      regionName: region?.name ?? waitRegionName,
+      isWait,
+      waitDesiredDate: r.wait_desired_date,
       passengerNames: passengers.map((p) => p.name),
       requesterKind: (r.requester_kind === "student" ? "student" : "operator") as
         | "student"

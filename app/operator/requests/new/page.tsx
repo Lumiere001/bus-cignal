@@ -3,7 +3,7 @@ import { requireOperator } from "@/lib/auth/operator";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getOperatorRegionName } from "@/lib/auth/operator-region";
 import { one } from "@/lib/supabase/relation";
-import { RequestWizard, type WizardTrip } from "./RequestWizard";
+import { RequestWizard, type WizardTrip, type RegionOption } from "./RequestWizard";
 
 export const dynamic = "force-dynamic";
 
@@ -73,12 +73,17 @@ export default async function Page() {
     };
   });
 
-  // 출발 지구 선택지 = 타지구 공급 차량이 있는 지구들(중복 제거, 가나다순).
-  const regionOptions = Array.from(
-    new Map(
-      wizardTrips.map((t) => [t.regionName, { name: t.regionName, area: t.regionArea }]),
-    ).values(),
-  ).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  // 출발 지구 선택지 = 전체 지구(본인 지구 제외, 가나다순). 공급 차량이 없는 지구도
+  // 선택 가능해야 "아직 버스를 안 올린 지구" 대기큐에 신청을 넣을 수 있다.
+  // id는 대기 신청(createWaitRequest) 대상 지구 해석용.
+  const { data: regions } = await supabase
+    .from("regions")
+    .select("id, name, area")
+    .neq("id", session.regionId);
+
+  const regionOptions: RegionOption[] = (regions ?? [])
+    .map((r) => ({ id: r.id, name: r.name, area: r.area }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">

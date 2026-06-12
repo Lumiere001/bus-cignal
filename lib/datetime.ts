@@ -69,6 +69,14 @@ export function formatKstDateShort(iso: string): string {
   return `${month}월 ${day}일 ${hh}:${minute}`;
 }
 
+/**
+ * 날짜만 있는 값(date 컬럼, "YYYY-MM-DD") — 예) "2026-08-03" → "8월 3일".
+ * 대기큐 희망 출발일 등 시각 없는 날짜용 — TZ 변환 없이 문자열을 그대로 자른다.
+ */
+export function formatDateOnly(date: string): string {
+  return `${Number(date.slice(5, 7))}월 ${Number(date.slice(8, 10))}일`;
+}
+
 /** 금액 표시 — 예) 35000 → "35,000원". (여러 화면 중복 단일화) */
 export function formatWon(n: number): string {
   return n.toLocaleString("ko-KR") + "원";

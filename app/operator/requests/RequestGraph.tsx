@@ -175,7 +175,8 @@ export function RequestGraph({
             const r = n.row;
             const isSelected = r.id === selectedId;
             const pax = r.passengerNames.length;
-            const ariaLabel = `${r.regionName ? `${r.regionName} 차량 ` : ""}${DIRECTION_SHORT[r.direction]} ${statusLabel(
+            // 대기큐 신청(isWait)은 아직 차량이 없으므로 "대기큐"로 읽어준다.
+            const ariaLabel = `${r.regionName ? `${r.regionName} ${r.isWait ? "대기큐" : "차량"} ` : ""}${DIRECTION_SHORT[r.direction]} ${statusLabel(
               r.status,
             )}, ${r.originLabel}에서 ${r.destLabel}, 학생 ${pax}명`;
 
@@ -258,7 +259,10 @@ export function RequestGraph({
               <div className="flex justify-between gap-2">
                 <dt className="text-gray-500">공급 지구</dt>
                 <dd className="text-right font-medium text-gray-800">
-                  {selected.regionName ? `${selected.regionName} 차량` : "—"}
+                  {/* 대기큐 신청은 버스 미배정 — 차량이 아니라 대기큐로 표기 */}
+                  {selected.regionName
+                    ? `${selected.regionName} ${selected.isWait ? "대기큐" : "차량"}`
+                    : "—"}
                 </dd>
               </div>
               <div className="flex justify-between gap-2">

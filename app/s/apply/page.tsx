@@ -3,7 +3,12 @@ import { requireStudent } from "@/lib/auth/student";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { one } from "@/lib/supabase/relation";
 import { Logo } from "@/components/brand/logo";
-import { StudentApply, type WizardTrip } from "./StudentApply";
+import {
+  StudentApply,
+  type PublishedRegionDirection,
+  type RegionOption,
+  type WizardTrip,
+} from "./StudentApply";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +53,7 @@ export default async function StudentApplyPage() {
     .eq("status", "published")
     .order("departure_at", { ascending: true });
 
-  const wizardTrips: WizardTrip[] = (trips ?? [])
+  const allPublishedTrips: WizardTrip[] = (trips ?? [])
     .map((t) => {
       const origin = one(t.origin);
       const dest = one(t.destination);
@@ -77,15 +82,22 @@ export default async function StudentApplyPage() {
         mapLng: local?.lng ?? null,
         availableSeats: Math.max(0, openSeats - activeMatches),
       };
-    })
-    .filter((t) => t.availableSeats > 0);
+    });
+  const wizardTrips: WizardTrip[] = allPublishedTrips.filter((t) => t.availableSeats > 0);
 
-  // 출발 지구 선택지 = 공급 차량이 있는 지구들(중복 제거, 가나다순).
-  const regionOptions = Array.from(
-    new Map(
-      wizardTrips.map((t) => [t.regionName, { name: t.regionName, area: t.regionArea }]),
-    ).values(),
-  ).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  // 만석 포함 'published 차량이 존재하는 지구·방향' — 위저드는 잔여>0만 받으므로,
+  // 만석 지구를 "아직 버스를 올리지 않았어요"로 오안내하지 않기 위한 분기 자료.
+  const publishedRegionDirections: PublishedRegionDirection[] = allPublishedTrips.map((t) => ({
+    regionName: t.regionName,
+    direction: t.direction,
+  }));
+
+  // 출발 지구 선택지 = 전체 지구(가나다순). 버스가 없는 지구도 선택할 수 있어야
+  // "대기큐 신청"(버스 미배정 대기) 진입이 가능하다 — id는 대기 신청 대상 지구 해석용.
+  const { data: allRegions } = await db.from("regions").select("id, name, area");
+  const regionOptions: RegionOption[] = (allRegions ?? [])
+    .map((r) => ({ id: r.id, name: r.name, area: r.area }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 
   return (
     <main className="mx-auto max-w-md space-y-5 px-4 py-8">
@@ -117,7 +129,9 @@ export default async function StudentApplyPage() {
       ) : (
         <StudentApply
           trips={wizardTrips}
+          publishedRegionDirections={publishedRegionDirections}
           regionOptions={regionOptions}
+          studentRegionName={regionName}
           studentName={studentName as string}
           studentPhone={studentPhone as string}
         />

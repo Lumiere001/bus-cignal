@@ -21,6 +21,8 @@ async function applyToFixtureTrip(
   await page.goto("/s/apply");
   // 격리 trip은 down(평창→광주) — 기본 방향(up)에서 스왑.
   await page.getByRole("button", { name: "출발·도착 바꾸기" }).click();
+  // 기본 지구 = 본인 출신 지구(부산, #대기큐 위저드 개편) — 격리 trip의 공급 지구(광주)로 변경.
+  await page.getByLabel("지구 선택").selectOption("광주지구");
   await page.getByRole("button", { name: "버스 조회" }).click();
   // 차량 선택 → '이 차량 신청'
   await page.getByRole("button", { name: destLabel }).click();
