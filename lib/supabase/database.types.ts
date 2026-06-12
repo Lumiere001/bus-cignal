@@ -283,6 +283,7 @@ export type Database = {
           revoke_reason: string | null
           revoked_at: string | null
           role: string
+          staff_no: string | null
         }
         Insert: {
           anonymized?: boolean
@@ -303,6 +304,7 @@ export type Database = {
           revoke_reason?: string | null
           revoked_at?: string | null
           role?: string
+          staff_no?: string | null
         }
         Update: {
           anonymized?: boolean
@@ -323,6 +325,7 @@ export type Database = {
           revoke_reason?: string | null
           revoked_at?: string | null
           role?: string
+          staff_no?: string | null
         }
         Relationships: [
           {

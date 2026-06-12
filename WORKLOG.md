@@ -8,6 +8,16 @@
 
 ## 🔄 현재 작업 (Active)
 
+- 📍 **CC 세션 (2026-06-10 후속 — 간사 운영 피드백 5건 반영 + v1.1.0 확장·prod 배포)**: **간사 요청 5건 전부 구현·로컬검증·prod 배포 완료. v1.1.0 태그를 최신 커밋(ca6cb91)로 이동 + 릴리즈 노트 갱신. 열린 PR 0, 원격 브랜치=main만.**
+  - ✅ **#139** CCC 코드 직접 전달 — state(CSRF) 검증 완화(쿠키 있으면 검증/없으면 통과).
+  - ✅ **#140** 용어 가는편/오는편(코드 키 up/down 불변) + 방향별 위치(가는편 도착=평창휘닉스 고정 / 오는편 출발=텍스트 '블루캐니언 옆 주차장', 학생 지도는 '지역'쪽) + **신청 학생 선택 거절**(체크한 학생만, 미선택 경고). 마이그 `request_passengers.declined_at`.
+  - ✅ **#141** 수요측 신청목록 '학생 직접 신청' 배지.
+  - ✅ **#142** **입금 계좌** — 차량 등록 시 은행·예금주·계좌번호 입력 + 매칭(송금대기) 후 학생 /s·수요 신청상세에 안내. 마이그 `trips.bank_name/account_number/account_holder`.
+  - ✅ **#143** **같은 지구 간사 전원 알림** — emit()이 operator 대상을 그 지구 전체 승인 간사로 fan-out(`targets.ts` expandOperatorTargets). 스키마 무변경.
+  - 🔧 **운영 메모**: prod 마이그 2건 수동 `supabase db push`(링크 `zovrgrbrzxpzmgpkxmns`). main 보호(ruleset 승인 1건)라 머지는 사용자 승인 후 `--admin` 강제. seed-dev에 광주 간사 2명(이광주 추가, fan-out 검증) + 모든 trip 계좌.
+  - 검증: tsc·eslint·build green · 단위 46 · e2e 59/59 · 로컬 supabase 실동작 + preview 스크린샷. 상세 인계 = `docs/SESSION-HANDOFF.md` 최상단.
+  - ⏳ **다음 세션 후보**: (신규) 입금 계좌 '복사' 버튼·declined 학생 수요측 표시 / (기존 잔여) iOS 실기기 스모크·`operators.login_token` 컬럼 제거 마이그·약관 org 4항목.
+
 - 📍 **CC 세션 (2026-06-09 — QA 라운드 + 간사 CCC 라이브 + 학생 직접신청 Phase 1 / ⭐⭐ 다음 세션 1순위 = 학생 Phase 2·3 자율 빌드)**:
   - ⭐⭐ **다음 세션 1순위**: 학생 직접 신청 **Phase 2·3을 자율 워크플로우로** 빌드. 스펙=`docs/STUDENT-PHASE-2-3-SPEC.md`, base 브랜치=`feat/ccc-student-login`.
   - ✅ **간사 CCC 로그인 라이브**: #125 머지(`/api/ccc/callback`). 간사 ?code 수신 = CCC 등록 연결됨. (Vercel 배포 점검 잔여.)
