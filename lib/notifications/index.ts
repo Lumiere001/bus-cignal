@@ -7,7 +7,7 @@ import type {
   PayloadFor,
   RecipientsFor,
 } from "./events";
-import { formatPush, sendPush } from "./push";
+import { formatPush, pushLink, sendPush } from "./push";
 import { isRetryDue, reducePushAttempt } from "./retry";
 import {
   resolveTargets,
@@ -224,6 +224,7 @@ async function deliverOne(
     const res = await sendPush(tokens, formatPush(row.type, row.payload), {
       type: row.type,
       payload: JSON.stringify(row.payload ?? {}),
+      link: pushLink(row.type, row.payload),
     });
     ok = res.successCount > 0;
     invalidTokens = res.invalidTokens;

@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { doc, getDoc, Timestamp } from "firebase/firestore";
 import type { ChatRole } from "@/lib/chat/access";
 import {
   MAX_MESSAGE_LENGTH,
@@ -16,10 +17,10 @@ import {
 import {
   countUnread,
   markRead,
-  memberExists,
   subscribeToMembers,
   type ChatMember,
 } from "@/lib/chat/members";
+import { ChatNotifyPrompt } from "@/components/chat/ChatNotifyPrompt";
 
 type Props = {
   tripId: string;
@@ -147,6 +148,22 @@ function RoleBadge() {
   );
 }
 
+/** "여기까지 읽었어요" 구분선 — 첫 미읽음 메시지 앞 1회(카톡식). 다크 테마. */
+function UnreadDivider() {
+  return (
+    <div className="my-2 flex items-center gap-2 px-1">
+      <span className="h-px flex-1" style={{ backgroundColor: BORDER }} />
+      <span
+        className="text-[0.68rem] whitespace-nowrap"
+        style={{ color: MUTED }}
+      >
+        여기까지 읽었어요
+      </span>
+      <span className="h-px flex-1" style={{ backgroundColor: BORDER }} />
+    </div>
+  );
+}
+
 export function ChatRoom({ tripId }: Props) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [identity, setIdentity] = useState<Identity | null>(null);
@@ -159,6 +176,18 @@ export function ChatRoom({ tripId }: Props) {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // ── 안 읽음 구분선 / 첫 입장 안내 (카톡 "여기까지 읽음") ──────────────────
+  // 이번 세션이 방을 읽음 처리(upsertRead)하기 **전**의 본인 lastReadAt(ms).
+  //   number = 직전 읽은 시각, null = member 문서 없음(최초 입장) 또는 조회 실패.
+  //   state로 보관(렌더 입력) — 메시지 도착 전에 1회 세팅되고, 구분선 계산에 사용.
+  const [priorReadAt, setPriorReadAt] = useState<number | null>(null);
+  // 이번 입장이 최초 입장(member 문서 없음)이었는지 — 첫 입장 안내 배너용.
+  const [firstJoin, setFirstJoin] = useState(false);
+  // 안 읽음 구분선 DOM(첫 미읽음 메시지 앞) — 초기 진입 시 여기로 스크롤.
+  const dividerRef = useRef<HTMLDivElement>(null);
+  // 최초 메시지 로드에서 한 번만 "여기까지 읽음"으로 스크롤하기 위한 가드.
+  const didInitialScrollRef = useRef(false);
 
   // identity/phase를 effect·비동기 콜백에서 최신값으로 읽기 위한 ref.
   // 렌더 중 ref 직접 대입 금지(react-hooks/refs) → effect에서 동기화.
@@ -276,12 +305,30 @@ export function ChatRoom({ tripId }: Props) {
         // 카톡식 입장 안내 — **최초 입장(member 문서 없음)일 때만** 1회 게시.
         //   markRead가 member 문서를 만들기 전에 검사해야 하므로 upsertRead보다 먼저.
         //   "나가기" 개념은 없다(카톡처럼 방을 아예 떠나는 동작이 없으므로 퇴장 메시지도 없음).
-        const firstJoin = !(await memberExists(
-          chatDb(),
-          tripId,
-          data.subjectId,
-        ));
-        if (!cancelled && firstJoin) {
+        //   같은 read로 두 가지를 동시에 얻는다:
+        //     (1) 문서 존재 여부 → 최초 입장 판정(시스템 입장 메시지 + 첫 입장 배너)
+        //     (2) 직전 lastReadAt → "여기까지 읽음" 구분선 기준(upsertRead가 덮어쓰기 전 캡처)
+        //   best-effort: 조회 실패 시 firstJoin=false 취급(중복 입장 메시지보다 누락을 택함),
+        //     priorReadAt=null(구분선 없음/첫 입장처럼 동작).
+        let isFirstJoin = false;
+        let priorReadMs: number | null = null;
+        try {
+          const memberSnap = await getDoc(
+            doc(chatDb(), "channels", tripId, "members", data.subjectId),
+          );
+          isFirstJoin = !memberSnap.exists();
+          const lastRead = memberSnap.data()?.lastReadAt;
+          priorReadMs = lastRead instanceof Timestamp ? lastRead.toMillis() : null;
+        } catch {
+          // 조회 실패 — 최초 입장 메시지 누락을 택하고 구분선은 생략.
+          isFirstJoin = false;
+          priorReadMs = null;
+        }
+        if (cancelled) return;
+        setFirstJoin(isFirstJoin);
+        setPriorReadAt(priorReadMs);
+
+        if (!cancelled && isFirstJoin) {
           void sendSystemMessage(tripId, {
             senderId: data.subjectId,
             displayName: data.displayName,
@@ -289,7 +336,7 @@ export function ChatRoom({ tripId }: Props) {
           }).catch(() => {});
         }
 
-        // 입장 즉시 읽음 커서 upsert(입장 표시 + lastReadAt).
+        // 입장 즉시 읽음 커서 upsert(입장 표시 + lastReadAt). priorReadAt 캡처 **후**.
         upsertRead();
 
         // 권한 재검증으로 이미 forbidden이 됐으면 구독을 시작하지 않음.
@@ -392,8 +439,21 @@ export function ChatRoom({ tripId }: Props) {
     };
   }, [tripId, phase, upsertRead, stopSubscriptions]);
 
-  // 새 메시지 도착 시 맨 아래로 스크롤
+  // 스크롤 정책 —
+  //   최초 메시지 로드: "여기까지 읽음" 구분선이 있으면 그곳으로(카톡식), 없으면 맨 아래.
+  //   이후 새 메시지 도착: 항상 맨 아래로(기존 동작 유지).
   useEffect(() => {
+    if (messages.length === 0) return;
+    if (!didInitialScrollRef.current) {
+      didInitialScrollRef.current = true;
+      // 구분선이 렌더됐으면 첫 미읽음으로, 아니면 맨 아래로.
+      if (dividerRef.current) {
+        dividerRef.current.scrollIntoView({ block: "center" });
+        return;
+      }
+      bottomRef.current?.scrollIntoView();
+      return;
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -423,10 +483,12 @@ export function ChatRoom({ tripId }: Props) {
       upsertRead();
       // 알림 발송은 secondary — fire-and-forget. UI를 막지도, 오류를 노출하지도 않는다.
       // 메시지 자체는 위에서 이미 Firestore에 전송됨. 실패해도 채팅에 영향 없음.
+      // 푸시 미리보기 — 공백 정규화 후 80자로 잘라 본문 노출 최소화.
+      const preview = result.text.replace(/\s+/g, " ").trim().slice(0, 80);
       void fetch("/api/chat/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tripId }),
+        body: JSON.stringify({ tripId, preview }),
       }).catch(() => {});
     } catch {
       setSendError("메시지 전송에 실패했어요. 잠시 후 다시 시도해 주세요.");
@@ -461,6 +523,23 @@ export function ChatRoom({ tripId }: Props) {
     identity
       ? m.senderRole === identity.role && m.senderId === identity.subjectId
       : false;
+
+  // "여기까지 읽었어요" 구분선 위치 — 첫 미읽음 메시지 1개 앞에만 한 번.
+  //   대상: 시스템 메시지가 아니고, 내가 보낸 게 아니며,
+  //     priorReadAt이 있으면 그보다 나중(createdAtMs > prior), 없으면(첫 입장) 첫 비시스템 메시지.
+  //   전부 읽음(또는 미읽음 없음)이면 -1 → 구분선 미표시.
+  const dividerIndex = messages.findIndex((m) => {
+    if (m.senderRole === "system") return false;
+    if (mineOf(m)) return false;
+    if (priorReadAt === null) return true; // 첫 입장: 첫 비시스템·타인 메시지 앞
+    return m.createdAtMs !== null && m.createdAtMs > priorReadAt;
+  });
+
+  // 첫 입장 안내 배너 — 최초 입장 + 타인이 남긴 기존(비시스템) 메시지가 하나라도 있을 때.
+  const hasOthersHistory = messages.some(
+    (m) => m.senderRole !== "system" && !mineOf(m),
+  );
+  const showFirstJoinNudge = firstJoin && hasOthersHistory;
 
   return (
     <>
@@ -531,8 +610,24 @@ export function ChatRoom({ tripId }: Props) {
           </div>
         )}
 
+        {/* 푸시 알림 권유 프롬프트 — 입장 직후 멤버 바 아래·메시지 위. 자체 표시 판단. */}
+        <ChatNotifyPrompt />
+
         {/* 메시지 목록 */}
         <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
+          {/* 첫 입장 안내 — 기존 대화가 있을 때만(스크롤 막지 않는 subtle 카드). */}
+          {showFirstJoinNudge && (
+            <div
+              className="mb-1 rounded-xl px-3 py-2 text-center text-[0.72rem]"
+              style={{
+                backgroundColor: PANEL,
+                color: MUTED,
+                border: `1px solid ${BORDER}`,
+              }}
+            >
+              📩 이전 대화 내용이 있어요. 아래에서 확인해 주세요.
+            </div>
+          )}
           {messages.length === 0 ? (
             <div className="flex flex-1 items-center justify-center">
               <span className="text-sm" style={{ color: MUTED }}>
@@ -599,6 +694,11 @@ export function ChatRoom({ tripId }: Props) {
 
               return (
                 <div key={m.id}>
+                  {i === dividerIndex && (
+                    <div ref={dividerRef}>
+                      <UnreadDivider />
+                    </div>
+                  )}
                   {showDateDivider && (
                     <div className="my-3 flex items-center justify-center">
                       <span
