@@ -22,6 +22,7 @@ const UUID_SHAPED = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const Body = z
   .object({
     tripId: z.string().regex(UUID_SHAPED),
+    preview: z.string().max(500).optional(),
   })
   .strict();
 
@@ -38,13 +39,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
+  // 미리보기 문구 정제 — 줄바꿈·연속 공백 단일화 후 80자로 제한(알림 카드 표시용).
+  const preview = parsed.data.preview
+    ? parsed.data.preview.replace(/\s+/g, " ").trim().slice(0, 80)
+    : undefined;
+
   // 보낸 사람 = 현재 세션 신원. notify 헬퍼가 이 사람을 수신자에서 제외한다.
   // 발송 실패는 전부 헬퍼 내부에서 삼킨다(best-effort) — 채팅은 영향 없음.
   try {
-    await notifyChatMessage(access.tripId, {
-      role: access.role,
-      subjectId: access.subjectId,
-    });
+    await notifyChatMessage(
+      access.tripId,
+      { role: access.role, subjectId: access.subjectId },
+      preview,
+    );
   } catch {
     // 예기치 못한 오류도 삼킨다 — 알림은 secondary, 항상 200.
   }

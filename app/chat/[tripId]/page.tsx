@@ -49,7 +49,7 @@ export default async function ChatPage({ params }: Props) {
   // 색상값은 ChatRoom.tsx의 토큰과 일치(SURFACE/PANEL/TEXT/MUTED/BORDER).
   return (
     <main
-      className="mx-auto flex h-[100dvh] max-w-md flex-1 flex-col"
+      className="mx-auto flex h-dvh max-w-md min-h-0 w-full flex-col md:max-w-2xl"
       style={{
         backgroundColor: "#101013",
         color: "#ECECEE",

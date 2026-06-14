@@ -74,6 +74,32 @@ export function formatPush(type: string, payload: unknown): PushCopy {
   }
 }
 
+/**
+ * 이벤트별 클릭 진입 경로(딥링크). 알림 탭 시 이 경로로 이동한다.
+ *  - chat_message → 해당 trip 채팅방(/chat/:tripId). tripId 없으면 "/".
+ *  - 개인 관련(예약·출발·운행변경·매칭확정) → "/me"
+ *  - 그 외 → "/"
+ * payload는 notifications.payload(jsonb) 그대로 — null·비객체에도 안전하게 동작.
+ */
+export function pushLink(type: string, payload: unknown): string {
+  const p = (payload && typeof payload === "object" ? payload : {}) as {
+    tripId?: string;
+  };
+
+  switch (type) {
+    case "chat_message":
+      return p.tripId ? `/chat/${p.tripId}` : "/";
+    case "paid_code_issued":
+    case "depart_d1":
+    case "depart_d1h":
+    case "trip_changed":
+    case "match_confirmed":
+      return "/me";
+    default:
+      return "/";
+  }
+}
+
 export type SendResult = {
   successCount: number;
   failureCount: number;
@@ -105,7 +131,9 @@ export async function sendPush(
     tokens,
     notification: { title: copy.title, body: copy.body },
     data,
-    webpush: { fcmOptions: { link: "/" } }, // Phase C에서 이벤트별 딥링크 세분화
+    // SW(event.notification.data.link)·FCM 모두 data.link를 클릭 진입 경로로 사용.
+    // caller(deliverOne)가 pushLink 결과를 data.link로 넣어준다. 없으면 "/".
+    webpush: { fcmOptions: { link: (data.link as string) || "/" } },
   });
 
   const invalidTokens: string[] = [];

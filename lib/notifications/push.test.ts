@@ -9,7 +9,7 @@ vi.mock("@/lib/firebase/admin", () => ({
   isPushConfigured: () => true,
 }));
 
-import { formatPush, sendPush } from "./push";
+import { formatPush, pushLink, sendPush } from "./push";
 
 describe("formatPush (이벤트 → 푸시 문구)", () => {
   it("match_confirmed → 송금 안내 문구", () => {
@@ -33,6 +33,20 @@ describe("formatPush (이벤트 → 푸시 문구)", () => {
     const c = formatPush("totally_unknown", null);
     expect(c.title).toBe("Bus Cignal");
     expect(c.body.length).toBeGreaterThan(0);
+  });
+});
+
+describe("pushLink (이벤트 → 클릭 딥링크)", () => {
+  it("chat_message → 해당 trip 채팅방 경로", () => {
+    expect(pushLink("chat_message", { tripId: "abc" })).toBe("/chat/abc");
+  });
+
+  it("chat_message + tripId 없음 → 홈", () => {
+    expect(pushLink("chat_message", {})).toBe("/");
+  });
+
+  it("알 수 없는 type → 홈", () => {
+    expect(pushLink("totally_unknown", null)).toBe("/");
   });
 });
 

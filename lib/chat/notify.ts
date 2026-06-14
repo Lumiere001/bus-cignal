@@ -136,7 +136,10 @@ export async function resolveChatRecipients(
 export async function notifyChatRecipients(
   tripId: string,
   recipients: ChatRecipient[],
+  preview?: string,
 ): Promise<void> {
+  // chat_message 페이로드 — preview는 미리보기 문구(없으면 formatPush가 기본 문구 사용).
+  const payload: { tripId: string; preview?: string } = { tripId, preview };
   for (const r of recipients) {
     const opts = { push: !r.muted };
     try {
@@ -149,7 +152,7 @@ export async function notifyChatRecipients(
               requestOperatorId: null,
               passengerId: null,
             },
-            { tripId },
+            payload,
             opts,
           );
           break;
@@ -161,7 +164,7 @@ export async function notifyChatRecipients(
               requestOperatorId: r.operatorId,
               passengerId: null,
             },
-            { tripId },
+            payload,
             opts,
           );
           break;
@@ -173,7 +176,7 @@ export async function notifyChatRecipients(
               requestOperatorId: null,
               passengerId: r.passengerId,
             },
-            { tripId },
+            payload,
             opts,
           );
           break;
@@ -191,7 +194,8 @@ export async function notifyChatRecipients(
 export async function notifyChatMessage(
   tripId: string,
   sender: ChatSender,
+  preview?: string,
 ): Promise<void> {
   const recipients = await resolveChatRecipients(tripId, sender);
-  await notifyChatRecipients(tripId, recipients);
+  await notifyChatRecipients(tripId, recipients, preview);
 }
